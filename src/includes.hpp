@@ -1,0 +1,10 @@
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+#include <cocos2d.h>
+#include <imgui.h>
+#include <MinHook.h>
+#include <sstream>
+#include <imgui-hook.hpp>
+#include <string_view>
+#include <imgui/misc/cpp/imgui_stdlib.h>
+#include <filesystem>
