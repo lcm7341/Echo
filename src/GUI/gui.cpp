@@ -1,5 +1,4 @@
 #include "gui.hpp"
-//#include "../includes.hpp"
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #include <cocos2d.h>
