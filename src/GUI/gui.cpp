@@ -41,6 +41,7 @@ void GUI::main() {
 	auto& macro = logic.get_macro();
 	if (ImGui::BeginTabItem("Main")) {
 
+
 		if (ImGui::Button("Toggle Recording")) {
 			logic.toggle_recording();
 		}
@@ -52,18 +53,19 @@ void GUI::main() {
 
 		ImGui::InputFloat("FPS", &macro.fps);
 
-		ImGui::Text("Is Recording: %i", logic.is_recording());
-		ImGui::Text("Is Playing: %i", logic.is_playing());
-
 		ImGui::Text("Input count: %i", macro.get_inputs().size());
 
 		if (ImGui::Button("Save File")) {
 			macro.write_file(macro.macro_name);
 		}
 
+		ImGui::SameLine();
+
 		if (ImGui::Button("Load File")) {
 			macro.read_file(macro.macro_name);
 		}
+
+		ImGui::Text("%s", macro.macro_name);
 
 		if (macro.error != "") {
 			ImGui::Separator();
