@@ -10,6 +10,10 @@
 #include <imgui/misc/cpp/imgui_stdlib.h>
 #include <filesystem>
 #include "./Fonts/OpenSans-Medium.c"
+#include <gd.h>
+#define PLAYLAYER gd::GameManager::sharedState()->getPlayLayer()
+
+#include "../Logic/logic.hpp"
 
 using namespace cocos2d;
 
@@ -24,28 +28,46 @@ void GUI::draw() {
 		if (ImGui::BeginTabBar("TabBar")) {
 			main();
 		}
-			
-		ImGui::Text("Hello, World!");
 
 		ImGui::End();
 	}
 
-	if (ImGui::GetTime() < 5.0) {
-		show_window = false;
-		ImGui::SetNextWindowPos({ ImGui::GetWindowHeight() / 2.f, ImGui::GetWindowWidth() / 2.f });
-		ImGui::Begin("echopopup", nullptr,
-			ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
-			ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMouseInputs | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoSavedSettings);
-		ImGui::Text("Echo Successfully Loaded!");
-		ImGui::End();
-	}
+
 	if (g_font) ImGui::PopFont();
 }
 
 void GUI::main() {
+	auto& logic = Logic::get();
+	auto& macro = logic.get_macro();
 	if (ImGui::BeginTabItem("Main")) {
 
-		ImGui::Button("Click me!");
+		if (ImGui::Button("Toggle Recording")) {
+			logic.toggle_recording();
+		}
+		if (ImGui::Button("Toggle Playing")) {
+			logic.toggle_playing();
+		}
+
+		ImGui::Text("Frame: %i", logic.get_frame());
+
+		ImGui::InputFloat("FPS", &macro.fps);
+
+		if (logic.is_recording() || logic.is_playing()) {
+			CCDirector::sharedDirector()->setAnimationInterval(1.f / macro.fps);
+		}
+
+		ImGui::Text("Is Recording: %i", logic.is_recording());
+		ImGui::Text("Is Playing: %i", logic.is_playing());
+
+		ImGui::Text("Input count: %i", macro.get_inputs().size());
+
+		if (ImGui::Button("Save File")) {
+			macro.write_file("output.bin");
+		}
+
+		if (ImGui::Button("Load File")) {
+			macro.read_file("output.bin");
+		}
 
 		ImGui::EndTabItem();
 	}

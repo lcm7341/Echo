@@ -1,6 +1,7 @@
 #include "includes.hpp"
 #include "GUI/gui.hpp"
-#include <functional>
+#include "Hooks/Hooks.hpp"
+#include <gd.h>
 
 void callback() {
 	auto& instance = GUI::get();
@@ -21,16 +22,17 @@ void initFuncWrapper() {
 }
 
 DWORD WINAPI my_thread(void* hModule) {
+	MH_Initialize();
 	auto& instance = GUI::get();
 
 	ImGuiHook::setRenderFunction(renderFuncWrapper);
 	ImGuiHook::setToggleCallback(callback);
 	ImGuiHook::setInitFunction(initFuncWrapper);
-	MH_Initialize();
 	ImGuiHook::setupHooks([](void* target, void* hook, void** trampoline) {
 		MH_CreateHook(target, hook, trampoline);
 	});
 	ImGuiHook::setKeybind(VK_SHIFT);
+	Hooks::init_hooks();
 	MH_EnableHook(MH_ALL_HOOKS);
 	return 0;
 }

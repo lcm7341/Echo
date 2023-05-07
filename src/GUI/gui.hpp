@@ -8,7 +8,7 @@ public:
 		return instance;
 	}
 
-	bool show_window = true;
+	bool show_window = false;
 
 	void draw();
 

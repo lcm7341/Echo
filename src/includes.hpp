@@ -8,3 +8,4 @@
 #include <string_view>
 #include <imgui/misc/cpp/imgui_stdlib.h>
 #include <filesystem>
+#include <gd.h>
