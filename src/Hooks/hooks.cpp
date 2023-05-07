@@ -4,6 +4,7 @@
 #define HOOK(o, f) MH_CreateHook(reinterpret_cast<void*>(gd::base + o), f##_h, reinterpret_cast<void**>(&f));
 // gracias matcool :]
 
+#define HOOK_COCOS(o, f) MH_CreateHook(GetProcAddress(GetModuleHandleA("libcocos2d.dll"), o), f##_h, reinterpret_cast<void**>(&f));
 
 void Hooks::init_hooks() {
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x2029C0), PlayLayer::update_h, reinterpret_cast<void**>(&PlayLayer::update));
@@ -14,11 +15,26 @@ void Hooks::init_hooks() {
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x20DDD0), createCheckpoint_h, reinterpret_cast<void**>(&createCheckpoint));
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x20b830), removeCheckpoint_h, reinterpret_cast<void**>(&removeCheckpoint));
 
-	MH_EnableHook(MH_ALL_HOOKS);
+    MH_CreateHook(GetProcAddress(GetModuleHandleA("libcocos2d.dll"), "?update@CCScheduler@cocos2d@@UAEXM@Z"), CCScheduler_update_h, reinterpret_cast<void**>(&CCScheduler_update));
+
+    MH_EnableHook(MH_ALL_HOOKS);
+}
+
+void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
+    auto& logic = Logic::get();
+    auto& macro = logic.get_macro();
+
+    if (logic.is_recording() || logic.is_playing()) {
+        CCDirector::sharedDirector()->setAnimationInterval(1.f / macro.fps);
+        dt = 1.f / macro.fps;
+    }
+
+    CCScheduler_update(self, dt);
 }
 
 void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
     auto& logic = Logic::get();
+    auto& macro = logic.get_macro();
 
     if (logic.is_playing()) logic.play_macro();
 
@@ -48,6 +64,8 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
 
     auto& logic = Logic::get();
     auto& macro = logic.get_macro();
+
+    macro.macro_name = self->m_level->m_sLevelName;
 
     if (self->m_checkpoints->count() > 0)
         self->m_time = macro.get_latest_offset();

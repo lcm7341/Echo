@@ -15,6 +15,9 @@ class Macro {
 	std::vector<double> offsets;
 public:
 	float fps = 60.f;
+	std::string macro_name = "output";
+
+	std::string error = "";
 
 	void add_offset(double time) {
 		offsets.push_back(time);
