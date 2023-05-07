@@ -49,7 +49,8 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
     auto& logic = Logic::get();
     auto& macro = logic.get_macro();
 
-    self->m_time = macro.get_latest_offset();
+    if (self->m_checkpoints->count() > 0)
+        self->m_time = macro.get_latest_offset();
 
     if (logic.is_recording())
         macro.remove_inputs(logic.get_frame());
