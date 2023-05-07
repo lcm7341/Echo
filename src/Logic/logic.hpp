@@ -1,5 +1,5 @@
 #include "../includes.hpp"
-#include "inputs.hpp"
+#include "macros.hpp"
 
 enum State {
 	IDLE,

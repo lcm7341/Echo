@@ -1,0 +1,150 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"childIndexes" : 
+					[
+						1,
+						2,
+						3
+					],
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-.-RelWithDebInfo-d0094a50bb2071803777.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.0.0"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						0
+					]
+				},
+				{
+					"build" : "libraries/minhook",
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-libraries.minhook-RelWithDebInfo-70d7cbafb25ae7f20129.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.0"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 1,
+					"source" : "libraries/minhook",
+					"targetIndexes" : 
+					[
+						2
+					]
+				},
+				{
+					"build" : "libraries/imgui-hook",
+					"jsonFile" : "directory-libraries.imgui-hook-RelWithDebInfo-52c11f6a91eac53c838c.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.0"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 0,
+					"source" : "libraries/imgui-hook",
+					"targetIndexes" : 
+					[
+						1
+					]
+				},
+				{
+					"build" : "libraries/cocos-headers",
+					"jsonFile" : "directory-libraries.cocos-headers-RelWithDebInfo-478791ff6354370498a7.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.0.0"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 2,
+					"source" : "libraries/cocos-headers"
+				}
+			],
+			"name" : "RelWithDebInfo",
+			"projects" : 
+			[
+				{
+					"childIndexes" : 
+					[
+						1,
+						2
+					],
+					"directoryIndexes" : 
+					[
+						0,
+						2
+					],
+					"name" : "Echo",
+					"targetIndexes" : 
+					[
+						0,
+						1
+					]
+				},
+				{
+					"directoryIndexes" : 
+					[
+						1
+					],
+					"name" : "minhook",
+					"parentIndex" : 0,
+					"targetIndexes" : 
+					[
+						2
+					]
+				},
+				{
+					"directoryIndexes" : 
+					[
+						3
+					],
+					"name" : "cocos-headers",
+					"parentIndex" : 0
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 0,
+					"id" : "Echo::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-Echo-RelWithDebInfo-3d0452c79cd104c4244c.json",
+					"name" : "Echo",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 2,
+					"id" : "imgui-hook::@855b64ca8e5c39f28ff5",
+					"jsonFile" : "target-imgui-hook-RelWithDebInfo-b6c692739aaebb42c2c4.json",
+					"name" : "imgui-hook",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 1,
+					"id" : "minhook::@7605efca7753b9cb6432",
+					"jsonFile" : "target-minhook-RelWithDebInfo-ead6c97971c9fc6ecfbc.json",
+					"name" : "minhook",
+					"projectIndex" : 1
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "C:/Users/levim/source/repos/Echo/out/build/x86-Release",
+		"source" : "C:/Users/levim/source/repos/Echo"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 4
+	}
+}
