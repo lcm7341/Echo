@@ -8,32 +8,6 @@ enum State {
 	BOTH
 };
 
-struct Checkpoint {
-	double y_accel; // playlayer->player1->yaccel;
-	float rotation; // playlayer->player1->rotation;
-	double randomVar; // playlayer->player1->randomvar;
-};
-
-/*
-* 
-* pl = gd::gamemanager::sharedstate()->getplaylayer()
-	
-	map:
-
-	yaccel, pl->player1->yaccel;
-
-*/
-
-/*
-
-	fn getCheckpointData)( {
-
-	reutnr checkpointdata;
-
-
-
-*/
-
 class Logic {
 	State state = IDLE;
 

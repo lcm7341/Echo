@@ -15,6 +15,8 @@ void Hooks::init_hooks() {
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x20DDD0), createCheckpoint_h, reinterpret_cast<void**>(&createCheckpoint));
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x20b830), removeCheckpoint_h, reinterpret_cast<void**>(&removeCheckpoint));
 
+    MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x20D810), PlayLayer::exitLevel_h, reinterpret_cast<void**>(&PlayLayer::exitLevel));
+
     MH_CreateHook(GetProcAddress(GetModuleHandleA("libcocos2d.dll"), "?update@CCScheduler@cocos2d@@UAEXM@Z"), CCScheduler_update_h, reinterpret_cast<void**>(&CCScheduler_update));
 
     MH_EnableHook(MH_ALL_HOOKS);
@@ -67,6 +69,22 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
 
     macro.macro_name = self->m_level->m_sLevelName;
 
+    if (!self->m_isPracticeMode)
+        macro.checkpoints.clear();
+    
+    if (logic.is_recording() || logic.is_playing()) {
+        if (macro.checkpoints.size() > 0) {
+            Checkpoint& data = macro.checkpoints.back();
+
+            self->m_pPlayer1->setRotationX(data.player_1.rotation);
+            self->m_pPlayer2->setRotationX(data.player_2.rotation);
+
+            self->m_pPlayer1->m_yAccel = data.player_1.y_accel;
+            self->m_pPlayer2->m_yAccel = data.player_2.y_accel;
+
+        }
+    }
+
     if (self->m_checkpoints->count() > 0)
         self->m_time = macro.get_latest_offset();
 
@@ -79,11 +97,32 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
     return ret;
 }
 
+void* __fastcall Hooks::PlayLayer::exitLevel_h(gd::PlayLayer* self, int) {
+
+    auto& logic = Logic::get();
+    auto& macro = logic.get_macro();
+
+    macro.checkpoints.clear();
+
+    return exitLevel(self);
+}
+
 int __fastcall Hooks::createCheckpoint_h(gd::PlayLayer* self) {
     auto& logic = Logic::get();
     auto& macro = logic.get_macro();
 
     macro.add_offset(self->m_time);
+
+    CheckpointData p1;
+    CheckpointData p2;
+
+    p1.y_accel = self->m_pPlayer1->m_yAccel;
+    p2.y_accel = self->m_pPlayer2->m_yAccel;
+
+    p1.rotation = self->m_pPlayer1->getRotationX();
+    p2.rotation = self->m_pPlayer2->getRotationX();
+
+    macro.save_checkpoint({ p1, p2 });
 
     return createCheckpoint(self);
 }
@@ -93,6 +132,8 @@ int __fastcall Hooks::removeCheckpoint_h(gd::PlayLayer* self) {
     auto& macro = logic.get_macro();
 
     macro.remove_last_offset();
+
+    macro.remove_last_checkpoint();
 
     return removeCheckpoint(self);
 }

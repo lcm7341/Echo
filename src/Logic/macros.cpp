@@ -1,4 +1,5 @@
 #include "macros.hpp"
+#define PLAYLAYER gd::GameManager::sharedState()->getPlayLayer()
 
 void Macro::remove_inputs(unsigned frame) {
     auto it = std::remove_if(inputs.begin(), inputs.end(), 
@@ -56,4 +57,19 @@ void Macro::read_file(const std::string& filename) {
         }
 
     file.close();
+}
+
+void Macro::handle_checkpoint_data() {
+    if (PLAYLAYER) {
+        if (checkpoints.size() > 0) {
+            Checkpoint& data = checkpoints.back();
+
+            PLAYLAYER->m_pPlayer1->setRotationX(data.player_1.rotation);
+            PLAYLAYER->m_pPlayer2->setRotationX(data.player_2.rotation);
+
+            PLAYLAYER->m_pPlayer1->m_yAccel = data.player_1.y_accel;
+            PLAYLAYER->m_pPlayer2->m_yAccel = data.player_2.y_accel;
+
+        }
+    }
 }

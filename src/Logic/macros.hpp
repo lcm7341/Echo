@@ -2,11 +2,22 @@
 #include <string>
 #include <iostream>
 #include <fstream>
+#include <gd.h>
 
 struct Input {
 	unsigned frame;
 	bool down;
 	bool player1;
+};
+
+struct CheckpointData {
+	double y_accel;
+	float rotation;
+};
+
+struct Checkpoint {
+	CheckpointData player_1;
+	CheckpointData player_2;
 };
 
 class Macro {
@@ -50,4 +61,23 @@ public:
 	void write_file(const std::string& filename);
 
 	void read_file(const std::string& filename);
+
+	std::vector<Checkpoint> checkpoints;
+
+	void save_checkpoint(Checkpoint data) {
+		checkpoints.push_back(data);
+	}
+
+	void remove_last_checkpoint() {
+		checkpoints.pop_back();
+	}
+
+	Checkpoint get_latest_checkpoint() {
+		if (checkpoints.size() > 0) {
+			return checkpoints.back();
+		}
+		return Checkpoint{ 0, 0 };
+	}
+
+	void handle_checkpoint_data();
 };
