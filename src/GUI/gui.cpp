@@ -72,8 +72,8 @@ void GUI::main() {
 			}
 		}
 
-		if (macro.macro_name != "")
-			ImGui::Text("%s", macro.macro_name);
+		//if (macro.macro_name != "")
+		//ImGui::Text("%s", macro.macro_name);
 
 		if (macro.error != "") {
 			ImGui::Separator();
