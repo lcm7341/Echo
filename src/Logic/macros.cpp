@@ -1,14 +1,6 @@
 #include "macros.hpp"
 #define PLAYLAYER gd::GameManager::sharedState()->getPlayLayer()
 
-void Macro::remove_inputs(unsigned frame) {
-    auto it = std::remove_if(inputs.begin(), inputs.end(), 
-        [frame](const Input& input) { 
-            return input.frame >= frame;
-        });
-    inputs.erase(it, inputs.end());
-}
-
 #define w_b(var) file.write(reinterpret_cast<char*>(&var), sizeof(var));
 #define r_b(var) file.read(reinterpret_cast<char*>(&var), sizeof(var));
 
@@ -57,6 +49,14 @@ void Macro::read_file(const std::string& filename) {
         }
 
     file.close();
+}
+
+void Macro::remove_inputs(unsigned frame) {
+    auto it = std::remove_if(inputs.begin(), inputs.end(),
+        [frame](const Input& input) {
+            return input.frame >= frame;
+        });
+    inputs.erase(it, inputs.end());
 }
 
 void Macro::handle_checkpoint_data() {
