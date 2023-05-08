@@ -74,7 +74,7 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
     
     if (logic.is_recording() || logic.is_playing()) {
         if (macro.checkpoints.size() > 0) {
-            Checkpoint data = macro.checkpoints.back();
+            Checkpoint& data = macro.checkpoints.back();
 
             self->m_pPlayer1->setRotationX(data.player_1.rotation);
             self->m_pPlayer2->setRotationX(data.player_2.rotation);
@@ -113,8 +113,8 @@ int __fastcall Hooks::createCheckpoint_h(gd::PlayLayer* self) {
 
     macro.add_offset(self->m_time);
 
-    CheckpointData p1 = { 0, 0 };
-    CheckpointData p2 = { 0, 0 };
+    CheckpointData p1;
+    CheckpointData p2;
 
     p1.y_accel = self->m_pPlayer1->m_yAccel;
     p2.y_accel = self->m_pPlayer2->m_yAccel;

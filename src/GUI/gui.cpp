@@ -65,15 +65,7 @@ void GUI::main() {
 			macro.read_file(macro.macro_name);
 		}
 
-		if (PLAYLAYER) {
-			ImGui::Text("P1 Y-accel: %f", PLAYLAYER->m_pPlayer1->m_jumpAccel);
-			if (macro.checkpoints.size() > 0) {
-				ImGui::Text("Last check yaccel: %f", macro.checkpoints.back().player_1.y_accel);
-			}
-		}
-
-		//if (macro.macro_name != "")
-		//ImGui::Text("%s", macro.macro_name);
+		ImGui::Text("%s", macro.macro_name);
 
 		if (macro.error != "") {
 			ImGui::Separator();
