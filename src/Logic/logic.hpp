@@ -1,5 +1,4 @@
 #include "../includes.hpp"
-#include "macros.hpp"
 
 enum State {
 	IDLE,
@@ -8,12 +7,39 @@ enum State {
 	BOTH
 };
 
+#include <vector>
+#include <string>
+#include <iostream>
+#include <fstream>
+#include <gd.h>
+#include <cocos2d.h>
+
+using namespace cocos2d;
+
+struct Input {
+	unsigned frame;
+	bool down;
+	bool player1;
+};
+
+struct CheckpointData {
+	double y_accel;
+	float rotation;
+};
+
+struct Checkpoint {
+	CheckpointData player_1;
+	CheckpointData player_2;
+};
+
 class Logic {
 	State state = IDLE;
 
 	unsigned replay_pos = 0;
 
-	Macro macro;
+	std::vector<Input> inputs;
+
+	std::vector<double> offsets;
 
 public:
 	static auto& get() {
@@ -36,8 +62,8 @@ public:
 		return state == BOTH;
 	}
 
-	inline Macro& get_macro() {
-		return macro;
+	inline bool is_idle() {
+		return state == IDLE;
 	}
 
 	void toggle_playing() {
@@ -65,5 +91,61 @@ public:
 	int get_replay_pos() {
 		return replay_pos;
 	}
+
+	float fps = 60.f;
+	char macro_name[1000] = "output";
+
+	std::string error = "";
+
+	void add_offset(double time) {
+		offsets.push_back(time);
+	}
+
+	void remove_last_offset() {
+		offsets.pop_back();
+	}
+
+	double get_latest_offset() {
+		if (offsets.size() > 0)
+			return offsets.back();
+		return 0.f;
+	}
+
+	std::vector<Input>& get_inputs() {
+		return inputs;
+	}
+
+	void add_input(Input input) {
+		inputs.push_back(input);
+	}
+
+	float get_fps() {
+		return fps;
+	}
+
+	void remove_inputs(unsigned frame);
+
+	void write_file(const std::string& filename);
+
+	void read_file(const std::string& filename);
+
+	std::vector<Checkpoint> checkpoints;
+
+	void save_checkpoint(Checkpoint data) {
+		checkpoints.push_back(data);
+	}
+
+	void remove_last_checkpoint() {
+		checkpoints.pop_back();
+	}
+
+	Checkpoint get_latest_checkpoint() {
+		if (checkpoints.size() > 0) {
+			return checkpoints.back();
+		}
+		return Checkpoint{ 0, 0 };
+	}
+
+	void handle_checkpoint_data();
 
 };

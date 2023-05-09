@@ -15,4 +15,8 @@ public:
 	void main();
 
 	void init();
+
+	bool show_reset_popup = false;
+
+	float input_fps = 60.f;
 };

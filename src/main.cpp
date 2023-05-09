@@ -2,6 +2,7 @@
 #include "GUI/gui.hpp"
 #include "Hooks/Hooks.hpp"
 #include <gd.h>
+#include <filesystem>
 
 void callback() {
 	auto& instance = GUI::get();
@@ -34,6 +35,11 @@ DWORD WINAPI my_thread(void* hModule) {
 	ImGuiHook::setKeybind(VK_SHIFT);
 	Hooks::init_hooks();
 	MH_EnableHook(MH_ALL_HOOKS);
+
+	std::filesystem::path echoDirectory = ".echo";
+
+	std::filesystem::create_directory(echoDirectory);
+
 	return 0;
 }
 

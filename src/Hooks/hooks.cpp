@@ -24,11 +24,10 @@ void Hooks::init_hooks() {
 
 void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
     auto& logic = Logic::get();
-    auto& macro = logic.get_macro();
 
     if (logic.is_recording() || logic.is_playing()) {
-        CCDirector::sharedDirector()->setAnimationInterval(1.f / macro.fps);
-        dt = 1.f / macro.fps;
+        CCDirector::sharedDirector()->setAnimationInterval(1.f / logic.fps);
+        dt = 1.f / logic.fps;
     }
 
     CCScheduler_update(self, dt);
@@ -36,7 +35,6 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
 
 void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
     auto& logic = Logic::get();
-    auto& macro = logic.get_macro();
 
     if (logic.is_playing()) logic.play_macro();
 
@@ -65,58 +63,45 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
     int ret = resetLevel(self); // was told i needed to do this, reason why beats me
 
     auto& logic = Logic::get();
-    auto& macro = logic.get_macro();
 
-    strcpy(macro.macro_name, self->m_level->levelName.c_str());
+    strcpy(logic.macro_name, self->m_level->levelName.c_str());
 
     if (!self->m_isPracticeMode)
-        macro.checkpoints.clear();
+        logic.checkpoints.clear();
     
-    if (logic.is_recording() || logic.is_playing()) {
-        if (macro.checkpoints.size() > 0) {
-            Checkpoint& data = macro.checkpoints.back();
-
-            self->m_player1->setRotationX(data.player_1.rotation);
-            self->m_player1->m_yAccel = data.player_1.y_accel;
-
-            if (self->m_isDualMode) {
-                self->m_player2->setRotationX(data.player_2.rotation);
-                self->m_player2->m_yAccel = data.player_2.y_accel;
-            }
-
-        }
-    }
+    if (logic.is_recording() || logic.is_playing())
+        logic.handle_checkpoint_data();
 
     if (self->m_checkpoints->count() > 0)
-        self->m_time = macro.get_latest_offset();
+        self->m_time = logic.get_latest_offset();
 
     if (logic.is_recording()) {
 
-        if (macro.get_inputs().empty()) return ret;
+        if (logic.get_inputs().empty()) return ret;
 
         auto holdingP1 = self->m_player1->m_isHolding;
         auto holdingP2 = self->m_player2->m_isHolding;
 
-        auto& last = macro.get_inputs().back();
+        auto& last = logic.get_inputs().back();
 
         if (last.player1) {
             if (last.down) {
                 if (!holdingP1)
-                    macro.add_input({ logic.get_frame(), false, false });
+                    logic.add_input({ logic.get_frame(), false, false });
                 else
-                    macro.add_input({ logic.get_frame(), true, false });
+                    logic.add_input({ logic.get_frame(), true, false });
             }
         }
         else {
             if (last.down) {
                 if (!holdingP2)
-                    macro.add_input({ logic.get_frame(), false, true });
+                    logic.add_input({ logic.get_frame(), false, true });
                 else
-                    macro.add_input({ logic.get_frame(), true, true });
+                    logic.add_input({ logic.get_frame(), true, true });
             }
         }
 
-        macro.remove_inputs(logic.get_frame());
+        logic.remove_inputs(logic.get_frame());
     }
 
     if (logic.is_playing())
@@ -128,42 +113,40 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
 void* __fastcall Hooks::PlayLayer::exitLevel_h(gd::PlayLayer* self, int) {
 
     auto& logic = Logic::get();
-    auto& macro = logic.get_macro();
 
-    macro.checkpoints.clear();
+    logic.checkpoints.clear();
 
     return exitLevel(self);
 }
 
 int __fastcall Hooks::createCheckpoint_h(gd::PlayLayer* self) {
     auto& logic = Logic::get();
-    auto& macro = logic.get_macro();
 
-    macro.add_offset(self->m_time);
+    logic.add_offset(self->m_time);
 
     CheckpointData p1{ 0, 0 };
     CheckpointData p2{ 0, 0 };
 
+
     p1.y_accel = self->m_player1->m_yAccel;
-    p1.rotation = self->m_player1->getRotationX();
+    p1.rotation = self->m_player1->getRotation();
 
     if (self->m_isDualMode) {
         p2.y_accel = self->m_player2->m_yAccel;
-        p2.rotation = self->m_player2->getRotationX();
+        p2.rotation = self->m_player2->getRotation();
     }
 
-    macro.save_checkpoint({ p1, p2 });
+    logic.save_checkpoint({ p1, p2 });
 
     return createCheckpoint(self);
 }
 
 int __fastcall Hooks::removeCheckpoint_h(gd::PlayLayer* self) {
     auto& logic = Logic::get();
-    auto& macro = logic.get_macro();
 
-    macro.remove_last_offset();
+    logic.remove_last_offset();
 
-    macro.remove_last_checkpoint();
+    logic.remove_last_checkpoint();
 
     return removeCheckpoint(self);
 }

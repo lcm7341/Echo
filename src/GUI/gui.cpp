@@ -11,9 +11,13 @@
 #include <filesystem>
 #include "./Fonts/OpenSans-Medium.c"
 #include <gd.h>
+#include <filesystem>
+#include "../Logic/logic.hpp"
+
 #define PLAYLAYER gd::GameManager::sharedState()->getPlayLayer()
 
-#include "../Logic/logic.hpp"
+namespace fs = std::filesystem;
+
 
 using namespace cocos2d;
 
@@ -23,6 +27,7 @@ void GUI::draw() {
 	if (g_font) ImGui::PushFont(g_font);
 
 	if (show_window) {
+		ImGui::SetNextWindowFocus();
 
 
 		ImGui::Begin("Echo", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize);
@@ -38,47 +43,88 @@ void GUI::draw() {
 	if (g_font) ImGui::PopFont();
 }
 
+float get_width(float percent) {
+	return (ImGui::GetWindowContentRegionWidth() - ImGui::GetStyle().ItemSpacing.x) * (percent / 100.f);
+}
+
 void GUI::main() {
 	auto& logic = Logic::get();
-	auto& macro = logic.get_macro();
+
 	if (ImGui::BeginTabItem("Main")) {
 
 
-		if (ImGui::Button("Toggle Recording")) {
+		if (ImGui::Button(logic.is_recording() ? "Stop Recording" : "Record")) {
 			logic.toggle_recording();
 		}
-		if (ImGui::Button("Toggle Playing")) {
+
+		ImGui::SameLine();
+		
+		if (logic.get_inputs().empty()) ImGui::BeginDisabled();
+
+		if (ImGui::Button(logic.is_playing() ? "Stop Playing" : "Play")) {
 			logic.toggle_playing();
 		}
 
+		ImGui::EndDisabled();
+
+		ImGui::Text("Currently: %s", logic.is_idle() ? "Disabled" : logic.is_recording() ? "Recording" : "Playing");
+
 		ImGui::Text("Frame: %i", logic.get_frame());
 
-		ImGui::InputFloat("FPS", &macro.fps);
+		ImGui::SetNextItemWidth((ImGui::GetWindowContentRegionWidth() - ImGui::GetStyle().ItemSpacing.x) * 0.3f);
+		ImGui::InputFloat("###fps", &input_fps, 0, 0, "%.0f"); ImGui::SameLine();
 
-		ImGui::Text("Input count: %i", macro.get_inputs().size());
+		
+		if (ImGui::Button("Set FPS")) {
+			logic.fps = input_fps;
+			CCDirector::sharedDirector()->setAnimationInterval(1.f / logic.fps);
+		}
 
+		ImGui::Text("Macro Size: %i", logic.get_inputs().size());
+
+		bool open_modal = true;
+
+		if (ImGui::Button("Reset Macro")) {
+			ImGui::OpenPopup("Confirm reset");
+		}
+
+		if (ImGui::BeginPopupModal("Confirm Reset", &open_modal, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize)) {
+			ImGui::Text("Are you sure you want to reset your macro?");
+
+			const ImVec2 buttonSize((ImGui::GetWindowContentRegionWidth() - ImGui::GetStyle().ItemSpacing.x) * 0.5f, 0);
+
+			if (ImGui::Button("Yes", buttonSize)) {
+				logic.get_inputs().clear();
+				ImGui::CloseCurrentPopup();
+			}
+
+			ImGui::SameLine();
+
+			if (ImGui::Button("No", buttonSize)) {
+				ImGui::CloseCurrentPopup();
+			}
+			ImGui::EndPopup();
+		}
+
+		ImGui::SetNextItemWidth(get_width(75.f));
+		ImGui::InputText("Macro Name", logic.macro_name, 1000);
+
+
+		ImGui::SetNextItemWidth(get_width(50.f));
 		if (ImGui::Button("Save File")) {
-			macro.write_file(macro.macro_name);
+			logic.write_file(logic.macro_name);
 		}
 
 		ImGui::SameLine();
 
+		ImGui::SetNextItemWidth(get_width(50.f));
 		if (ImGui::Button("Load File")) {
-			macro.read_file(macro.macro_name);
+			logic.read_file(logic.macro_name);
 		}
 
-		ImGui::Text("%s", &macro.macro_name);
-
-		if (PLAYLAYER) {
-			ImGui::Text("P1 Y-accel: %f", PLAYLAYER->m_player1->m_position.x);
-			if (macro.checkpoints.size() > 0) {
-				ImGui::Text("Last check yaccel: %f", macro.checkpoints.back().player_1.y_accel);
-			}
-		}
-
-		if (macro.error != "") {
+		if (logic.error != "") {
 			ImGui::Separator();
-			ImGui::Text("%s", &macro.error);
+			ImGui::Text("%s", logic.error);
 		}
 
 		ImGui::EndTabItem();

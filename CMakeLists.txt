@@ -4,7 +4,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 project(Echo)
 
-add_library(Echo SHARED src/main.cpp "src/GUI/gui.cpp" "src/Hooks/hooks.cpp" "src/Logic/logic.cpp" "src/Logic/macros.cpp")
+add_library(Echo SHARED src/main.cpp "src/GUI/gui.cpp" "src/Hooks/hooks.cpp" "src/Logic/logic.cpp" )
 
 target_include_directories(Echo PRIVATE
   libraries/imgui-hook
