@@ -18,7 +18,7 @@ double Logic::get_time() {
 
 void Logic::record_input(bool down, bool player1) {
     if (is_recording() || is_both()) {
-        auto twoplayer = PLAYLAYER->m_pLevelSettings->m_bTwoPlayerMode;
+        auto twoplayer = PLAYLAYER->m_levelSettings->m_twoPlayerMode;
         player1 ^= 1 && gd::GameManager::sharedState()->getGameVariable("0010"); // what the fuck ?
         macro.add_input({ get_frame(), down, twoplayer && !player1 });
     }

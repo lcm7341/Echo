@@ -26,7 +26,7 @@ class Macro {
 	std::vector<double> offsets;
 public:
 	float fps = 60.f;
-	std::string macro_name = "output";
+	char macro_name[1000] = "output";
 
 	std::string error = "";
 
