@@ -4,7 +4,17 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 project(Echo)
 
+add_custom_target(
+    increment_version_number
+    COMMAND python ${CMAKE_CURRENT_SOURCE_DIR}/src/increment_version.py
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
 add_library(Echo SHARED src/main.cpp "src/GUI/gui.cpp" "src/Hooks/hooks.cpp" "src/Logic/logic.cpp" )
+
+add_dependencies(Echo
+    increment_version_number
+)
 
 target_include_directories(Echo PRIVATE
   libraries/imgui-hook
@@ -12,6 +22,7 @@ target_include_directories(Echo PRIVATE
   libraries/minhook/include
   libraries/gd.h/include
   libraries/gd.h
+  libraries/json
 )
 
 add_subdirectory(libraries/minhook)
