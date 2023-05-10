@@ -13,6 +13,9 @@
 #include <gd.h>
 #include <filesystem>
 #include "../Logic/logic.hpp"
+#include <imgui_internal.h>
+#include "../version.h"
+#include <sstream>
 
 #define PLAYLAYER gd::GameManager::sharedState()->getPlayLayer()
 
@@ -29,8 +32,14 @@ void GUI::draw() {
 	if (show_window) {
 		ImGui::SetNextWindowFocus();
 
+		char title[1000] = "Echo build ";
+		std::stringstream full_title;
 
-		ImGui::Begin("Echo", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize);
+		full_title << title << ECHO_VERSION;
+
+		ImGui::Begin(full_title.str().c_str(), nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize);
+		ImGuiIO& io = ImGui::GetIO();
+		io.ConfigFlags |= ImGuiConfigFlags_NavNoCaptureKeyboard;
 
 		if (ImGui::BeginTabBar("TabBar")) {
 			main();
@@ -53,7 +62,7 @@ void GUI::main() {
 	if (ImGui::BeginTabItem("Main")) {
 
 
-		if (ImGui::Button(logic.is_recording() ? "Stop Recording" : "Record")) {
+		if (ImGui::Button(logic.is_recording() ? "Stop Recording" : "Start Recording", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.5f, 0))) {
 			logic.toggle_recording();
 		}
 
@@ -61,19 +70,20 @@ void GUI::main() {
 		
 		if (logic.get_inputs().empty()) ImGui::BeginDisabled();
 
-		if (ImGui::Button(logic.is_playing() ? "Stop Playing" : "Play")) {
+		if (ImGui::Button(logic.is_playing() ? "Stop Playing" : "Start Playing", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.48f, 0))) {
 			logic.toggle_playing();
 		}
 
 		ImGui::EndDisabled();
 
-		ImGui::Text("Currently: %s", logic.is_idle() ? "Disabled" : logic.is_recording() ? "Recording" : "Playing");
+		//ImGui::Text("Currently: %s", logic.is_idle() ? "Disabled" : logic.is_recording() ? "Recording" : "Playing");
 
 		ImGui::Text("Frame: %i", logic.get_frame());
 
+		ImGui::PushItemFlag(ImGuiItemFlags_NoTabStop, true);
 		ImGui::SetNextItemWidth((ImGui::GetWindowContentRegionWidth() - ImGui::GetStyle().ItemSpacing.x) * 0.3f);
 		ImGui::InputFloat("###fps", &input_fps, 0, 0, "%.0f"); ImGui::SameLine();
-
+		ImGui::PopItemFlag();
 		
 		if (ImGui::Button("Set FPS")) {
 			logic.fps = input_fps;
@@ -81,6 +91,10 @@ void GUI::main() {
 		}
 
 		ImGui::Text("Macro Size: %i", logic.get_inputs().size());
+
+		if (!logic.checkpoints.empty()) {
+			ImGui::Text("Last check p1 down: %i", logic.checkpoints.back().player_1.is_holding);
+		}
 
 		bool open_modal = true;
 
@@ -106,11 +120,12 @@ void GUI::main() {
 			ImGui::EndPopup();
 		}
 
+		ImGui::PushItemFlag(ImGuiItemFlags_NoTabStop, true);
 		ImGui::SetNextItemWidth(get_width(75.f));
 		ImGui::InputText("Macro Name", logic.macro_name, 1000);
+		ImGui::PopItemFlag();
 
-
-		ImGui::SetNextItemWidth(get_width(50.f));
+		ImGui::SetNextItemWidth((ImGui::GetWindowContentRegionWidth() - ImGui::GetStyle().ItemSpacing.x) * (50.f / 100.f));
 		if (ImGui::Button("Save File")) {
 			logic.write_file(logic.macro_name);
 		}

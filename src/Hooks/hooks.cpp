@@ -77,27 +77,27 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
 
     if (logic.is_recording()) {
 
-        if (logic.get_inputs().empty()) return ret;
+        if (!logic.checkpoints.empty()) {
+            auto holdingP1 = logic.checkpoints.back().player_1.is_holding;
+            auto holdingP2 = logic.checkpoints.back().player_2.is_holding;
 
-        auto holdingP1 = self->m_player1->m_isHolding;
-        auto holdingP2 = self->m_player2->m_isHolding;
+            auto& last = logic.get_inputs().back();
 
-        auto& last = logic.get_inputs().back();
-
-        if (last.player1) {
-            if (last.down) {
-                if (!holdingP1)
-                    logic.add_input({ logic.get_frame(), false, false });
-                else
-                    logic.add_input({ logic.get_frame(), true, false });
+            if (last.player1) {
+                if (last.down) {
+                    if (!holdingP1)
+                        logic.add_input({ logic.get_frame(), false, false });
+                    else
+                        logic.add_input({ logic.get_frame(), true, false });
+                }
             }
-        }
-        else {
-            if (last.down) {
-                if (!holdingP2)
-                    logic.add_input({ logic.get_frame(), false, true });
-                else
-                    logic.add_input({ logic.get_frame(), true, true });
+            else {
+                if (last.down) {
+                    if (!holdingP2)
+                        logic.add_input({ logic.get_frame(), false, true });
+                    else
+                        logic.add_input({ logic.get_frame(), true, true });
+                }
             }
         }
 
@@ -130,10 +130,12 @@ int __fastcall Hooks::createCheckpoint_h(gd::PlayLayer* self) {
 
     p1.y_accel = self->m_player1->m_yAccel;
     p1.rotation = self->m_player1->getRotation();
+    p1.is_holding = self->m_player1->m_isHolding;
 
     if (self->m_isDualMode) {
         p2.y_accel = self->m_player2->m_yAccel;
         p2.rotation = self->m_player2->getRotation();
+        p2.is_holding = self->m_player2->m_isHolding;
     }
 
     logic.save_checkpoint({ p1, p2 });

@@ -25,6 +25,7 @@ struct Input {
 struct CheckpointData {
 	double y_accel;
 	float rotation;
+	bool is_holding;
 };
 
 struct Checkpoint {

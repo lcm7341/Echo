@@ -1,5 +1,7 @@
 #include "logic.hpp"
 #include "../Hooks/hooks.hpp"
+
+
 #define PLAYLAYER gd::GameManager::sharedState()->getPlayLayer()
 
 unsigned Logic::get_frame() {
