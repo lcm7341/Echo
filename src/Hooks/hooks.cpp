@@ -38,6 +38,10 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
 
     if (logic.is_playing()) logic.play_macro();
 
+    if (self->m_isPaused) {
+        ImGui::SetKeyboardFocusHere();
+    }
+
     update(self, dt);
 }
 
@@ -76,32 +80,54 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
         self->m_time = logic.get_latest_offset();
 
     if (logic.is_recording()) {
+        logic.remove_inputs(logic.get_frame());
+
+        if (logic.get_inputs().empty()) return ret;
+
+        auto& last = logic.get_inputs().back();
+
+        auto& inputs = logic.get_inputs();
 
         if (!logic.checkpoints.empty()) {
-            auto holdingP1 = logic.checkpoints.back().player_1.is_holding;
-            auto holdingP2 = logic.checkpoints.back().player_2.is_holding;
+            auto currently_holdingP1 = self->m_player1->m_isHolding;
+            auto currently_holdingP2 = self->m_player2->m_isHolding;
 
             auto& last = logic.get_inputs().back();
 
+            auto& inputs = logic.get_inputs();
+
             if (last.player1) {
-                if (last.down) {
-                    if (!holdingP1)
-                        logic.add_input({ logic.get_frame(), false, false });
-                    else
-                        logic.add_input({ logic.get_frame(), true, false });
+                if ((currently_holdingP1 && logic.get_inputs().empty()) || (!logic.get_inputs().empty() && last.down != currently_holdingP1)) {
+                    logic.add_input({ logic.get_frame(), true, true });
+                    if (currently_holdingP1) {
+                        releaseButton(self, 0, true);
+                        pushButton(self, 0, true);
+                        self->m_player1->m_hasJustHeld = true;
+                    }
+                }
+                else if (!inputs.empty() && inputs.back().down && currently_holdingP1 && logic.checkpoints.size()) {
+                    releaseButton(self, 0, true);
+                    pushButton(self, 0, true);
                 }
             }
             else {
-                if (last.down) {
-                    if (!holdingP2)
-                        logic.add_input({ logic.get_frame(), false, true });
-                    else
-                        logic.add_input({ logic.get_frame(), true, true });
+                if ((currently_holdingP2 && logic.get_inputs().empty()) || (!logic.get_inputs().empty() && last.down != currently_holdingP2)) {
+                    logic.add_input({ logic.get_frame(), false, false });
+                    if (currently_holdingP2) {
+                        releaseButton(self, 0, false);
+                        pushButton(self, 0, false);
+                        self->m_player1->m_hasJustHeld = true;
+                    }
+                }
+                else if (!inputs.empty() && inputs.back().down && currently_holdingP2 && logic.checkpoints.size()) {
+                    releaseButton(self, 0, false);
+                    pushButton(self, 0, false);
                 }
             }
+
+            // when in doubt, consult ReplayBot!
         }
 
-        logic.remove_inputs(logic.get_frame());
     }
 
     if (logic.is_playing())

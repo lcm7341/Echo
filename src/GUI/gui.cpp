@@ -9,7 +9,7 @@
 #include <string_view>
 #include <imgui/misc/cpp/imgui_stdlib.h>
 #include <filesystem>
-#include "./Fonts/OpenSans-Medium.c"
+#include "./Fonts/OpenSans-Medium.h"
 #include <gd.h>
 #include <filesystem>
 #include "../Logic/logic.hpp"
@@ -32,14 +32,34 @@ void GUI::draw() {
 	if (show_window) {
 		ImGui::SetNextWindowFocus();
 
-		char title[1000] = "Echo build ";
+		char title[1000] = "Echo [";
 		std::stringstream full_title;
 
-		full_title << title << ECHO_VERSION;
+		full_title << title << ECHO_VERSION << "b]";
 
 		ImGui::Begin(full_title.str().c_str(), nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize);
 		ImGuiIO& io = ImGui::GetIO();
 		io.ConfigFlags |= ImGuiConfigFlags_NavNoCaptureKeyboard;
+
+		// Gonna attempt a resizing menu based on screen size :P
+
+		// Get the size of the game window
+		ImVec2 game_window_size = ImVec2(1920.f, 1080.f); // assume the game window size is 800x600
+
+		// Get the size of the display
+		ImVec2 display_size = ImGui::GetIO().DisplaySize;
+
+		// Calculate the scale factor based on the game window size and display size
+		float scale_factor = min(display_size.x / game_window_size.x, display_size.y / game_window_size.y);
+
+		// Set the font and window scaling based on the scale factor
+		ImGui::GetIO().FontGlobalScale = scale_factor;
+		ImGui::SetNextWindowSize(ImVec2(400.0f * scale_factor, 300.0f * scale_factor));
+
+		// Set the global scale factor for the UI
+		auto& style = ImGui::GetStyle();
+		style.ScaleAllSizes(scale_factor);
+
 
 		if (ImGui::BeginTabBar("TabBar")) {
 			main();
@@ -92,14 +112,12 @@ void GUI::main() {
 
 		ImGui::Text("Macro Size: %i", logic.get_inputs().size());
 
-		if (!logic.checkpoints.empty()) {
-			ImGui::Text("Last check p1 down: %i", logic.checkpoints.back().player_1.is_holding);
-		}
-
 		bool open_modal = true;
 
 		if (ImGui::Button("Reset Macro")) {
-			ImGui::OpenPopup("Confirm reset");
+			logic.get_inputs().clear();
+			//ImGui::OpenPopup("Confirm Reset");
+			//ImGui::SetNextWindowPos({ ImGui::GetWindowWidth() / 2.f, ImGui::GetWindowHeight() / 2.f });
 		}
 
 		if (ImGui::BeginPopupModal("Confirm Reset", &open_modal, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize)) {
@@ -152,16 +170,15 @@ void GUI::init() {
 	style.WindowBorderSize = 0;
 	style.ColorButtonPosition = ImGuiDir_Left;
 
-	extern unsigned char OpenSans_Medium[];
-
 	ImFontConfig fontConfig;
 	fontConfig.FontDataOwnedByAtlas = false;
 
-	// Import the font bytes from file
-	ImGui::GetIO().Fonts->AddFontFromMemoryTTF(OpenSans_Medium, 129948, 21.f, &fontConfig);
+	ImGui::GetIO().Fonts->AddFontFromMemoryTTF(Fonts::OpenSans_Medium, sizeof(Fonts::OpenSans_Medium), 21.f, &fontConfig);
 
 	style.FramePadding = ImVec2{ 8, 4 };
 	style.IndentSpacing = 21;
+	style.ItemSpacing = { 8, 8 };
+
 	style.ScrollbarSize = 14;
 	style.GrabMinSize = 8;
 	style.WindowRounding = 12;
@@ -172,6 +189,10 @@ void GUI::init() {
 	style.GrabRounding = 8;
 	style.TabRounding = 12;
 	style.WindowMenuButtonPosition = ImGuiDir_None;
+	style.WindowPadding = { 8, 8 };
+	style.ItemInnerSpacing = { 4, 4 };
+
+	
 
 
 	ImVec4* colors = ImGui::GetStyle().Colors;
