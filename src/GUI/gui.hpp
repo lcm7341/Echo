@@ -14,6 +14,8 @@ public:
 
 	void main();
 
+	void editor();
+
 	void init();
 
 	bool show_reset_popup = false;

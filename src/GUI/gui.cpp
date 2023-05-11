@@ -32,6 +32,8 @@ void GUI::draw() {
 	if (show_window) {
 		ImGui::SetNextWindowFocus();
 
+
+
 		char title[1000] = "Echo [";
 		std::stringstream full_title;
 
@@ -40,6 +42,9 @@ void GUI::draw() {
 		ImGui::Begin(full_title.str().c_str(), nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize);
 		ImGuiIO& io = ImGui::GetIO();
 		io.ConfigFlags |= ImGuiConfigFlags_NavNoCaptureKeyboard;
+
+		if (io.KeysDown[ImGui::GetKeyIndex(ImGuiKey_Escape)])
+			ImGui::SetKeyboardFocusHere();
 
 		// Gonna attempt a resizing menu based on screen size :P
 
@@ -63,6 +68,7 @@ void GUI::draw() {
 
 		if (ImGui::BeginTabBar("TabBar")) {
 			main();
+			editor();
 		}
 
 		ImGui::End();
@@ -76,6 +82,77 @@ float get_width(float percent) {
 	return (ImGui::GetWindowContentRegionWidth() - ImGui::GetStyle().ItemSpacing.x) * (percent / 100.f);
 }
 
+void GUI::editor() {
+	auto& logic = Logic::get();
+
+	auto& inputs = logic.get_inputs();
+
+	static unsigned selectedInput = -1;
+	static Input newInput;
+
+	const float editAreaHeight = 150.0f;
+
+	ImGui::SetNextWindowSizeConstraints(ImVec2(300, 300), ImVec2(300, 300));
+
+	if (ImGui::BeginTabItem("Editor")) {
+
+		ImGui::BeginChild("##List", ImVec2(0, 0), true);
+		for (unsigned i = 0; i < inputs.size(); i++) {
+			ImGui::PushID(i);
+			if (ImGui::Selectable("##Input", selectedInput == i, ImGuiSelectableFlags_AllowDoubleClick)) {
+				selectedInput = i;
+				newInput = inputs[i];
+			}
+			ImGui::SameLine();
+			ImGui::Text("%s at %d", inputs[i].down ? "Click" : "Release", inputs[i].frame);
+			ImGui::PopID();
+		}
+		ImGui::EndChild();
+
+
+		if (ImGui::Button("Add Input")) {
+			if (selectedInput == -1) {
+				inputs.push_back(Input());
+				selectedInput = inputs.size() - 1;
+			}
+			else {
+				inputs.insert(inputs.begin() + selectedInput, Input());
+			}
+			newInput = Input();
+		}
+
+		ImGui::Separator();
+		ImGui::BeginChild("##EditArea", ImVec2(0, editAreaHeight), true);
+		if (selectedInput >= 0 && selectedInput < inputs.size()) {
+			ImGui::Text("Editing Input %d", selectedInput + 1);
+			ImGui::InputInt("Frame", (int*)&newInput.frame);
+			ImGui::Checkbox("Down", &newInput.down);
+			ImGui::SameLine();
+			ImGui::Checkbox("Player 1", &newInput.player1);
+			if (ImGui::Button("Move Up") && selectedInput > 0) {
+				std::swap(inputs[selectedInput], inputs[selectedInput - 1]);
+				selectedInput--;
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("Move Down") && selectedInput < inputs.size() - 1) {
+				std::swap(inputs[selectedInput], inputs[selectedInput + 1]);
+				selectedInput++;
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("Delete")) {
+				inputs.erase(inputs.begin() + selectedInput);
+				if (selectedInput >= inputs.size()) selectedInput = inputs.size() - 1;
+				newInput = inputs[selectedInput];
+			}
+			inputs[selectedInput] = newInput;
+		}
+		ImGui::EndChild();
+
+		ImGui::EndTabItem();
+	}
+}
+
+
 void GUI::main() {
 	auto& logic = Logic::get();
 
@@ -88,13 +165,13 @@ void GUI::main() {
 
 		ImGui::SameLine();
 		
-		if (logic.get_inputs().empty()) ImGui::BeginDisabled();
+		//if (logic.get_inputs().empty()) ImGui::BeginDisabled();
 
 		if (ImGui::Button(logic.is_playing() ? "Stop Playing" : "Start Playing", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.48f, 0))) {
 			logic.toggle_playing();
 		}
 
-		ImGui::EndDisabled();
+		//ImGui::EndDisabled();
 
 		//ImGui::Text("Currently: %s", logic.is_idle() ? "Disabled" : logic.is_recording() ? "Recording" : "Playing");
 
@@ -192,7 +269,7 @@ void GUI::init() {
 	style.WindowPadding = { 8, 8 };
 	style.ItemInnerSpacing = { 4, 4 };
 
-	
+	ImGui::GetIO().ConfigFlags = ImGuiConfigFlags_NoMouseCursorChange;
 
 
 	ImVec4* colors = ImGui::GetStyle().Colors;
