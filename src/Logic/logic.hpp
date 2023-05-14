@@ -1,3 +1,6 @@
+
+
+#include "../Recorder/recorder.hpp"
 #include "../includes.hpp"
 
 enum State {
@@ -26,11 +29,14 @@ struct CheckpointData {
 	double y_accel;
 	float rotation;
 	bool is_holding;
+	bool buffer_orb;
 };
 
 struct Checkpoint {
 	CheckpointData player_1;
 	CheckpointData player_2;
+	size_t activated_objects_size;
+	size_t activated_objects_p2_size;
 };
 
 class Logic {
@@ -47,6 +53,8 @@ public:
 		static Logic logic;
 		return logic;
 	}
+
+	Recorder recorder;
 
 	unsigned get_frame();
 	double get_time();
@@ -124,6 +132,9 @@ public:
 		return fps;
 	}
 
+	bool real_time_mode = true;
+	double speedhack = 1.f;
+
 	void remove_inputs(unsigned frame);
 
 	void write_file(const std::string& filename);
@@ -131,6 +142,8 @@ public:
 	void read_file(const std::string& filename);
 
 	std::vector<Checkpoint> checkpoints;
+	std::vector<gd::GameObject*> activated_objects;
+	std::vector<gd::GameObject*> activated_objects_p2;
 
 	void save_checkpoint(Checkpoint data) {
 		checkpoints.push_back(data);

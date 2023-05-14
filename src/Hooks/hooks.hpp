@@ -21,6 +21,9 @@ namespace Hooks {
 	inline int(__fastcall* removeCheckpoint)(gd::PlayLayer* self); int __fastcall removeCheckpoint_h(gd::PlayLayer* self);
 
 	namespace PlayLayer {
+
+		inline void(__thiscall* updateVisibility)(gd::PlayLayer* self); void __fastcall updateVisibility_h(gd::PlayLayer* self);
+		
 		inline void(__thiscall* update)(gd::PlayLayer* self, float dt); void __fastcall update_h(gd::PlayLayer* self, int, float dt);
 
 		inline int(__thiscall* pushButton)(gd::PlayLayer* self, int, bool); int __fastcall pushButton_h(gd::PlayLayer* self, int, int, bool);

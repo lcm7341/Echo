@@ -30,45 +30,40 @@ void GUI::draw() {
 	if (g_font) ImGui::PushFont(g_font);
 
 	if (show_window) {
-		ImGui::SetNextWindowFocus();
 
 
-
-		char title[1000] = "Echo [";
+		char title[1000] = "Echo";
 		std::stringstream full_title;
 
-		full_title << title << ECHO_VERSION << "b]";
+		full_title << title << " [" << ECHO_VERSION << "b]";
 
-		ImGui::Begin(full_title.str().c_str(), nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize);
+		ImGui::Begin(title, nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize);
 		ImGuiIO& io = ImGui::GetIO();
 		io.ConfigFlags |= ImGuiConfigFlags_NavNoCaptureKeyboard;
 
 		if (io.KeysDown[ImGui::GetKeyIndex(ImGuiKey_Escape)])
 			ImGui::SetKeyboardFocusHere();
 
-		// Gonna attempt a resizing menu based on screen size :P
+		//// Gonna attempt a resizing menu based on screen size :P
+		//ImVec2 display_size = io.DisplaySize;
 
-		// Get the size of the game window
-		ImVec2 game_window_size = ImVec2(1920.f, 1080.f); // assume the game window size is 800x600
+		//// Calculate the scale factor based on the game window size and display size
+		//float scale_factor = display_size.x / 1920.0f;
 
-		// Get the size of the display
-		ImVec2 display_size = ImGui::GetIO().DisplaySize;
+		//// Set the font and window scaling based on the scale factor
+		//io.FontGlobalScale = scale_factor;
+		////ImGui::SetNextWindowSize(ImVec2(scale_factor, scale_factor));
 
-		// Calculate the scale factor based on the game window size and display size
-		float scale_factor = min(display_size.x / game_window_size.x, display_size.y / game_window_size.y);
+		//// Set the global scale factor for the UI
+		//auto& style = ImGui::GetStyle();
+		//style.ScaleAllSizes(scale_factor);
 
-		// Set the font and window scaling based on the scale factor
-		ImGui::GetIO().FontGlobalScale = scale_factor;
-		ImGui::SetNextWindowSize(ImVec2(400.0f * scale_factor, 300.0f * scale_factor));
-
-		// Set the global scale factor for the UI
-		auto& style = ImGui::GetStyle();
-		style.ScaleAllSizes(scale_factor);
-
+		/*ImGui::Text("%f", scale_factor);*/
 
 		if (ImGui::BeginTabBar("TabBar")) {
 			main();
 			editor();
+			renderer();
 		}
 
 		ImGui::End();
@@ -152,6 +147,95 @@ void GUI::editor() {
 	}
 }
 
+struct Resolution {
+	int width;
+	int height;
+};
+
+
+void GUI::renderer() {
+	auto& logic = Logic::get();
+	const char* resolution_types[] = { "SD (720p)", "HD (1080p)", "QHD (1440p)", "4K (2160p)" };
+	static const char* current_res = resolution_types[1];
+	static int current_index = 1;
+	if (ImGui::BeginTabItem("Render")) {
+
+		Resolution resolutions[] = {
+			{ 1280, 720 }, { 1920, 1080 }, { 2560, 1440 }, { 3840, 2160 }
+		};
+
+		if (ImGui::BeginCombo("Presets", resolution_types[current_index])) {
+			for (int i = 0; i < IM_ARRAYSIZE(resolution_types); i++) {
+				bool is_selected = (current_res == resolution_types[i]);
+				if (ImGui::Selectable(resolution_types[i], is_selected)) {
+					current_res = resolution_types[i];
+					current_index = i;
+
+					logic.recorder.m_width = resolutions[current_index].width;
+					logic.recorder.m_height = resolutions[current_index].height;
+				}
+				if (is_selected)
+					ImGui::SetItemDefaultFocus();
+			}
+			ImGui::EndCombo();
+		}
+		float windowWidth = ImGui::GetWindowContentRegionWidth() * 0.6f;
+
+		ImGui::SetNextItemWidth(windowWidth / 2.f);
+		ImGui::InputInt("Width", (int*)&logic.recorder.m_width, 0);
+		ImGui::SameLine();
+		ImGui::SetNextItemWidth(windowWidth / 2.f);
+		ImGui::InputInt("Height", (int*)&logic.recorder.m_height, 0);
+
+		ImGui::Separator();
+
+		ImGui::InputInt("Video FPS", (int*)&logic.recorder.m_fps);
+
+		ImGui::InputText("Video Codec", &logic.recorder.m_codec);
+
+		ImGui::InputInt("Bitrate (M)", &logic.recorder.m_bitrate);
+
+		ImGui::Separator();
+
+		ImGui::InputText("Extra Args", &logic.recorder.m_extra_args);
+		
+		ImGui::InputText("Extra Audio Args", &logic.recorder.m_extra_audio_args);
+
+		ImGui::InputFloat("Extra Time", &logic.recorder.m_after_end_duration);
+
+		ImGui::SameLine();
+
+		ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "(?)");
+
+		if (ImGui::IsItemHovered()) {
+			ImGui::SetTooltip("Extra Time is the time in seconds after you finish a level that the recorder automatically records for..");
+		}
+
+		ImGui::Separator();
+
+		ImGui::InputText("Video Name", &logic.recorder.video_name);
+
+		ImGui::Checkbox("Color Fix", &logic.recorder.color_fix);
+
+		if (PLAYLAYER) {
+			if (!logic.recorder.m_recording) {
+				if (ImGui::Button("Start Recording")) {
+					logic.recorder.start(logic.recorder.directory + logic.recorder.video_name + logic.recorder.extension);
+				}
+			}
+			else {
+				if (ImGui::Button("Stop Recording")) {
+					logic.recorder.stop();
+				}
+			}
+		}
+		else {
+			ImGui::BeginDisabled();
+			ImGui::Button("Start Recording");
+			ImGui::EndDisabled();
+		}
+	}
+}
 
 void GUI::main() {
 	auto& logic = Logic::get();
@@ -183,9 +267,15 @@ void GUI::main() {
 		ImGui::PopItemFlag();
 		
 		if (ImGui::Button("Set FPS")) {
-			logic.fps = input_fps;
+			if (!logic.is_recording() && !logic.is_playing()) {
+				logic.fps = input_fps;
+			}
 			CCDirector::sharedDirector()->setAnimationInterval(1.f / logic.fps);
 		}
+
+		ImGui::InputDouble("Speed", &logic.speedhack, 0, 0, "%.2f");
+
+		ImGui::Checkbox("Real Time Mode", &logic.real_time_mode);
 
 		ImGui::Text("Macro Size: %i", logic.get_inputs().size());
 

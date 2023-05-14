@@ -37,8 +37,10 @@ DWORD WINAPI my_thread(void* hModule) {
 	MH_EnableHook(MH_ALL_HOOKS);
 
 	std::filesystem::path echoDirectory = ".echo";
+	std::filesystem::path videoDirectory = ".echo/renders";
 
 	std::filesystem::create_directory(echoDirectory);
+	std::filesystem::create_directory(videoDirectory);
 
 	return 0;
 }

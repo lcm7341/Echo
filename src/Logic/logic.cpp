@@ -96,29 +96,6 @@ void Logic::write_file(const std::string& filename) {
         }
 
     file.close();
-
-    /* Pipe Dream
-    json obj;
-    obj["fps"] = fps;
-    obj["inputs"] = json::array();
-
-    for (const auto& input : inputs) {
-        obj["inputs"].push_back(json{
-            {
-                "frame", input.frame
-            },
-            {
-                "down", input.down
-            },
-            {
-                "player1", input.player1
-            }
-        });
-    }
-
-    std::ofstream json_file(dir + filename + ".json");
-    json_file << obj.dump(4);
-    json_file.close();*/
 }
 
 void Logic::read_file(const std::string& filename) {

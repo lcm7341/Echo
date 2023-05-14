@@ -1,5 +1,6 @@
 #include "Hooks.hpp"
 #include "../Logic/logic.hpp"
+#include <chrono>
 
 #define HOOK(o, f) MH_CreateHook(reinterpret_cast<void*>(gd::base + o), f##_h, reinterpret_cast<void**>(&f));
 // gracias matcool :]
@@ -17,26 +18,71 @@ void Hooks::init_hooks() {
 
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x20D810), PlayLayer::exitLevel_h, reinterpret_cast<void**>(&PlayLayer::exitLevel));
 
+    HOOK(0x205460, PlayLayer::updateVisibility)
+
     MH_CreateHook(GetProcAddress(GetModuleHandleA("libcocos2d.dll"), "?update@CCScheduler@cocos2d@@UAEXM@Z"), CCScheduler_update_h, reinterpret_cast<void**>(&CCScheduler_update));
 
     MH_EnableHook(MH_ALL_HOOKS);
 }
 
+bool g_disable_render = false;
+float g_left_over = 0.f;
+
 void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
     auto& logic = Logic::get();
 
-    if (logic.is_recording() || logic.is_playing()) {
-        CCDirector::sharedDirector()->setAnimationInterval(1.f / logic.fps);
-        dt = 1.f / logic.fps;
+    if (logic.real_time_mode) {
+        self->setTimeScale(logic.speedhack);
     }
 
-    CCScheduler_update(self, dt);
+    if (logic.is_recording() || logic.is_playing()) {
+        CCDirector::sharedDirector()->setAnimationInterval(1.f / logic.fps);
+        if (logic.real_time_mode) {
+
+            const float target_dt = 1.f / logic.fps;
+
+            if (!logic.real_time_mode) CCScheduler_update(self, dt);
+
+            g_disable_render = false;
+
+            unsigned times = static_cast<int>((dt + g_left_over) / target_dt);
+            if (dt == 0.f)
+                return CCScheduler_update(self, dt);
+
+            auto start = std::chrono::high_resolution_clock::now();
+            for (unsigned i = 0; i < times; i++) {
+                CCScheduler_update(self, target_dt);
+                using namespace std::literals;
+                if (std::chrono::high_resolution_clock::now() - start > 33.333ms) {
+                    times = i + 1;
+                    break;
+                }
+            }
+            g_left_over += dt - target_dt * times;
+        }
+        else {
+            dt = 1.f / logic.fps;
+        }
+    }
+    else {
+        CCScheduler_update(self, dt);
+    }
+}
+
+void __fastcall Hooks::PlayLayer::updateVisibility_h(gd::PlayLayer* self) {
+    if (!g_disable_render)
+        updateVisibility(self);
 }
 
 void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
     auto& logic = Logic::get();
 
     if (logic.is_playing()) logic.play_macro();
+
+    if (logic.recorder.m_recording)
+        logic.recorder.handle_recording(self, dt);
+
+    logic.recorder.m_song_start_offset = self->m_levelSettings->m_songStartOffset;
 
     if (self->m_isPaused) {
         ImGui::SetKeyboardFocusHere();
@@ -70,14 +116,39 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
 
     strcpy(logic.macro_name, self->m_level->levelName.c_str());
 
+
+    if (logic.is_playing()) {
+        logic.set_replay_pos(logic.find_closest_input());
+        logic.activated_objects.clear();
+        logic.activated_objects_p2.clear();
+    }
+
     if (!self->m_isPracticeMode)
         logic.checkpoints.clear();
     
     if (logic.is_recording() || logic.is_playing())
         logic.handle_checkpoint_data();
 
-    if (self->m_checkpoints->count() > 0)
+    if (self->m_checkpoints->count() > 0) {
         self->m_time = logic.get_latest_offset();
+        constexpr auto delete_from = [&](auto& vec, size_t index) {
+            vec.erase(vec.begin() + index, vec.end());
+        };
+        delete_from(logic.activated_objects, logic.checkpoints.back().activated_objects_size);
+        delete_from(logic.activated_objects_p2, logic.checkpoints.back().activated_objects_p2_size);
+        if (logic.is_recording()) {
+            for (const auto& object : logic.activated_objects)
+                object->m_hasBeenActivated = true;
+            for (const auto& object : logic.activated_objects_p2)
+                object->m_hasBeenActivatedP2 = true;
+        }
+    }
+    else {
+        logic.activated_objects.clear();
+        logic.activated_objects_p2.clear();
+    }
+
+    logic.recorder.update_song_offset(self);
 
     if (logic.is_recording()) {
         logic.remove_inputs(logic.get_frame());
@@ -130,9 +201,6 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
 
     }
 
-    if (logic.is_playing())
-        logic.set_replay_pos(logic.find_closest_input());
-
     return ret;
 }
 
@@ -164,7 +232,8 @@ int __fastcall Hooks::createCheckpoint_h(gd::PlayLayer* self) {
         p2.is_holding = self->m_player2->m_isHolding;
     }
 
-    logic.save_checkpoint({ p1, p2 });
+
+    logic.save_checkpoint({ p1, p2, logic.activated_objects.size(), logic.activated_objects_p2.size()});
 
     return createCheckpoint(self);
 }
