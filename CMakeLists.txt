@@ -10,7 +10,13 @@ add_custom_target(
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-add_library(Echo SHARED src/main.cpp "src/GUI/gui.cpp" "src/Hooks/hooks.cpp" "src/Logic/logic.cpp" )
+file(
+  GLOB_RECURSE SOURCE_FILES
+  src/*.cpp
+  src/*.hpp
+)
+
+add_library(Echo SHARED ${SOURCE_FILES})
 
 add_dependencies(Echo
     increment_version_number
@@ -39,13 +45,9 @@ target_link_libraries(Echo
   minhook
   opengl32
   nlohmann_json::nlohmann_json
+  ${CMAKE_SOURCE_DIR}/libraries/glew32.lib
 )
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s")
 set_target_properties(Echo PROPERTIES DEBUG_POSTFIX "")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Zi")
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /DEBUG:NONE /OPT:REF /OPT:ICF")
-if(CMAKE_BUILD_TYPE STREQUAL "Release")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Zi")
-    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /DEBUG:NONE /OPT:REF /OPT:ICF")
-endif()
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Zi")
+#set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /DEBUG:NONE /OPT:REF /OPT:ICF")
