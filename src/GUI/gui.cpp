@@ -272,12 +272,13 @@ void GUI::main() {
 			}
 			CCDirector::sharedDirector()->setAnimationInterval(1.f / logic.fps);
 		}
-
-		ImGui::InputDouble("Speed", &logic.speedhack, 0, 0, "%.2f");
+		ImGui::DragFloat("Speed", &logic.speedhack, 0.05, 0.f, 100.f, "%.2f");
 
 		ImGui::Checkbox("Real Time Mode", &logic.real_time_mode);
 
 		ImGui::Text("Macro Size: %i", logic.get_inputs().size());
+
+		ImGui::SameLine();
 
 		bool open_modal = true;
 

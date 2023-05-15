@@ -75,7 +75,7 @@ void Recorder::start(const std::string& path) {
             stream << m_extra_args << " ";
         else
             stream << "-pix_fmt yuv420p ";
-        stream << "-vf " << m_vf_args << "\"vflip\"" << " -an \"" << path << "\" ";
+        stream << "-cq 0 -vf " << m_vf_args << "\"vflip\"" << " -an \"" << path << "\" ";
         m_vf_args = "";
 
         auto process = subprocess::Popen(stream.str());
@@ -139,7 +139,7 @@ void MyRenderTexture::begin() {
     {
         auto data = malloc(m_width * m_height * 3);
         memset(data, 0, m_width * m_height * 3);
-        m_texture->initWithData(data, kCCTexture2DPixelFormat_RGBA8888, m_width, m_height, CCSize(static_cast<float>(m_width), static_cast<float>(m_height)));
+        m_texture->initWithData(data, kCCTexture2DPixelFormat_RGB888, m_width, m_height, CCSize(static_cast<float>(m_width), static_cast<float>(m_height)));
         free(data);
     }
 

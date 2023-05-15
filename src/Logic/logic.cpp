@@ -34,9 +34,9 @@ void Logic::play_input(Input& input) {
     // i think its for flip 2 player controls?
 
     if (input.down)
-        Hooks::PlayLayer::pushButton(PLAYLAYER, 0, input.player1 ^ gamevar);
+        Hooks::PlayLayer::pushButton(PLAYLAYER, 0, !input.player1 ^ gamevar);
     else
-        Hooks::PlayLayer::releaseButton(PLAYLAYER, 0, input.player1 ^ gamevar);
+        Hooks::PlayLayer::releaseButton(PLAYLAYER, 0, !input.player1 ^ gamevar);
 }
 
 void Logic::play_macro() {

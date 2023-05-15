@@ -133,7 +133,7 @@ public:
 	}
 
 	bool real_time_mode = true;
-	double speedhack = 1.f;
+	float speedhack = 1.f;
 
 	void remove_inputs(unsigned frame);
 

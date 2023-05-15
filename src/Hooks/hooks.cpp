@@ -37,28 +37,26 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
 
     if (logic.is_recording() || logic.is_playing()) {
         CCDirector::sharedDirector()->setAnimationInterval(1.f / logic.fps);
-        if (logic.real_time_mode) {
+        if (logic.real_time_mode && !logic.recorder.m_recording) {
 
-            const float target_dt = 1.f / logic.fps;
+            const float target_dt = 1.f / logic.fps / logic.speedhack;
 
             if (!logic.real_time_mode) CCScheduler_update(self, dt);
 
-            g_disable_render = false;
+            g_disable_render = true;
 
-            unsigned times = static_cast<int>((dt + g_left_over) / target_dt);
-            if (dt == 0.f)
-                return CCScheduler_update(self, dt);
+            const int times = min(static_cast<int>((dt + g_left_over) / target_dt), 150);
 
-            auto start = std::chrono::high_resolution_clock::now();
             for (unsigned i = 0; i < times; i++) {
+                if (i == times - 1)
+                    g_disable_render = false;
                 CCScheduler_update(self, target_dt);
-                using namespace std::literals;
-                if (std::chrono::high_resolution_clock::now() - start > 33.333ms) {
-                    times = i + 1;
-                    break;
-                }
             }
             g_left_over += dt - target_dt * times;
+        }
+        else if (logic.recorder.m_recording) {
+            dt = 1.f / logic.fps;
+            return CCScheduler_update(self, dt);
         }
         else {
             dt = 1.f / logic.fps;
