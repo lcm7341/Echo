@@ -21,7 +21,6 @@
 
 namespace fs = std::filesystem;
 
-
 using namespace cocos2d;
 
 static ImFont* g_font = nullptr;
@@ -30,14 +29,11 @@ void GUI::draw() {
 	if (g_font) ImGui::PushFont(g_font);
 
 	if (show_window) {
-
-
-		char title[1000] = "Echo";
 		std::stringstream full_title;
 
-		full_title << title << " [" << ECHO_VERSION << "b]";
+		full_title << "Echo [" << ECHO_VERSION << "b]";
 
-		ImGui::Begin(title, nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize);
+		ImGui::Begin(full_title.str().c_str(), nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize);
 		ImGuiIO& io = ImGui::GetIO();
 		io.ConfigFlags |= ImGuiConfigFlags_NavNoCaptureKeyboard;
 
@@ -156,8 +152,10 @@ struct Resolution {
 void GUI::renderer() {
 	auto& logic = Logic::get();
 	const char* resolution_types[] = { "SD (720p)", "HD (1080p)", "QHD (1440p)", "4K (2160p)" };
+
 	static const char* current_res = resolution_types[1];
 	static int current_index = 1;
+
 	if (ImGui::BeginTabItem("Render")) {
 
 		Resolution resolutions[] = {
@@ -272,9 +270,14 @@ void GUI::main() {
 			}
 			CCDirector::sharedDirector()->setAnimationInterval(1.f / logic.fps);
 		}
+
 		ImGui::DragFloat("Speed", &logic.speedhack, 0.05, 0.f, 100.f, "%.2f");
 
 		ImGui::Checkbox("Real Time Mode", &logic.real_time_mode);
+
+		ImGui::Checkbox("Ignore actions during playback", &logic.ignore_actions_at_playback);
+
+		ImGui::Checkbox("Show frame", &logic.show_frame); //move this somewhere else if u want
 
 		ImGui::Text("Macro Size: %i", logic.get_inputs().size());
 
@@ -308,7 +311,7 @@ void GUI::main() {
 
 		ImGui::PushItemFlag(ImGuiItemFlags_NoTabStop, true);
 		ImGui::SetNextItemWidth(get_width(75.f));
-		ImGui::InputText("Macro Name", logic.macro_name, 1000);
+		ImGui::InputText("Macro Name", logic.macro_name, MAX_PATH);
 		ImGui::PopItemFlag();
 
 		ImGui::SetNextItemWidth((ImGui::GetWindowContentRegionWidth() - ImGui::GetStyle().ItemSpacing.x) * (50.f / 100.f));

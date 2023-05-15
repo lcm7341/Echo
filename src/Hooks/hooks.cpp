@@ -2,12 +2,15 @@
 #include "../Logic/logic.hpp"
 #include <chrono>
 
+#define FRAME_LABEL_ID 82369 + 1 //random value :P
+
 #define HOOK(o, f) MH_CreateHook(reinterpret_cast<void*>(gd::base + o), f##_h, reinterpret_cast<void**>(&f));
 // gracias matcool :]
 
 #define HOOK_COCOS(o, f) MH_CreateHook(GetProcAddress(GetModuleHandleA("libcocos2d.dll"), o), f##_h, reinterpret_cast<void**>(&f));
 
 void Hooks::init_hooks() {
+    MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x1fb780), PlayLayer::init_h, reinterpret_cast<void**>(&PlayLayer::init));
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x2029C0), PlayLayer::update_h, reinterpret_cast<void**>(&PlayLayer::update));
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x111500), PlayLayer::pushButton_h, reinterpret_cast<void**>(&PlayLayer::pushButton));
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x111660), PlayLayer::releaseButton_h, reinterpret_cast<void**>(&PlayLayer::releaseButton));
@@ -67,6 +70,14 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
     }
 }
 
+bool __fastcall Hooks::PlayLayer::init_h(gd::PlayLayer* self, void* edx, gd::GJGameLevel* level) {
+    bool ret = Hooks::PlayLayer::init(self, level);
+
+    //todo: use this ig
+
+    return ret;
+}
+
 void __fastcall Hooks::PlayLayer::updateVisibility_h(gd::PlayLayer* self) {
     if (!g_disable_render)
         updateVisibility(self);
@@ -82,6 +93,25 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
 
     logic.recorder.m_song_start_offset = self->m_levelSettings->m_songStartOffset;
 
+    if (auto frame_counter = (cocos2d::CCLabelBMFont*)self->getChildByTag(FRAME_LABEL_ID)) {
+        if (logic.show_frame) {
+            char out[24];
+            sprintf_s(out, "Frame: %i", logic.get_frame()); //no fmt :(
+            frame_counter->setString(out);
+        } else {
+            frame_counter->removeFromParent();
+            frame_counter->release();
+        }
+    }
+    else if (logic.show_frame) {
+        //cpp is retarded and you can't shadow vars
+        auto frame_counter2 = cocos2d::CCLabelBMFont::create("Frame: ", "chatFont.fnt");
+        frame_counter2->setPosition(cocos2d::CCDirector::sharedDirector()->getWinSize().width / 2.0, 10.0);
+        frame_counter2->setOpacity(100);
+
+        self->addChild(frame_counter2, 999, FRAME_LABEL_ID);
+    }
+
     if (self->m_isPaused) {
         ImGui::SetKeyboardFocusHere();
     }
@@ -92,7 +122,7 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
 int __fastcall Hooks::PlayLayer::pushButton_h(gd::PlayLayer* self, int, int idk, bool button) {
     auto& logic = Logic::get();
 
-    if (logic.is_playing()) return 0;
+    if (logic.is_playing() && logic.ignore_actions_at_playback) return 0;
     logic.record_input(true, button);
 
     return pushButton(self, idk, button);
@@ -101,7 +131,7 @@ int __fastcall Hooks::PlayLayer::pushButton_h(gd::PlayLayer* self, int, int idk,
 int __fastcall Hooks::PlayLayer::releaseButton_h(gd::PlayLayer* self, int, int idk, bool button) {
     auto& logic = Logic::get();
 
-    if (logic.is_playing()) return 0;
+    if (logic.is_playing() && logic.ignore_actions_at_playback) return 0;
     logic.record_input(false, button);
 
     return releaseButton(self, idk, button);
@@ -112,8 +142,7 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
 
     auto& logic = Logic::get();
 
-    strcpy(logic.macro_name, self->m_level->levelName.c_str());
-
+    strncpy(logic.macro_name, self->m_level->levelName.c_str(), self->m_level->levelName.size());
 
     if (logic.is_playing()) {
         logic.set_replay_pos(logic.find_closest_input());
@@ -229,7 +258,6 @@ int __fastcall Hooks::createCheckpoint_h(gd::PlayLayer* self) {
         p2.rotation = self->m_player2->getRotation();
         p2.is_holding = self->m_player2->m_isHolding;
     }
-
 
     logic.save_checkpoint({ p1, p2, logic.activated_objects.size(), logic.activated_objects_p2.size()});
 

@@ -21,6 +21,7 @@ namespace Hooks {
 	inline int(__fastcall* removeCheckpoint)(gd::PlayLayer* self); int __fastcall removeCheckpoint_h(gd::PlayLayer* self);
 
 	namespace PlayLayer {
+		inline bool(__thiscall* init)(gd::PlayLayer*, gd::GJGameLevel* level); bool __fastcall init_h(gd::PlayLayer* self, void* edx, gd::GJGameLevel* level);
 
 		inline void(__thiscall* updateVisibility)(gd::PlayLayer* self); void __fastcall updateVisibility_h(gd::PlayLayer* self);
 		

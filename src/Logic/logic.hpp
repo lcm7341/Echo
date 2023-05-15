@@ -7,7 +7,7 @@ enum State {
 	IDLE,
 	RECORDING,
 	PLAYING,
-	BOTH
+	RECORDING_AND_PLAYING
 };
 
 #include <vector>
@@ -56,6 +56,21 @@ public:
 
 	Recorder recorder;
 
+	std::vector<Checkpoint> checkpoints;
+	std::vector<gd::GameObject*> activated_objects;
+	std::vector<gd::GameObject*> activated_objects_p2;
+
+	float fps = 60.f;
+	char macro_name[MAX_PATH] = "output";
+
+	std::string error = "";
+
+	bool real_time_mode = true;
+	float speedhack = 1.f;
+
+	bool ignore_actions_at_playback = true;
+	bool show_frame = false;
+
 	unsigned get_frame();
 	double get_time();
 
@@ -68,7 +83,7 @@ public:
 	}
 
 	inline bool is_both() {
-		return state == BOTH;
+		return state == RECORDING_AND_PLAYING;
 	}
 
 	inline bool is_idle() {
@@ -101,11 +116,6 @@ public:
 		return replay_pos;
 	}
 
-	float fps = 60.f;
-	char macro_name[1000] = "output";
-
-	std::string error = "";
-
 	void add_offset(double time) {
 		offsets.push_back(time);
 	}
@@ -132,18 +142,11 @@ public:
 		return fps;
 	}
 
-	bool real_time_mode = true;
-	float speedhack = 1.f;
-
 	void remove_inputs(unsigned frame);
 
 	void write_file(const std::string& filename);
 
 	void read_file(const std::string& filename);
-
-	std::vector<Checkpoint> checkpoints;
-	std::vector<gd::GameObject*> activated_objects;
-	std::vector<gd::GameObject*> activated_objects_p2;
 
 	void save_checkpoint(Checkpoint data) {
 		checkpoints.push_back(data);
