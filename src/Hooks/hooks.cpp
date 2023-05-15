@@ -48,7 +48,7 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
 
             g_disable_render = true;
 
-            const int times = min(static_cast<int>((dt + g_left_over) / target_dt), 150);
+            const unsigned int times = min(static_cast<int>((dt + g_left_over) / target_dt), 150);
 
             for (unsigned i = 0; i < times; i++) {
                 if (i == times - 1)
@@ -71,9 +71,10 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
 }
 
 bool __fastcall Hooks::PlayLayer::init_h(gd::PlayLayer* self, void* edx, gd::GJGameLevel* level) {
-    bool ret = Hooks::PlayLayer::init(self, level);
+    auto& logic = Logic::get();
+    logic.replay_index = 0;
 
-    //todo: use this ig
+    bool ret = Hooks::PlayLayer::init(self, level);
 
     return ret;
 }
@@ -86,7 +87,24 @@ void __fastcall Hooks::PlayLayer::updateVisibility_h(gd::PlayLayer* self) {
 void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
     auto& logic = Logic::get();
 
-    if (logic.is_playing()) logic.play_macro();
+    static int offset = rand();
+
+    if (logic.is_playing()) {
+        if (logic.sequence_enabled) {
+            if (logic.replay_index - 1 < logic.replays.size()) {
+                Replay& selected_replay = logic.replays[logic.replay_index - 1];
+                static int offset = selected_replay.max_frame_offset > 0 ? (rand() % selected_replay.max_frame_offset / 2) - selected_replay.max_frame_offset : 0;
+
+                if (logic.play_macro(offset)) {
+                    offset = selected_replay.max_frame_offset > 0 ? (rand() % selected_replay.max_frame_offset / 2) - selected_replay.max_frame_offset : 0;
+                }
+            }
+        }
+        else {
+            int _ = 0;
+            logic.play_macro(_);
+        }
+    }
 
     if (logic.recorder.m_recording)
         logic.recorder.handle_recording(self, dt);
@@ -105,7 +123,7 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
     }
     else if (logic.show_frame) {
         //cpp is retarded and you can't shadow vars
-        auto frame_counter2 = cocos2d::CCLabelBMFont::create("Frame: ", "chatFont.fnt");
+        auto frame_counter2 = cocos2d::CCLabelBMFont::create("Frame: ", "chatFont.fnt"); //probably leaks memory :p
         frame_counter2->setPosition(cocos2d::CCDirector::sharedDirector()->getWinSize().width / 2.0, 10.0);
         frame_counter2->setOpacity(100);
 
@@ -141,6 +159,19 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
     int ret = resetLevel(self); // was told i needed to do this, reason why beats me
 
     auto& logic = Logic::get();
+
+    if (logic.replay_index < logic.replays.size() && logic.sequence_enabled) {
+        Replay& selected_replay = logic.replays[logic.replay_index];
+
+        if (self->m_currentAttempt == selected_replay.target_attempt)
+            logic.get_inputs() = selected_replay.actions;
+    }
+    else {
+        logic.replay_index = 0;
+        logic.get_inputs().clear();
+    }
+
+    logic.replay_index += 1;
 
     strncpy(logic.macro_name, self->m_level->levelName.c_str(), self->m_level->levelName.size());
 

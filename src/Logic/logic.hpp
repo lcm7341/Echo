@@ -39,6 +39,13 @@ struct Checkpoint {
 	size_t activated_objects_p2_size;
 };
 
+struct Replay {
+	std::string name;
+	int target_attempt;
+	int max_frame_offset;
+	std::vector<Input> actions;
+};
+
 class Logic {
 	State state = IDLE;
 
@@ -70,6 +77,10 @@ public:
 
 	bool ignore_actions_at_playback = true;
 	bool show_frame = false;
+
+	std::vector<Replay> replays;
+	size_t replay_index;
+	bool sequence_enabled = false;
 
 	unsigned get_frame();
 	double get_time();
@@ -106,7 +117,7 @@ public:
 	
 	void play_input(Input& input);
 	
-	void play_macro();
+	bool play_macro(int& offset);
 
 	int find_closest_input();
 

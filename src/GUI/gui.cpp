@@ -16,6 +16,7 @@
 #include <imgui_internal.h>
 #include "../version.h"
 #include <sstream>
+#include <optional>
 
 #define PLAYLAYER gd::GameManager::sharedState()->getPlayLayer()
 
@@ -60,6 +61,7 @@ void GUI::draw() {
 			main();
 			editor();
 			renderer();
+			sequential_replay();
 		}
 
 		ImGui::End();
@@ -235,12 +237,98 @@ void GUI::renderer() {
 	}
 }
 
+void GUI::sequential_replay() {
+	auto& logic = Logic::get();
+
+	static std::optional<size_t> selected_replay_index = std::nullopt;
+	const float child_height = 150.0f;
+
+	if (ImGui::IsKeyDown(KEY_Escape)) { //pls find a more intuitive way to do this
+		selected_replay_index = std::nullopt;
+	}
+
+	if (ImGui::BeginTabItem("Sequential replay")) { //TODO: can't go from the render tab to the sequential play tab for some reason
+
+		ImGui::Checkbox("Enabled", &logic.sequence_enabled);
+
+		ImGui::BeginChild("##seq_replay_list", ImVec2(0, 0), true);
+		for (unsigned i = 0; i < logic.replays.size(); i++) {
+			ImGui::PushID(i);
+			
+			if (ImGui::Selectable("##replay", selected_replay_index.has_value() && selected_replay_index.value() == i, ImGuiSelectableFlags_AllowDoubleClick)) {
+				selected_replay_index = i;
+			}
+
+			ImGui::SameLine();
+			ImGui::Text(logic.replays[i].name.c_str());
+
+			ImGui::PopID();
+		}
+
+		ImGui::EndChild();
+
+		ImGui::Separator();
+		
+		ImGui::BeginChild("##seq_replay_child", ImVec2(0, child_height), true); //idk how 2 name dis
+
+		if (selected_replay_index.has_value() && selected_replay_index.value() < logic.replays.size()) {
+
+			Replay& selected_replay = logic.replays[selected_replay_index.value()];
+
+			ImGui::Text("Name: %s", &selected_replay.name);
+			ImGui::InputInt("Target attempt", &selected_replay.target_attempt, 1, 10);
+			ImGui::InputInt("Max frame offset", &selected_replay.max_frame_offset, 1, 5);
+
+			if (ImGui::Button("Remove")) {
+				logic.replays.erase(logic.replays.begin() + selected_replay_index.value());
+				selected_replay_index = std::nullopt;
+			}
+		}
+		else {
+			static std::string replay_name{};
+			static int amount = 1;
+
+			ImGui::InputText("Name", &replay_name);
+			ImGui::InputInt("Amount", &amount);
+
+			if (ImGui::Button("Add")) {
+				//HACK: idk if i'm allowed to  reformat half of the stuff in logic so i'll just do this.
+				//		if i am lmk bc it's kinda messy rn
+				std::vector<Input> old_actions = logic.get_inputs();
+
+				logic.get_inputs().clear();
+
+				//TODO: catch this or whatever
+				logic.read_file(replay_name);
+
+				for (int i = 0; i < amount; i++) {
+				auto inputs = logic.get_inputs();
+					logic.replays.push_back(Replay{
+							replay_name,
+							logic.replays.size() > 0 ? logic.replays[logic.replays.size() - 1].target_attempt + 1 : 1,
+							0,
+							inputs
+						});
+				}
+
+				logic.get_inputs() = old_actions;
+				//HACK END
+
+				replay_name = {};
+				amount = 1;
+			}
+		}
+
+		ImGui::EndChild();
+
+		ImGui::EndTabItem();
+	}
+}
+
 void GUI::main() {
 	auto& logic = Logic::get();
 
 	if (ImGui::BeginTabItem("Main")) {
-
-
 		if (ImGui::Button(logic.is_recording() ? "Stop Recording" : "Start Recording", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.5f, 0))) {
 			logic.toggle_recording();
 		}

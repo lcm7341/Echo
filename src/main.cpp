@@ -91,13 +91,13 @@ void readConfig() {
 	file.close();
 }
 
-
-
 DWORD WINAPI my_thread(void* hModule) {
 	MH_Initialize();
 	auto& instance = GUI::get();
 
 	readConfig();
+
+	srand(GetTickCount());
 
 	ImGuiHook::setRenderFunction(renderFuncWrapper);
 	ImGuiHook::setToggleCallback(callback);
