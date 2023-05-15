@@ -32,3 +32,7 @@
 *.app
 /src/Hooks/Hooks.cpp
 /src/Hooks/hooks.cpp
+.vs/
+CMakeSettings.json
+out/
+build/
