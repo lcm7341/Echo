@@ -16,11 +16,11 @@
 #include <imgui_internal.h>
 #include "../version.h"
 #include <sstream>
+#include <optional>
 
 #define PLAYLAYER gd::GameManager::sharedState()->getPlayLayer()
 
 namespace fs = std::filesystem;
-
 
 using namespace cocos2d;
 
@@ -30,14 +30,11 @@ void GUI::draw() {
 	if (g_font) ImGui::PushFont(g_font);
 
 	if (show_window) {
-
-
-		char title[1000] = "Echo";
 		std::stringstream full_title;
 
-		full_title << title << " [" << ECHO_VERSION << "b]";
+		full_title << "Echo [" << ECHO_VERSION << "b]";
 
-		ImGui::Begin(title, nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize);
+		ImGui::Begin(full_title.str().c_str(), nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize);
 		ImGuiIO& io = ImGui::GetIO();
 		io.ConfigFlags |= ImGuiConfigFlags_NavNoCaptureKeyboard;
 
@@ -64,6 +61,7 @@ void GUI::draw() {
 			main();
 			editor();
 			renderer();
+			sequential_replay();
 		}
 
 		ImGui::End();
@@ -156,8 +154,10 @@ struct Resolution {
 void GUI::renderer() {
 	auto& logic = Logic::get();
 	const char* resolution_types[] = { "SD (720p)", "HD (1080p)", "QHD (1440p)", "4K (2160p)" };
+
 	static const char* current_res = resolution_types[1];
 	static int current_index = 1;
+
 	if (ImGui::BeginTabItem("Render")) {
 
 		Resolution resolutions[] = {
@@ -237,12 +237,98 @@ void GUI::renderer() {
 	}
 }
 
+void GUI::sequential_replay() {
+	auto& logic = Logic::get();
+
+	static std::optional<size_t> selected_replay_index = std::nullopt;
+	const float child_height = 150.0f;
+
+	if (ImGui::IsKeyDown(KEY_Escape)) { //pls find a more intuitive way to do this
+		selected_replay_index = std::nullopt;
+	}
+
+	if (ImGui::BeginTabItem("Sequential replay")) { //TODO: can't go from the render tab to the sequential play tab for some reason
+
+		ImGui::Checkbox("Enabled", &logic.sequence_enabled);
+
+		ImGui::BeginChild("##seq_replay_list", ImVec2(0, 0), true);
+		for (unsigned i = 0; i < logic.replays.size(); i++) {
+			ImGui::PushID(i);
+			
+			if (ImGui::Selectable("##replay", selected_replay_index.has_value() && selected_replay_index.value() == i, ImGuiSelectableFlags_AllowDoubleClick)) {
+				selected_replay_index = i;
+			}
+
+			ImGui::SameLine();
+			ImGui::Text(logic.replays[i].name.c_str());
+
+			ImGui::PopID();
+		}
+
+		ImGui::EndChild();
+
+		ImGui::Separator();
+		
+		ImGui::BeginChild("##seq_replay_child", ImVec2(0, child_height), true); //idk how 2 name dis
+
+		if (selected_replay_index.has_value() && selected_replay_index.value() < logic.replays.size()) {
+
+			Replay& selected_replay = logic.replays[selected_replay_index.value()];
+
+			ImGui::Text("Name: %s", &selected_replay.name);
+			ImGui::InputInt("Target attempt", &selected_replay.target_attempt, 1, 10);
+			ImGui::InputInt("Max frame offset", &selected_replay.max_frame_offset, 1, 5);
+
+			if (ImGui::Button("Remove")) {
+				logic.replays.erase(logic.replays.begin() + selected_replay_index.value());
+				selected_replay_index = std::nullopt;
+			}
+		}
+		else {
+			static std::string replay_name{};
+			static int amount = 1;
+
+			ImGui::InputText("Name", &replay_name);
+			ImGui::InputInt("Amount", &amount);
+
+			if (ImGui::Button("Add")) {
+				//HACK: idk if i'm allowed to  reformat half of the stuff in logic so i'll just do this.
+				//		if i am lmk bc it's kinda messy rn
+				std::vector<Input> old_actions = logic.get_inputs();
+
+				logic.get_inputs().clear();
+
+				//TODO: catch this or whatever
+				logic.read_file(replay_name);
+
+				for (int i = 0; i < amount; i++) {
+				auto inputs = logic.get_inputs();
+					logic.replays.push_back(Replay{
+							replay_name,
+							logic.replays.size() > 0 ? logic.replays[logic.replays.size() - 1].target_attempt + 1 : 1,
+							0,
+							inputs
+						});
+				}
+
+				logic.get_inputs() = old_actions;
+				//HACK END
+
+				replay_name = {};
+				amount = 1;
+			}
+		}
+
+		ImGui::EndChild();
+
+		ImGui::EndTabItem();
+	}
+}
+
 void GUI::main() {
 	auto& logic = Logic::get();
 
 	if (ImGui::BeginTabItem("Main")) {
-
-
 		if (ImGui::Button(logic.is_recording() ? "Stop Recording" : "Start Recording", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.5f, 0))) {
 			logic.toggle_recording();
 		}
@@ -272,9 +358,14 @@ void GUI::main() {
 			}
 			CCDirector::sharedDirector()->setAnimationInterval(1.f / logic.fps);
 		}
+
 		ImGui::DragFloat("Speed", &logic.speedhack, 0.05, 0.f, 100.f, "%.2f");
 
 		ImGui::Checkbox("Real Time Mode", &logic.real_time_mode);
+
+		ImGui::Checkbox("Ignore actions during playback", &logic.ignore_actions_at_playback);
+
+		ImGui::Checkbox("Show frame", &logic.show_frame); //move this somewhere else if u want
 
 		ImGui::Text("Macro Size: %i", logic.get_inputs().size());
 
@@ -308,7 +399,7 @@ void GUI::main() {
 
 		ImGui::PushItemFlag(ImGuiItemFlags_NoTabStop, true);
 		ImGui::SetNextItemWidth(get_width(75.f));
-		ImGui::InputText("Macro Name", logic.macro_name, 1000);
+		ImGui::InputText("Macro Name", logic.macro_name, MAX_PATH);
 		ImGui::PopItemFlag();
 
 		ImGui::SetNextItemWidth((ImGui::GetWindowContentRegionWidth() - ImGui::GetStyle().ItemSpacing.x) * (50.f / 100.f));

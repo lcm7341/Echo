@@ -39,15 +39,19 @@ void Logic::play_input(Input& input) {
         Hooks::PlayLayer::releaseButton(PLAYLAYER, 0, !input.player1 ^ gamevar);
 }
 
-void Logic::play_macro() {
+bool Logic::play_macro(int& offset) {
     if (is_playing()) {
         auto& inputs = get_inputs();
-        unsigned currentFrame = get_frame();
-        
-        while (inputs[replay_pos].frame <= get_frame() && replay_pos < inputs.size()) {
+        unsigned current_frame = get_frame() - offset;
+        bool ret = false;
+
+        while (inputs[replay_pos].frame <= current_frame && replay_pos < inputs.size()) {
             play_input(inputs[replay_pos]);
             replay_pos += 1;
+            ret = true;
         }
+
+        return ret;
     }
 }
 
@@ -113,20 +117,20 @@ void Logic::read_file(const std::string& filename) {
 
     inputs.clear();
 
-    r_b(fps)
+    r_b(fps);
 
-        while (true) {
-            Input input;
-            r_b(input.frame);
-            r_b(input.down);
-            r_b(input.player1);
+    while (true) {
+        Input input;
+        r_b(input.frame);
+        r_b(input.down);
+        r_b(input.player1);
 
-            if (file.eof()) {
-                break;
-            }
-
-            inputs.push_back(input);
+        if (file.eof()) {
+            break;
         }
+
+        inputs.push_back(input);
+    }
 
     file.close();
 }
