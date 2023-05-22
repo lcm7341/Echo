@@ -68,7 +68,7 @@ public:
 	std::vector<gd::GameObject*> activated_objects_p2;
 
 	float fps = 60.f;
-	char macro_name[MAX_PATH] = "output";
+	char macro_name[1000] = "output";
 
 	std::string error = "";
 
@@ -113,6 +113,8 @@ public:
 		state = IDLE;
 	}
 
+	void sort_inputs();
+
 	void record_input(bool down, bool player1);
 	
 	void play_input(Input& input);
@@ -153,11 +155,14 @@ public:
 		return fps;
 	}
 
+	bool click_both_players = false;
+	bool swap_player_input = false;
+
 	void remove_inputs(unsigned frame);
 
 	void write_file(const std::string& filename);
 
-	void read_file(const std::string& filename);
+	void read_file(const std::string& filename, bool is_path);
 
 	void save_checkpoint(Checkpoint data) {
 		checkpoints.push_back(data);

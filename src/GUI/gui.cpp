@@ -17,7 +17,30 @@
 #include "../version.h"
 #include <sstream>
 #include <optional>
+#include <random>
+#include "../imfilebrowser.h"
 
+int getRandomInt(int N) {
+	// Seed the random number generator with current time
+	std::random_device rd;
+	std::mt19937 gen(rd());
+
+	// Define the triangular distribution
+	std::uniform_int_distribution<> dis(0, N);
+
+	// Generate and return the random number
+	int randomInt = dis(gen);
+
+	// Generate a second random number to determine the direction of bias
+	int bias = dis(gen);
+
+	// Adjust the random number based on the bias
+	if (bias < randomInt) {
+		randomInt -= bias;
+	}
+
+	return randomInt;
+}
 #define PLAYLAYER gd::GameManager::sharedState()->getPlayLayer()
 
 namespace fs = std::filesystem;
@@ -41,24 +64,9 @@ void GUI::draw() {
 		if (io.KeysDown[ImGui::GetKeyIndex(ImGuiKey_Escape)])
 			ImGui::SetKeyboardFocusHere();
 
-		//// Gonna attempt a resizing menu based on screen size :P
-		//ImVec2 display_size = io.DisplaySize;
-
-		//// Calculate the scale factor based on the game window size and display size
-		//float scale_factor = display_size.x / 1920.0f;
-
-		//// Set the font and window scaling based on the scale factor
-		//io.FontGlobalScale = scale_factor;
-		////ImGui::SetNextWindowSize(ImVec2(scale_factor, scale_factor));
-
-		//// Set the global scale factor for the UI
-		//auto& style = ImGui::GetStyle();
-		//style.ScaleAllSizes(scale_factor);
-
-		/*ImGui::Text("%f", scale_factor);*/
-
 		if (ImGui::BeginTabBar("TabBar")) {
 			main();
+			tools();
 			editor();
 			renderer();
 			sequential_replay();
@@ -234,6 +242,8 @@ void GUI::renderer() {
 			ImGui::Button("Start Recording");
 			ImGui::EndDisabled();
 		}
+
+		ImGui::EndTabItem();
 	}
 }
 
@@ -247,9 +257,27 @@ void GUI::sequential_replay() {
 		selected_replay_index = std::nullopt;
 	}
 
-	if (ImGui::BeginTabItem("Sequential replay")) { //TODO: can't go from the render tab to the sequential play tab for some reason
+	if (ImGui::BeginTabItem("Sequential replay")) {
 
 		ImGui::Checkbox("Enabled", &logic.sequence_enabled);
+
+		if (ImGui::Button("Remove All")) {
+			logic.replays.clear();
+		}
+
+		static int all_offset = 0;
+
+		if (ImGui::InputInt("Offset All", &all_offset)) {
+			for (auto& replay : logic.replays) {
+				replay.max_frame_offset = all_offset;
+				for (auto& input : replay.actions) {
+					if (getRandomInt(1) == 1)
+						input.frame += getRandomInt(all_offset);
+					else
+						input.frame -= getRandomInt(all_offset);
+				}
+			}
+		}
 
 		ImGui::BeginChild("##seq_replay_list", ImVec2(0, 0), true);
 		for (unsigned i = 0; i < logic.replays.size(); i++) {
@@ -299,7 +327,7 @@ void GUI::sequential_replay() {
 				logic.get_inputs().clear();
 
 				//TODO: catch this or whatever
-				logic.read_file(replay_name);
+				logic.read_file(replay_name, false);
 
 				for (int i = 0; i < amount; i++) {
 				auto inputs = logic.get_inputs();
@@ -320,6 +348,41 @@ void GUI::sequential_replay() {
 		}
 
 		ImGui::EndChild();
+
+		ImGui::EndTabItem();
+	}
+}
+
+void GUI::tools() {
+	auto& logic = Logic::get();
+
+	if (ImGui::BeginTabItem("Tools")) {
+
+		ImGui::Checkbox("Click Both Players", &logic.click_both_players);
+
+		ImGui::Checkbox("Swap Player Input", &logic.swap_player_input);
+
+
+		ImGui::FileBrowser fileDialog;
+		fileDialog.SetTitle("Replays");
+		fileDialog.SetPwd(std::filesystem::path(".echo"));
+		fileDialog.SetTypeFilters({ ".echo", ".bin" });
+
+		if (ImGui::Button("Merge With Replay")) {
+
+			fileDialog.Open();
+
+		}
+
+		fileDialog.Display();
+
+		if (fileDialog.HasSelected())
+		{
+			std::vector<Input> before_inputs = logic.get_inputs();
+			logic.read_file(fileDialog.GetSelected().string(), true);
+			logic.sort_inputs();
+			fileDialog.ClearSelected();
+		}
 
 		ImGui::EndTabItem();
 	}
@@ -359,7 +422,7 @@ void GUI::main() {
 			CCDirector::sharedDirector()->setAnimationInterval(1.f / logic.fps);
 		}
 
-		ImGui::DragFloat("Speed", &logic.speedhack, 0.05, 0.f, 100.f, "%.2f");
+		ImGui::DragFloat("Speed", &logic.speedhack, 0.01, 0.01f, 100.f, "%.2f");
 
 		ImGui::Checkbox("Real Time Mode", &logic.real_time_mode);
 
@@ -411,7 +474,7 @@ void GUI::main() {
 
 		ImGui::SetNextItemWidth(get_width(50.f));
 		if (ImGui::Button("Load File")) {
-			logic.read_file(logic.macro_name);
+			logic.read_file(logic.macro_name, false);
 		}
 
 		if (logic.error != "") {

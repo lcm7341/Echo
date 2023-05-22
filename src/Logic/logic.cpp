@@ -42,7 +42,7 @@ void Logic::play_input(Input& input) {
 bool Logic::play_macro(int& offset) {
     if (is_playing()) {
         auto& inputs = get_inputs();
-        unsigned current_frame = get_frame() - offset;
+        unsigned current_frame = get_frame()/* - offset*/;
         bool ret = false;
 
         while (inputs[replay_pos].frame <= current_frame && replay_pos < inputs.size()) {
@@ -57,6 +57,22 @@ bool Logic::play_macro(int& offset) {
 
 void Logic::set_replay_pos(unsigned idx) {
     replay_pos = idx;
+}
+
+void Logic::sort_inputs() {
+    std::sort(inputs.begin(), inputs.end(), [](Input a, Input b) {
+        if (a.frame < b.frame) {
+            return true;
+        }
+        else if (a.frame == b.frame) {
+            if (a.down > b.down)
+                return true;
+            else if (a.down == b.down) {
+                return a.player1 > b.player1;
+            }
+        }
+        return false;
+        });
 }
 
 int Logic::find_closest_input() {
@@ -102,11 +118,11 @@ void Logic::write_file(const std::string& filename) {
     file.close();
 }
 
-void Logic::read_file(const std::string& filename) {
+void Logic::read_file(const std::string& filename, bool is_path = false) {
     std::string dir = ".echo\\";
     std::string ext = ".bin";
 
-    std::string full_filename = dir + filename + ext;
+    std::string full_filename = is_path ? filename : dir + filename + ext;
 
     std::ifstream file(full_filename, std::ios::binary);
     if (!file.is_open()) {
@@ -115,6 +131,7 @@ void Logic::read_file(const std::string& filename) {
     }
     error = "";
 
+    if (!is_path)
     inputs.clear();
 
     r_b(fps);

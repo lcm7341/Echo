@@ -141,6 +141,14 @@ int __fastcall Hooks::PlayLayer::pushButton_h(gd::PlayLayer* self, int, int idk,
     auto& logic = Logic::get();
 
     if (logic.is_playing() && logic.ignore_actions_at_playback) return 0;
+
+    if (logic.swap_player_input) button = !button;
+
+    if (logic.click_both_players) {
+        logic.record_input(true, !button);
+        pushButton(self, idk, !button);
+    }
+
     logic.record_input(true, button);
 
     return pushButton(self, idk, button);
@@ -150,6 +158,14 @@ int __fastcall Hooks::PlayLayer::releaseButton_h(gd::PlayLayer* self, int, int i
     auto& logic = Logic::get();
 
     if (logic.is_playing() && logic.ignore_actions_at_playback) return 0;
+
+    if (logic.swap_player_input) button = !button;
+
+    if (logic.click_both_players) {
+        logic.record_input(false, !button);
+        pushButton(self, idk, !button);
+    }
+
     logic.record_input(false, button);
 
     return releaseButton(self, idk, button);
@@ -160,20 +176,27 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
 
     auto& logic = Logic::get();
 
-    if (logic.replay_index < logic.replays.size() && logic.sequence_enabled) {
-        Replay& selected_replay = logic.replays[logic.replay_index];
+    if (logic.sequence_enabled) {
+        if (!logic.is_recording() && (!logic.is_playing() || logic.sequence_enabled)) {
+            Hooks::PlayLayer::releaseButton(self, 0, false);
+            Hooks::PlayLayer::releaseButton(self, 0, true);
+            if (logic.replay_index < logic.replays.size() && logic.sequence_enabled) {
+                Replay& selected_replay = logic.replays[logic.replay_index];
 
-        if (self->m_currentAttempt == selected_replay.target_attempt)
-            logic.get_inputs() = selected_replay.actions;
+                if (self->m_currentAttempt == selected_replay.target_attempt)
+                    logic.get_inputs() = selected_replay.actions;
+            }
+            else {
+                logic.replay_index = 0;
+                logic.get_inputs().clear();
+            }
+        }
+
+        logic.replay_index += 1;
     }
-    else {
-        logic.replay_index = 0;
-        logic.get_inputs().clear();
-    }
 
-    logic.replay_index += 1;
-
-    strncpy(logic.macro_name, self->m_level->levelName.c_str(), self->m_level->levelName.size());
+    if (self->m_currentAttempt == 1)
+    strcpy(logic.macro_name, self->m_level->levelName.c_str());
 
     if (logic.is_playing()) {
         logic.set_replay_pos(logic.find_closest_input());

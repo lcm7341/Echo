@@ -14,6 +14,8 @@ public:
 
 	void main();
 
+	void tools();
+
 	void editor();
 
 	void init();
