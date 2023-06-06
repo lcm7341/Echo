@@ -112,10 +112,12 @@ DWORD WINAPI my_thread(void* hModule) {
 	std::filesystem::path echoDirectory = ".echo";
 	std::filesystem::path videoDirectory = ".echo/renders";
 	std::filesystem::path configDirectory = ".echo/settings";
+	std::filesystem::path osuDirectory = ".echo/osu";
 
 	std::filesystem::create_directory(echoDirectory);
 	std::filesystem::create_directory(videoDirectory);
 	std::filesystem::create_directory(configDirectory);
+	std::filesystem::create_directory(osuDirectory);
 
 	return 0;
 }

@@ -384,6 +384,11 @@ void GUI::tools() {
 			fileDialog.ClearSelected();
 		}
 
+		if (ImGui::Button("Uninject DLL")) {
+			// TO-DO
+			// Create custom loader so that we can fetch the dll's base address without needing 2000 lines of code to support every OS
+		}
+
 		ImGui::EndTabItem();
 	}
 }
@@ -475,6 +480,13 @@ void GUI::main() {
 		ImGui::SetNextItemWidth(get_width(50.f));
 		if (ImGui::Button("Load File")) {
 			logic.read_file(logic.macro_name, false);
+		}
+
+		ImGui::SameLine();
+
+		ImGui::SetNextItemWidth(get_width(50.f));
+		if (ImGui::Button("Export .osu")) {
+			logic.write_osu_file(logic.macro_name);
 		}
 
 		if (logic.error != "") {

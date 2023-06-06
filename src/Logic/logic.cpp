@@ -2,6 +2,7 @@
 #include "../Hooks/hooks.hpp"
 #include <stdio.h>
 #include <nlohmann/json.hpp>
+#include <fstream>
 
 using json = nlohmann::json;
 
@@ -37,6 +38,70 @@ void Logic::play_input(Input& input) {
         Hooks::PlayLayer::pushButton(PLAYLAYER, 0, !input.player1 ^ gamevar);
     else
         Hooks::PlayLayer::releaseButton(PLAYLAYER, 0, !input.player1 ^ gamevar);
+}
+
+void Logic::write_osu_file(const std::string& filename) {
+    std::string dir = ".echo\\osu\\" + filename + "\\";
+    std::filesystem::create_directory(dir);
+    std::string ext = ".osu";
+    std::string full_filename = dir + filename + ext;
+
+    std::ofstream osu_file(full_filename);
+    if (!osu_file.is_open()) {
+        error = "Error writing file '" + filename + "'!";
+        return;
+    }
+    error = "";
+
+    // osu file header
+    osu_file << "osu file format v14\n\n";
+
+    // General section
+    osu_file << "[General]\n";
+    osu_file << "StackLeniency: 0.7\n";
+    osu_file << "AudioLeadIn: 0\n";
+    osu_file << "Mode: 1\n"; // Mode 1 is for Taiko
+    osu_file << "Countdown: 0\n"; // No countdown before the song starts
+    osu_file << "\n";
+
+    // Metadata section
+    osu_file << "[Metadata]\n";
+    osu_file << "Title:" + filename + "\n"; 
+    osu_file << "Artist:EchoBot\n";
+    osu_file << "Creator:EchoBot\n";
+    osu_file << "Version:1.0\n";
+    osu_file << "\n";
+
+    // Difficulty section
+    osu_file << "[Difficulty]\n";
+    osu_file << "HPDrainRate:5\n";
+    osu_file << "CircleSize:5\n";
+    osu_file << "OverallDifficulty:5\n";
+    osu_file << "\n";
+
+    // TimingPoints section
+    osu_file << "[TimingPoints]\n";
+    osu_file << "0,500,4,1,0,100,1,0\n";
+    osu_file << "\n";
+
+    // HitObjects section
+    osu_file << "[HitObjects]\n";
+
+    for (auto& input : inputs) {
+
+        if (input.down) {
+            // Calculate the time in milliseconds
+            int time = round(input.frame / get_fps() * 1000 * (2 - speedhack));
+
+            // For Taiko mode, there's no positional data needed.
+            // The format for a single hit object is: time,x,y,type,hitSound,objectParams,hitSample
+            // type: 1 for a regular hit, 2 for a drumroll (slider in standard osu), 8 for a spinner.
+            // hitSound: 0 for a normal hit sound, 2 for whistle, 4 for finish, 8 for clap.
+            osu_file << "256,192," << time << ",1,0,0:0:0:0:\n";
+        }
+    }
+
+    osu_file.close();
 }
 
 bool Logic::play_macro(int& offset) {

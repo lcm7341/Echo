@@ -101,6 +101,8 @@ public:
 		return state == IDLE;
 	}
 
+	void write_osu_file(const std::string& filename);
+
 	void toggle_playing() {
 		state = is_playing() ? IDLE : PLAYING;
 	}
