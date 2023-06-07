@@ -149,6 +149,16 @@ void GUI::editor() {
 		}
 		ImGui::EndChild();
 
+		ImGui::PushItemFlag(ImGuiItemFlags_NoTabStop, true);
+		ImGui::SetNextItemWidth((ImGui::GetWindowContentRegionWidth() - ImGui::GetStyle().ItemSpacing.x) * 0.3f);
+		ImGui::InputFloat("###frames", &offset_frames, 0, 0, "%.0f"); ImGui::SameLine();
+		ImGui::PopItemFlag();
+
+		if (ImGui::Button("Offset Replay")) {
+			logic.offset_inputs(-offset_frames, offset_frames);
+			offset_frames = 0;
+		}
+
 		ImGui::EndTabItem();
 	}
 }

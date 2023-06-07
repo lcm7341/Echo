@@ -118,6 +118,8 @@ public:
 	void sort_inputs();
 
 	void record_input(bool down, bool player1);
+
+	void offset_inputs(int lower, int upper);
 	
 	void play_input(Input& input);
 	

@@ -120,6 +120,16 @@ bool Logic::play_macro(int& offset) {
     }
 }
 
+void Logic::offset_inputs(int lower, int upper) {
+    srand(time(0)); // seed the random number generator with the current time
+    std::transform(inputs.begin(), inputs.end(), inputs.begin(),
+        [lower, upper](Input input) {
+            int offset = lower + rand() % (upper - lower + 1); // generate random offset
+            input.frame += offset;  // add offset to the frame
+            return input;
+        });
+}
+
 void Logic::set_replay_pos(unsigned idx) {
     replay_pos = idx;
 }
