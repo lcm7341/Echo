@@ -32,11 +32,14 @@ void Logic::record_input(bool down, bool player1) {
 void Logic::play_input(Input& input) {
     auto gamevar = gd::GameManager::sharedState()->getGameVariable("0010"); // game var again 
     // i think its for flip 2 player controls?
+    auto editor = gd::GameManager::sharedState()->getEditorLayer();
 
-    if (input.down)
-        Hooks::PlayLayer::pushButton(PLAYLAYER, 0, !input.player1 ^ gamevar);
-    else
-        Hooks::PlayLayer::releaseButton(PLAYLAYER, 0, !input.player1 ^ gamevar);
+    if (PLAYLAYER) {
+        if (input.down)
+            Hooks::PlayLayer::pushButton(PLAYLAYER, 0, !input.player1 ^ gamevar);
+        else
+            Hooks::PlayLayer::releaseButton(PLAYLAYER, 0, !input.player1 ^ gamevar);
+    }
 }
 
 bool Logic::play_macro(int& offset) {
