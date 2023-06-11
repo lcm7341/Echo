@@ -124,8 +124,8 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
     else if (logic.show_frame) {
         //cpp is retarded and you can't shadow vars
         auto frame_counter2 = cocos2d::CCLabelBMFont::create("Frame: ", "chatFont.fnt"); //probably leaks memory :p
-        frame_counter2->setPosition(cocos2d::CCDirector::sharedDirector()->getWinSize().width / 2.0, 10.0);
-        frame_counter2->setOpacity(100);
+        frame_counter2->setPosition(cocos2d::CCDirector::sharedDirector()->getWinSize().width / 2.0, cocos2d::CCDirector::sharedDirector()->getWinSize().height / 2.0);
+        frame_counter2->setOpacity(70);
 
         self->addChild(frame_counter2, 999, FRAME_LABEL_ID);
     }
@@ -142,13 +142,6 @@ int __fastcall Hooks::PlayLayer::pushButton_h(gd::PlayLayer* self, int, int idk,
 
     if (logic.is_playing() && logic.ignore_actions_at_playback) return 0;
 
-    if (logic.swap_player_input) button = !button;
-
-    if (logic.click_both_players) {
-        logic.record_input(true, !button);
-        pushButton(self, idk, !button);
-    }
-
     logic.record_input(true, button);
 
     return pushButton(self, idk, button);
@@ -159,13 +152,6 @@ int __fastcall Hooks::PlayLayer::releaseButton_h(gd::PlayLayer* self, int, int i
 
     if (logic.is_playing() && logic.ignore_actions_at_playback) return 0;
 
-    if (logic.swap_player_input) button = !button;
-
-    if (logic.click_both_players) {
-        logic.record_input(false, !button);
-        pushButton(self, idk, !button);
-    }
-
     logic.record_input(false, button);
 
     return releaseButton(self, idk, button);
@@ -174,17 +160,18 @@ int __fastcall Hooks::PlayLayer::releaseButton_h(gd::PlayLayer* self, int, int i
 int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
     int ret = resetLevel(self); // was told i needed to do this, reason why beats me
 
+    std::cout << "Death" << std::endl;
+
     auto& logic = Logic::get();
 
+    // HANDLE SEQUENCING
     if (logic.sequence_enabled) {
         if (!logic.is_recording() && (!logic.is_playing() || logic.sequence_enabled)) {
             Hooks::PlayLayer::releaseButton(self, 0, false);
             Hooks::PlayLayer::releaseButton(self, 0, true);
             if (logic.replay_index < logic.replays.size() && logic.sequence_enabled) {
                 Replay& selected_replay = logic.replays[logic.replay_index];
-
-                if (self->m_currentAttempt == selected_replay.target_attempt)
-                    logic.get_inputs() = selected_replay.actions;
+                logic.get_inputs() = selected_replay.actions;
             }
             else {
                 logic.replay_index = 0;
@@ -195,13 +182,12 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
         logic.replay_index += 1;
     }
 
+    // INITIALIZES MACRO NAME
     if (self->m_currentAttempt == 1)
-    strcpy(logic.macro_name, self->m_level->levelName.c_str());
+        strcpy(logic.macro_name, self->m_level->levelName.c_str());
 
     if (logic.is_playing()) {
         logic.set_replay_pos(logic.find_closest_input());
-        logic.activated_objects.clear();
-        logic.activated_objects_p2.clear();
     }
 
     if (!self->m_isPracticeMode)
@@ -215,8 +201,10 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
         constexpr auto delete_from = [&](auto& vec, size_t index) {
             vec.erase(vec.begin() + index, vec.end());
         };
+
         delete_from(logic.activated_objects, logic.checkpoints.back().activated_objects_size);
         delete_from(logic.activated_objects_p2, logic.checkpoints.back().activated_objects_p2_size);
+
         if (logic.is_recording()) {
             for (const auto& object : logic.activated_objects)
                 object->m_hasBeenActivated = true;
@@ -232,52 +220,42 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
     logic.recorder.update_song_offset(self);
 
     if (logic.is_recording()) {
-        logic.remove_inputs(logic.get_frame());
+        std::cout << "Test 1" << std::endl;
 
         if (logic.get_inputs().empty()) return ret;
 
         auto& last = logic.get_inputs().back();
 
         auto& inputs = logic.get_inputs();
+        logic.remove_inputs(logic.get_frame() - 1);
+        std::cout << logic.get_frame() - 1 << std::endl;
 
         if (!logic.checkpoints.empty()) {
             auto currently_holdingP1 = self->m_player1->m_isHolding;
             auto currently_holdingP2 = self->m_player2->m_isHolding;
 
+            std::cout << logic.get_removed() << std::endl;
+            std::cout << logic.get_frame() << std::endl;
+            std::cout << logic.get_latest_checkpoint().number << std::endl;
+
+            logic.set_removed(logic.get_removed() + (logic.get_frame() - logic.get_latest_checkpoint().number));
+
             auto& last = logic.get_inputs().back();
 
             auto& inputs = logic.get_inputs();
 
-            if (last.player1) {
-                if ((currently_holdingP1 && logic.get_inputs().empty()) || (!logic.get_inputs().empty() && last.down != currently_holdingP1)) {
-                    logic.add_input({ logic.get_frame(), true, true });
-                    if (currently_holdingP1) {
-                        releaseButton(self, 0, true);
-                        pushButton(self, 0, true);
-                        self->m_player1->m_hasJustHeld = true;
-                    }
+            if ((currently_holdingP1 && logic.get_inputs().empty()) || (!logic.get_inputs().empty() && last.pressingDown != currently_holdingP1)) {
+                logic.add_input({ logic.get_frame(), true });
+                if (currently_holdingP1) {
+                    releaseButton(self, 0, true);
+                    pushButton(self, 0, true);
+                    self->m_player1->m_hasJustHeld = true;
                 }
-                else if (!inputs.empty() && inputs.back().down && currently_holdingP1 && logic.checkpoints.size()) {
+                else if (!inputs.empty() && inputs.back().pressingDown && currently_holdingP1 && logic.checkpoints.size()) {
                     releaseButton(self, 0, true);
                     pushButton(self, 0, true);
                 }
             }
-            else {
-                if ((currently_holdingP2 && logic.get_inputs().empty()) || (!logic.get_inputs().empty() && last.down != currently_holdingP2)) {
-                    logic.add_input({ logic.get_frame(), false, false });
-                    if (currently_holdingP2) {
-                        releaseButton(self, 0, false);
-                        pushButton(self, 0, false);
-                        self->m_player1->m_hasJustHeld = true;
-                    }
-                }
-                else if (!inputs.empty() && inputs.back().down && currently_holdingP2 && logic.checkpoints.size()) {
-                    releaseButton(self, 0, false);
-                    pushButton(self, 0, false);
-                }
-            }
-
-            // when in doubt, consult ReplayBot!
         }
 
     }
@@ -290,6 +268,7 @@ void* __fastcall Hooks::PlayLayer::exitLevel_h(gd::PlayLayer* self, int) {
     auto& logic = Logic::get();
 
     logic.checkpoints.clear();
+    logic.set_removed(0);
 
     return exitLevel(self);
 }
@@ -302,18 +281,13 @@ int __fastcall Hooks::createCheckpoint_h(gd::PlayLayer* self) {
     CheckpointData p1{ 0, 0 };
     CheckpointData p2{ 0, 0 };
 
-
-    p1.y_accel = self->m_player1->m_yAccel;
-    p1.rotation = self->m_player1->getRotation();
     p1.is_holding = self->m_player1->m_isHolding;
 
     if (self->m_isDualMode) {
-        p2.y_accel = self->m_player2->m_yAccel;
-        p2.rotation = self->m_player2->getRotation();
         p2.is_holding = self->m_player2->m_isHolding;
     }
 
-    logic.save_checkpoint({ p1, p2, logic.activated_objects.size(), logic.activated_objects_p2.size()});
+    logic.save_checkpoint({ logic.get_frame(), p1, p2, logic.activated_objects.size(), logic.activated_objects_p2.size()});
 
     return createCheckpoint(self);
 }

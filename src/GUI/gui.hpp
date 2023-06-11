@@ -22,9 +22,13 @@ public:
 
 	void renderer();
 
+	void conversion();
+
 	void sequential_replay();
 
 	bool show_reset_popup = false;
 
 	float input_fps = 60.f;
+
+	float offset_frames = 0.f;
 };
