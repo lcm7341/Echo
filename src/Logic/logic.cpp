@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <nlohmann/json.hpp>
 #include <fstream>
+#include <algorithm>  // for std::sort and std::min_element
+#include <cmath>      // for std::abs
 
 using json = nlohmann::json;
 
@@ -10,7 +12,7 @@ using json = nlohmann::json;
 
 unsigned Logic::get_frame() {
     if (PLAYLAYER) {
-        return round(PLAYLAYER->m_time * get_fps());
+        return round((PLAYLAYER->m_time * get_fps()) - get_removed());
     }
     return 0;
 }
@@ -26,18 +28,21 @@ void Logic::record_input(bool down, bool player1) {
     if (is_recording() || is_both()) {
         auto twoplayer = PLAYLAYER->m_levelSettings->m_twoPlayerMode;
         player1 ^= 1 && gd::GameManager::sharedState()->getGameVariable("0010"); // what the fuck ?
-        add_input({ get_frame(), down, twoplayer && !player1 });
+        add_input({ get_frame(), down });
     }
 }
 
-void Logic::play_input(Input& input) {
+void Logic::play_input(Frame& input) {
     auto gamevar = gd::GameManager::sharedState()->getGameVariable("0010"); // game var again 
     // i think its for flip 2 player controls?
 
-    if (input.down)
-        Hooks::PlayLayer::pushButton(PLAYLAYER, 0, !input.player1 ^ gamevar);
-    else
-        Hooks::PlayLayer::releaseButton(PLAYLAYER, 0, !input.player1 ^ gamevar);
+    // PLAYLAYER->m_player1->setRotation(input.rotation);
+    // PLAYLAYER->m_player1->m_yAccel = input.yVel;
+
+    if (input.pressingDown) {
+        Hooks::PlayLayer::pushButton(PLAYLAYER, 0, !PLAYLAYER->m_player1 ^ gamevar);
+    } else
+        Hooks::PlayLayer::releaseButton(PLAYLAYER, 0, !PLAYLAYER->m_player1 ^ gamevar);
 }
 
 void Logic::write_osu_file(const std::string& filename) {
@@ -89,9 +94,9 @@ void Logic::write_osu_file(const std::string& filename) {
 
     for (auto& input : inputs) {
 
-        if (input.down) {
+        if (input.pressingDown) {
             // Calculate the time in milliseconds
-            int time = round(input.frame / get_fps() * 1000 * (2 - speedhack));
+            int time = round(input.number / get_fps() * 1000 * (2 - speedhack));
 
             // For Taiko mode, there's no positional data needed.
             // The format for a single hit object is: time,x,y,type,hitSound,objectParams,hitSample
@@ -104,13 +109,27 @@ void Logic::write_osu_file(const std::string& filename) {
     osu_file.close();
 }
 
+int Logic::find_closest_input() {
+    if (inputs.empty()) {
+        // Return -1 or throw an exception if there are no inputs.
+        return -1;
+    }
+
+    unsigned current_frame = get_frame();
+    auto closest_it = std::min_element(inputs.begin(), inputs.end(),
+        [current_frame](const Frame& a, const Frame& b) {
+            return std::abs(static_cast<int>(a.number - current_frame)) < std::abs(static_cast<int>(b.number - current_frame));
+        });
+    return std::distance(inputs.begin(), closest_it);
+}
+
 bool Logic::play_macro(int& offset) {
     if (is_playing()) {
         auto& inputs = get_inputs();
         unsigned current_frame = get_frame()/* - offset*/;
         bool ret = false;
 
-        while (inputs[replay_pos].frame <= current_frame && replay_pos < inputs.size()) {
+        while (inputs[replay_pos].number <= current_frame && replay_pos < inputs.size()) {
             play_input(inputs[replay_pos]);
             replay_pos += 1;
             ret = true;
@@ -123,47 +142,15 @@ bool Logic::play_macro(int& offset) {
 void Logic::offset_inputs(int lower, int upper) {
     srand(time(0)); // seed the random number generator with the current time
     std::transform(inputs.begin(), inputs.end(), inputs.begin(),
-        [lower, upper](Input input) {
+        [lower, upper](Frame input) {
             int offset = lower + rand() % (upper - lower + 1); // generate random offset
-            input.frame += offset;  // add offset to the frame
+            input.number += offset;  // add offset to the frame
             return input;
         });
 }
 
 void Logic::set_replay_pos(unsigned idx) {
     replay_pos = idx;
-}
-
-void Logic::sort_inputs() {
-    std::sort(inputs.begin(), inputs.end(), [](Input a, Input b) {
-        if (a.frame < b.frame) {
-            return true;
-        }
-        else if (a.frame == b.frame) {
-            if (a.down > b.down)
-                return true;
-            else if (a.down == b.down) {
-                return a.player1 > b.player1;
-            }
-        }
-        return false;
-        });
-}
-
-int Logic::find_closest_input() {
-    unsigned current_frame = get_frame();
-    auto& inputs = get_inputs();
-
-    auto it = std::lower_bound(inputs.begin(), inputs.end(), Input{ current_frame },
-        [](const Input& a, const Input& b) {
-            return a.frame < b.frame;
-        });
-    if (it == inputs.begin()) {
-        return 0;
-    }
-    else {
-        return std::distance(inputs.begin(), std::prev(it));
-    }
 }
 
 #define w_b(var) file.write(reinterpret_cast<char*>(&var), sizeof(var));
@@ -182,13 +169,12 @@ void Logic::write_file(const std::string& filename) {
     }
     error = "";
 
-    w_b(fps)
+    w_b(fps);
 
-        for (auto& input : inputs) {
-            w_b(input.frame);
-            w_b(input.down);
-            w_b(input.player1);
-        }
+    for (auto& input : inputs) {
+        w_b(input.number);
+        w_b(input.pressingDown);
+    }
 
     file.close();
 }
@@ -212,10 +198,9 @@ void Logic::read_file(const std::string& filename, bool is_path = false) {
     r_b(fps);
 
     while (true) {
-        Input input;
-        r_b(input.frame);
-        r_b(input.down);
-        r_b(input.player1);
+        Frame input;
+        r_b(input.number);
+        r_b(input.pressingDown);
 
         if (file.eof()) {
             break;
@@ -229,10 +214,55 @@ void Logic::read_file(const std::string& filename, bool is_path = false) {
 
 void Logic::remove_inputs(unsigned frame) {
     auto it = std::remove_if(inputs.begin(), inputs.end(),
-        [frame](const Input& input) {
-            return input.frame > frame;
+        [frame](const Frame& input) {
+            return input.number > frame;
         });
     inputs.erase(it, inputs.end());
+}
+
+void Logic::convert_file(const std::string& filename, bool is_path = false) {
+    try {
+        std::string dir = ".echo\\";
+        std::string ext = ".json";
+
+        std::string full_filename = is_path ? filename : dir + filename + ext;
+
+        std::ifstream file(full_filename);
+        if (!file.is_open()) {
+            error = "Error reading file '" + filename + "'!";
+            return;
+        }
+        error = "";
+
+        json j;
+        file >> j;
+
+        fps = j["fps"].get<double>();
+
+        inputs.clear();
+        for (auto& macro : j["macro"]) {
+            Frame input;
+
+            input.number = macro["frame"].get<unsigned>();
+            input.pressingDown = macro["player_1"]["click"].get<int>() != 2;
+
+            inputs.push_back(input);
+        }
+
+        file.close();
+    }
+    catch (std::exception& e) {
+        std::cout << "Caught exception: " << e.what() << std::endl;
+    }
+    catch (...) {
+        std::cout << "Caught unknown exception." << std::endl;
+    }
+}
+
+void Logic::sort_inputs() {
+    std::sort(inputs.begin(), inputs.end(), [](const Frame& a, const Frame& b) {
+        return a.number < b.number;
+        });
 }
 
 void Logic::handle_checkpoint_data() {
@@ -240,14 +270,14 @@ void Logic::handle_checkpoint_data() {
         if (checkpoints.size() > 0) {
             Checkpoint& data = checkpoints.back();
 
-
+            /*
             PLAYLAYER->m_player1->setRotation(data.player_1.rotation);
             PLAYLAYER->m_player1->m_yAccel = data.player_1.y_accel;
 
             if (PLAYLAYER->m_isDualMode) {
                 PLAYLAYER->m_player2->setRotation(data.player_2.rotation);
                 PLAYLAYER->m_player2->m_yAccel = data.player_2.y_accel;
-            }
+            }*/
 
         }
     }

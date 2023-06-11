@@ -22,6 +22,8 @@ public:
 
 	void renderer();
 
+	void conversion();
+
 	void sequential_replay();
 
 	bool show_reset_popup = false;

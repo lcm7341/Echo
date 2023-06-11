@@ -22,7 +22,6 @@ void renderFuncWrapper() {
 
 void initFuncWrapper() {
 	auto& instance = GUI::get();
-
 	instance.init();
 }
 

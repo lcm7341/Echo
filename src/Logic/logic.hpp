@@ -19,20 +19,18 @@ enum State {
 
 using namespace cocos2d;
 
-struct Input {
-	unsigned frame;
-	bool down;
-	bool player1;
+struct Frame {
+	unsigned number;
+	bool pressingDown;
 };
 
 struct CheckpointData {
-	double y_accel;
-	float rotation;
 	bool is_holding;
 	bool buffer_orb;
 };
 
 struct Checkpoint {
+	unsigned number;
 	CheckpointData player_1;
 	CheckpointData player_2;
 	size_t activated_objects_size;
@@ -41,17 +39,17 @@ struct Checkpoint {
 
 struct Replay {
 	std::string name;
-	int target_attempt;
 	int max_frame_offset;
-	std::vector<Input> actions;
+	std::vector<Frame> actions;
 };
 
 class Logic {
 	State state = IDLE;
 
 	unsigned replay_pos = 0;
+	unsigned removed_time = 0;
 
-	std::vector<Input> inputs;
+	std::vector<Frame> inputs;
 
 	std::vector<double> offsets;
 
@@ -121,7 +119,7 @@ public:
 
 	void offset_inputs(int lower, int upper);
 	
-	void play_input(Input& input);
+	void play_input(Frame& input);
 	
 	bool play_macro(int& offset);
 
@@ -133,8 +131,16 @@ public:
 		return replay_pos;
 	}
 
+	int get_removed() {
+		return removed_time;
+	}
+
 	void add_offset(double time) {
 		offsets.push_back(time);
+	}
+
+	void set_removed(double time) {
+		removed_time = time;
 	}
 
 	void remove_last_offset() {
@@ -147,11 +153,11 @@ public:
 		return 0.f;
 	}
 
-	std::vector<Input>& get_inputs() {
+	std::vector<Frame>& get_inputs() {
 		return inputs;
 	}
 
-	void add_input(Input input) {
+	void add_input(Frame input) {
 		inputs.push_back(input);
 	}
 
@@ -163,6 +169,8 @@ public:
 	bool swap_player_input = false;
 
 	void remove_inputs(unsigned frame);
+
+	void convert_file(const std::string& filename, bool is_path);
 
 	void write_file(const std::string& filename);
 
@@ -180,9 +188,8 @@ public:
 		if (checkpoints.size() > 0) {
 			return checkpoints.back();
 		}
-		return Checkpoint{ 0, 0 };
+		return Checkpoint{ 0, 0, 0 };
 	}
 
 	void handle_checkpoint_data();
-
 };
