@@ -443,30 +443,38 @@ void GUI::conversion() {
 
 void GUI::main() {
 	auto& logic = Logic::get();
+	const ImVec2 buttonSize = { get_width(48), 0 };
+	const ImVec2 fullWidth = { get_width(100), 0 };
 
 	if (ImGui::BeginTabItem("Main")) {
+		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Recording Controls");
+		ImGui::Separator();
+
 		if (ImGui::Button(logic.is_recording() ? "Stop Recording" : "Start Recording", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.5f, 0))) {
 			logic.toggle_recording();
 		}
 
 		ImGui::SameLine();
-		
-		//if (logic.get_inputs().empty()) ImGui::BeginDisabled();
 
 		if (ImGui::Button(logic.is_playing() ? "Stop Playing" : "Start Playing", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.48f, 0))) {
 			logic.toggle_playing();
 		}
-
+		ImGui::Spacing();
 		//ImGui::EndDisabled();
 
 		//ImGui::Text("Currently: %s", logic.is_idle() ? "Disabled" : logic.is_recording() ? "Recording" : "Playing");
 
+		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Playback Settings");
+		ImGui::Separator();
+
 		ImGui::Text("Frame: %i", logic.get_frame());
 
 		ImGui::PushItemFlag(ImGuiItemFlags_NoTabStop, true);
-		ImGui::SetNextItemWidth((ImGui::GetWindowContentRegionWidth() - ImGui::GetStyle().ItemSpacing.x) * 0.3f);
-		ImGui::InputFloat("###fps", &input_fps, 0, 0, "%.0f"); ImGui::SameLine();
+		ImGui::SetNextItemWidth(get_width(30));
+		ImGui::InputFloat("###fps", &input_fps, 0, 0, "%.0f");
 		ImGui::PopItemFlag();
+
+		ImGui::SameLine();
 		
 		if (ImGui::Button("Set FPS")) {
 			if (!logic.is_recording() && !logic.is_playing()) {
@@ -480,6 +488,10 @@ void GUI::main() {
 		ImGui::Checkbox("Real Time Mode", &logic.real_time_mode);
 
 		ImGui::Checkbox("Ignore actions during playback", &logic.ignore_actions_at_playback);
+
+		ImGui::Spacing();
+		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Macro Options");
+		ImGui::Separator();
 
 		ImGui::Checkbox("Show frame", &logic.show_frame); //move this somewhere else if u want
 
