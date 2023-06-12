@@ -6,7 +6,7 @@ project(Echo)
 
 add_custom_target(
     increment_version_number
-    COMMAND python ${CMAKE_CURRENT_SOURCE_DIR}/src/increment_version.py
+    COMMAND py ${CMAKE_CURRENT_SOURCE_DIR}/src/increment_version.py
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
@@ -16,7 +16,7 @@ file(
   src/*.hpp
 )
 
-add_library(Echo SHARED ${SOURCE_FILES})
+add_library(Echo SHARED ${SOURCE_FILES} "src/Internal/terminal.cpp" "src/Internal/terminal.cpp")
 
 add_dependencies(Echo
     increment_version_number

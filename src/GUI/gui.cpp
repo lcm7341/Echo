@@ -70,6 +70,7 @@ void GUI::draw() {
 			editor();
 			renderer();
 			sequential_replay();
+			conversion();
 		}
 
 		ImGui::End();
@@ -89,7 +90,7 @@ void GUI::editor() {
 	auto& inputs = logic.get_inputs();
 
 	static unsigned selectedInput = -1;
-	static Input newInput;
+	static Frame newInput;
 
 	const float editAreaHeight = 150.0f;
 
@@ -105,7 +106,7 @@ void GUI::editor() {
 				newInput = inputs[i];
 			}
 			ImGui::SameLine();
-			ImGui::Text("%s at %d", inputs[i].down ? "Click" : "Release", inputs[i].frame);
+			ImGui::Text("%s at %d", inputs[i].pressingDown ? "Click" : "Release", inputs[i].number);
 			ImGui::PopID();
 		}
 		ImGui::EndChild();
@@ -113,23 +114,22 @@ void GUI::editor() {
 
 		if (ImGui::Button("Add Input")) {
 			if (selectedInput == -1) {
-				inputs.push_back(Input());
+				inputs.push_back(Frame());
 				selectedInput = inputs.size() - 1;
 			}
 			else {
-				inputs.insert(inputs.begin() + selectedInput, Input());
+				inputs.insert(inputs.begin() + selectedInput, Frame());
 			}
-			newInput = Input();
+			newInput = Frame();
 		}
 
 		ImGui::Separator();
 		ImGui::BeginChild("##EditArea", ImVec2(0, editAreaHeight), true);
 		if (selectedInput >= 0 && selectedInput < inputs.size()) {
 			ImGui::Text("Editing Input %d", selectedInput + 1);
-			ImGui::InputInt("Frame", (int*)&newInput.frame);
-			ImGui::Checkbox("Down", &newInput.down);
+			ImGui::InputInt("Frame", (int*)&newInput.number);
+			ImGui::Checkbox("Down", &newInput.pressingDown);
 			ImGui::SameLine();
-			ImGui::Checkbox("Player 1", &newInput.player1);
 			if (ImGui::Button("Move Up") && selectedInput > 0) {
 				std::swap(inputs[selectedInput], inputs[selectedInput - 1]);
 				selectedInput--;
@@ -148,6 +148,16 @@ void GUI::editor() {
 			inputs[selectedInput] = newInput;
 		}
 		ImGui::EndChild();
+
+		ImGui::PushItemFlag(ImGuiItemFlags_NoTabStop, true);
+		ImGui::SetNextItemWidth((ImGui::GetWindowContentRegionWidth() - ImGui::GetStyle().ItemSpacing.x) * 0.3f);
+		ImGui::InputFloat("###frames", &offset_frames, 0, 0, "%.0f"); ImGui::SameLine();
+		ImGui::PopItemFlag();
+
+		if (ImGui::Button("Offset Replay")) {
+			logic.offset_inputs(-offset_frames, offset_frames);
+			offset_frames = 0;
+		}
 
 		ImGui::EndTabItem();
 	}
@@ -281,9 +291,9 @@ void GUI::sequential_replay() {
 				replay.max_frame_offset = all_offset;
 				for (auto& input : replay.actions) {
 					if (getRandomInt(1) == 1)
-						input.frame += getRandomInt(all_offset);
+						input.number += getRandomInt(all_offset);
 					else
-						input.frame -= getRandomInt(all_offset);
+						input.number -= getRandomInt(all_offset);
 				}
 			}
 		}
@@ -313,7 +323,6 @@ void GUI::sequential_replay() {
 			Replay& selected_replay = logic.replays[selected_replay_index.value()];
 
 			ImGui::Text("Name: %s", &selected_replay.name);
-			ImGui::InputInt("Target attempt", &selected_replay.target_attempt, 1, 10);
 			ImGui::InputInt("Max frame offset", &selected_replay.max_frame_offset, 1, 5);
 
 			if (ImGui::Button("Remove")) {
@@ -331,7 +340,7 @@ void GUI::sequential_replay() {
 			if (ImGui::Button("Add")) {
 				//HACK: idk if i'm allowed to  reformat half of the stuff in logic so i'll just do this.
 				//		if i am lmk bc it's kinda messy rn
-				std::vector<Input> old_actions = logic.get_inputs();
+				std::vector<Frame> old_actions = logic.get_inputs();
 
 				logic.get_inputs().clear();
 
@@ -342,7 +351,6 @@ void GUI::sequential_replay() {
 				auto inputs = logic.get_inputs();
 					logic.replays.push_back(Replay{
 							replay_name,
-							logic.replays.size() > 0 ? logic.replays[logic.replays.size() - 1].target_attempt + 1 : 1,
 							0,
 							inputs
 						});
@@ -378,20 +386,65 @@ void GUI::tools() {
 		fileDialog.SetTypeFilters({ ".echo", ".bin" });
 
 		if (ImGui::Button("Merge With Replay")) {
-
 			fileDialog.Open();
-
 		}
 
 		fileDialog.Display();
 
 		if (fileDialog.HasSelected())
 		{
-			std::vector<Input> before_inputs = logic.get_inputs();
+			std::vector<Frame> before_inputs = logic.get_inputs();
 			logic.read_file(fileDialog.GetSelected().string(), true);
 			logic.sort_inputs();
 			fileDialog.ClearSelected();
 		}
+
+
+		ImGui::Separator();
+		ImGui::SetNextItemWidth(get_width(50.f));
+		if (ImGui::Button("Uninject DLL")) {
+			// TO-DO
+			// Create custom loader so that we can fetch the dll's base address without needing 2000 lines of code to support every OS
+		}
+
+		ImGui::SameLine;
+		ImGui::SetNextItemWidth(get_width(50.f));
+		if (ImGui::Button("Open Debug Console")) {
+			// Allows for debugging, can be removed later
+			AllocConsole();
+			freopen("CONOUT$", "w", stdout);  // Redirects stdout to the new console
+			std::cout << "Opened Debugging Console" << std::endl;
+		}
+
+		ImGui::EndTabItem();
+	}
+}
+
+
+void GUI::conversion() {
+	auto& logic = Logic::get();
+
+	if (ImGui::BeginTabItem("Conversion")) {
+		ImGui::FileBrowser fileDialog;
+		fileDialog.SetTitle("Replays");
+		fileDialog.SetPwd(std::filesystem::path(".echo"));
+		fileDialog.SetTypeFilters({ ".json" });
+
+		if (ImGui::Button("Convert TASBot")) {
+			fileDialog.Open();
+		}
+
+		fileDialog.Display();
+
+		if (fileDialog.HasSelected())
+		{			                 
+			logic.convert_file(fileDialog.GetSelected().string(), true);
+			logic.sort_inputs();
+
+			fileDialog.ClearSelected();
+		}
+
+		ImGui::Separator();
 
 		ImGui::EndTabItem();
 	}
@@ -484,6 +537,13 @@ void GUI::main() {
 		ImGui::SetNextItemWidth(get_width(50.f));
 		if (ImGui::Button("Load File")) {
 			logic.read_file(logic.macro_name, false);
+		}
+
+		ImGui::SameLine();
+
+		ImGui::SetNextItemWidth(get_width(50.f));
+		if (ImGui::Button("Export .osu")) {
+			logic.write_osu_file(logic.macro_name);
 		}
 
 		if (logic.error != "") {
