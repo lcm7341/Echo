@@ -211,8 +211,7 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
             for (const auto& object : logic.activated_objects_p2)
                 object->m_hasBeenActivatedP2 = true;
         }
-    }
-    else {
+    } else {
         logic.activated_objects.clear();
         logic.activated_objects_p2.clear();
     }
@@ -257,6 +256,9 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
                 }
             }
         }
+        else {
+            logic.remove_inputs(0);
+        }
 
     }
 
@@ -264,7 +266,6 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
 }
 
 void* __fastcall Hooks::PlayLayer::exitLevel_h(gd::PlayLayer* self, int) {
-
     auto& logic = Logic::get();
 
     logic.checkpoints.clear();
@@ -289,7 +290,6 @@ int __fastcall Hooks::removeCheckpoint_h(gd::PlayLayer* self) {
     auto& logic = Logic::get();
 
     logic.remove_last_offset();
-
     logic.remove_last_checkpoint();
 
     return removeCheckpoint(self);
