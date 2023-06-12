@@ -16,7 +16,7 @@ file(
   src/*.hpp
 )
 
-add_library(Echo SHARED ${SOURCE_FILES} "src/Internal/terminal.cpp" "src/Internal/terminal.cpp")
+add_library(Echo SHARED ${SOURCE_FILES})
 
 add_dependencies(Echo
     increment_version_number
