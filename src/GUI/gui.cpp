@@ -195,15 +195,6 @@ void GUI::renderer() {
 		ImGui::SetNextItemWidth(windowWidth / 2.f);
 		ImGui::InputInt("Height", (int*)&logic.recorder.m_height, 0);
 
-		if (ImGui::Button("Set To Window Size")) {
-			auto windowSize = ImGui::GetIO().DisplaySize;
-			auto windowX = windowSize.x;
-			auto windowY = windowSize.y;
-
-			logic.recorder.m_height = windowY;
-			logic.recorder.m_width = windowX;
-		}
-
 		ImGui::Separator();
 
 		ImGui::InputInt("Video FPS", (int*)&logic.recorder.m_fps);

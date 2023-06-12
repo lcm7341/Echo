@@ -66,11 +66,6 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
         }
     }
     else {
-        if (gd::GameManager::sharedState()->getPlayLayer()) {
-            if (gd::GameManager::sharedState()->getPlayLayer()->m_player1->m_position.x != logic.last_xpos) {
-                logic.frame++;
-            }
-        }
         CCScheduler_update(self, dt);
     }
 }
@@ -89,24 +84,12 @@ void __fastcall Hooks::PlayLayer::updateVisibility_h(gd::PlayLayer* self) {
         updateVisibility(self);
 }
 
-std::string formatTime(float timeInSeconds) {
-    int minutes = static_cast<int>(timeInSeconds / 60);
-    int seconds = static_cast<int>(timeInSeconds) % 60;
-    int milliseconds = static_cast<int>((timeInSeconds - static_cast<int>(timeInSeconds)) * 100);
-
-    std::stringstream formattedTime;
-    formattedTime << std::setfill('0') << std::setw(2) << minutes << ":"
-        << std::setfill('0') << std::setw(2) << seconds;
-
-    return formattedTime.str();
-}
-
 void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
     auto& logic = Logic::get();
 
     static int offset = rand();
 
-    if (logic.is_playing() && !logic.get_inputs().empty()) {
+    if (logic.is_playing()) {
         if (logic.sequence_enabled) {
             if (logic.replay_index - 1 < logic.replays.size()) {
                 Replay& selected_replay = logic.replays[logic.replay_index - 1];
@@ -128,24 +111,19 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
 
     logic.recorder.m_song_start_offset = self->m_levelSettings->m_songStartOffset;
 
-    // Check if the frame counter label exists
-    auto frame_counter = (cocos2d::CCLabelBMFont*)self->getChildByTag(FRAME_LABEL_ID);
-    if (frame_counter) {
+    if (auto frame_counter = (cocos2d::CCLabelBMFont*)self->getChildByTag(FRAME_LABEL_ID)) {
         if (logic.show_frame) {
-            // Update the frame counter label with the current frame number
             char out[24];
-            sprintf_s(out, "Frame: %i", logic.get_frame());
+            sprintf_s(out, "Frame: %i", logic.get_frame()); //no fmt :(
             frame_counter->setString(out);
-        }
-        else {
-            // Remove and release the frame counter label if show_frame is false
+        } else {
             frame_counter->removeFromParent();
             frame_counter->release();
         }
     }
     else if (logic.show_frame) {
-        // Create a new frame counter label if it doesn't exist and show_frame is true
-        auto frame_counter2 = cocos2d::CCLabelBMFont::create("Frame: ", "chatFont.fnt");
+        //cpp is retarded and you can't shadow vars
+        auto frame_counter2 = cocos2d::CCLabelBMFont::create("Frame: ", "chatFont.fnt"); //probably leaks memory :p
         frame_counter2->setPosition(cocos2d::CCDirector::sharedDirector()->getWinSize().width / 2.0, 10.0);
         frame_counter2->setOpacity(100);
 
@@ -194,7 +172,6 @@ int __fastcall Hooks::PlayLayer::releaseButton_h(gd::PlayLayer* self, int, int i
 }
 
 int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
-    
     int ret = resetLevel(self); // was told i needed to do this, reason why beats me
 
     auto& logic = Logic::get();
@@ -218,10 +195,8 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
         logic.replay_index += 1;
     }
 
-    if (self->m_currentAttempt == 1) {
-        strcpy(logic.macro_name, self->m_level->levelName.c_str());
-        logic.recorder.video_name = logic.macro_name;
-    }
+    if (self->m_currentAttempt == 1)
+    strcpy(logic.macro_name, self->m_level->levelName.c_str());
 
     if (logic.is_playing()) {
         logic.set_replay_pos(logic.find_closest_input());
