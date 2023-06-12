@@ -203,6 +203,9 @@ public:
 		return fps;
 	}
 
+	float last_xpos = 0.0f;
+	unsigned int frame = 0;
+
 	bool click_both_players = false;
 	bool swap_player_input = false;
 
