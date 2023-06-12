@@ -69,7 +69,8 @@ struct CheckpointData {
 
 struct Checkpoint {
 	unsigned number;
-	CheckpointData player;
+	CheckpointData player_1_data;
+	CheckpointData player_2_data;
 	size_t activated_objects_size;
 	size_t activated_objects_p2_size;
 };

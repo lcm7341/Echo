@@ -269,7 +269,8 @@ void Logic::handle_checkpoint_data() {
     if (PLAYLAYER) {
         if (checkpoints.size() > 0) {
             Checkpoint& data = checkpoints.back();
-            data.player.apply(PLAYLAYER->m_player1);
+            data.player_1_data.apply(PLAYLAYER->m_player1);
+            data.player_2_data.apply(PLAYLAYER->m_player2);
         }
     }
 }

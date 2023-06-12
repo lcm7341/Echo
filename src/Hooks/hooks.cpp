@@ -277,9 +277,10 @@ int __fastcall Hooks::createCheckpoint_h(gd::PlayLayer* self) {
     auto& logic = Logic::get();
 
     logic.add_offset(self->m_time);
-    CheckpointData checkpointData = CheckpointData::create(self->m_player1);
+    CheckpointData checkpointData1 = CheckpointData::create(self->m_player1);
+    CheckpointData checkpointData2 = CheckpointData::create(self->m_player2);
 
-    logic.save_checkpoint({ logic.get_frame(), checkpointData, logic.activated_objects.size(), logic.activated_objects_p2.size()});
+    logic.save_checkpoint({ logic.get_frame(), checkpointData1, checkpointData2, logic.activated_objects.size(), logic.activated_objects_p2.size()});
 
     return createCheckpoint(self);
 }
