@@ -190,16 +190,8 @@ void Logic::handle_checkpoint_data() {
     if (PLAYLAYER) {
         if (checkpoints.size() > 0) {
             Checkpoint& data = checkpoints.back();
-
-            /*
-            PLAYLAYER->m_player1->setRotation(data.player_1.rotation);
-            PLAYLAYER->m_player1->m_yAccel = data.player_1.y_accel;
-
-            if (PLAYLAYER->m_isDualMode) {
-                PLAYLAYER->m_player2->setRotation(data.player_2.rotation);
-                PLAYLAYER->m_player2->m_yAccel = data.player_2.y_accel;
-            }*/
-
+            data.player_1_data.apply(PLAYLAYER->m_player1);
+            data.player_2_data.apply(PLAYLAYER->m_player2);
         }
     }
 }

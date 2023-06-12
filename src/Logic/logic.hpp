@@ -25,14 +25,52 @@ struct Frame {
 };
 
 struct CheckpointData {
-	bool is_holding;
-	bool buffer_orb;
+	double x_accel, y_accel, jump_accel;
+	bool is_upside_down, is_on_ground, is_dashing, is_sliding, is_rising;
+	float vehicle_size, player_speed, rotation_x, rotation_y, x_pos, y_pos;
+
+	static CheckpointData create(gd::PlayerObject* player) {
+		return {
+			player->m_xAccel,
+			player->m_yAccel,
+			player->m_jumpAccel,
+			player->m_isUpsideDown,
+			player->m_isOnGround,
+			player->m_isDashing,
+			player->m_isSliding,
+			player->m_isRising,
+			player->m_vehicleSize,
+			player->m_playerSpeed,
+			player->getRotationX(),
+			player->getRotationY(),
+			player->getPositionX(),
+			player->getPositionY()
+		};
+	}
+
+	void apply(gd::PlayerObject* player) {
+		player->m_xAccel = x_accel;
+		player->m_yAccel = y_accel;
+		player->m_jumpAccel = jump_accel;
+		player->m_isUpsideDown = is_upside_down;
+		player->m_isOnGround = is_on_ground;
+		player->m_isDashing = is_dashing;
+		player->m_isSliding = is_sliding;
+		player->m_isRising = is_rising;
+		player->m_vehicleSize = vehicle_size;
+		player->m_playerSpeed = player_speed;
+
+		player->setRotationX(rotation_x);
+		player->setRotationY(rotation_y);
+		player->setPositionX(x_pos);
+		player->setPositionY(y_pos);
+	}
 };
 
 struct Checkpoint {
 	unsigned number;
-	CheckpointData player_1;
-	CheckpointData player_2;
+	CheckpointData player_1_data;
+	CheckpointData player_2_data;
 	size_t activated_objects_size;
 	size_t activated_objects_p2_size;
 };

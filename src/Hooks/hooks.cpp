@@ -239,8 +239,7 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
             for (const auto& object : logic.activated_objects_p2)
                 object->m_hasBeenActivatedP2 = true;
         }
-    }
-    else {
+    } else {
         logic.activated_objects.clear();
         logic.activated_objects_p2.clear();
     }
@@ -285,6 +284,9 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
                 }
             }
         }
+        else {
+            logic.remove_inputs(0);
+        }
 
     }
 
@@ -292,7 +294,6 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
 }
 
 void* __fastcall Hooks::PlayLayer::exitLevel_h(gd::PlayLayer* self, int) {
-
     auto& logic = Logic::get();
 
     logic.checkpoints.clear();
@@ -305,17 +306,10 @@ int __fastcall Hooks::createCheckpoint_h(gd::PlayLayer* self) {
     auto& logic = Logic::get();
 
     logic.add_offset(self->m_time);
+    CheckpointData checkpointData1 = CheckpointData::create(self->m_player1);
+    CheckpointData checkpointData2 = CheckpointData::create(self->m_player2);
 
-    CheckpointData p1{ 0, 0 };
-    CheckpointData p2{ 0, 0 };
-
-    p1.is_holding = self->m_player1->m_isHolding;
-
-    if (self->m_isDualMode) {
-        p2.is_holding = self->m_player2->m_isHolding;
-    }
-
-    logic.save_checkpoint({ logic.get_frame(), p1, p2, logic.activated_objects.size(), logic.activated_objects_p2.size()});
+    logic.save_checkpoint({ logic.get_frame(), checkpointData1, checkpointData2, logic.activated_objects.size(), logic.activated_objects_p2.size()});
 
     return createCheckpoint(self);
 }
@@ -324,7 +318,6 @@ int __fastcall Hooks::removeCheckpoint_h(gd::PlayLayer* self) {
     auto& logic = Logic::get();
 
     logic.remove_last_offset();
-
     logic.remove_last_checkpoint();
 
     return removeCheckpoint(self);
