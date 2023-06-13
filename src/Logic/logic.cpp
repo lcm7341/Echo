@@ -50,8 +50,14 @@ void Logic::play_input(Frame& input) {
     if (PLAYLAYER) {
         if (input.pressingDown) {
             Hooks::PlayLayer::pushButton(PLAYLAYER, 0, !PLAYLAYER->m_player1 ^ gamevar);
+
+            if (click_both_players)
+                Hooks::PlayLayer::pushButton(PLAYLAYER, 0, !PLAYLAYER->m_player2 ^ gamevar);
         } else {
             Hooks::PlayLayer::releaseButton(PLAYLAYER, 0, !PLAYLAYER->m_player1 ^ gamevar);
+
+            if (click_both_players)
+                Hooks::PlayLayer::releaseButton(PLAYLAYER, 0, !PLAYLAYER->m_player2 ^ gamevar);
         }
     }
 }
