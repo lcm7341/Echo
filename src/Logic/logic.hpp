@@ -22,6 +22,13 @@ using namespace cocos2d;
 struct Frame {
 	unsigned number;
 	bool pressingDown;
+
+	// Save this even if unused, we may use it later for calculations
+	float yPosition;
+	float xPosition;
+	float rotation;
+	double yVelocity;
+	double xVelocity;
 };
 
 struct CheckpointData {
@@ -41,6 +48,7 @@ struct CheckpointData {
 			player->m_isRising,
 			player->m_vehicleSize,
 			player->m_playerSpeed,
+
 			player->getRotationX(),
 			player->getRotationY(),
 			player->getPositionX(),
@@ -196,6 +204,12 @@ public:
 	}
 
 	void add_input(Frame input) {
+		for (const auto& existingFrame : inputs) {
+			if (existingFrame.number == input.number) {
+				// If a frame with the same number already exists, do nothing and return
+				return;
+			}
+		}
 		inputs.push_back(input);
 	}
 
