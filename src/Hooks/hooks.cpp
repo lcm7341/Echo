@@ -217,6 +217,9 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
     if (logic.is_recording() || logic.is_playing())
         logic.handle_checkpoint_data();
 
+    if (logic.get_frame() == 0 && self->m_player1->m_isHolding) 
+        logic.record_input(true, true);
+
     // Section 3: Update Time and Activated Objects
     if (self->m_checkpoints->count() > 0) {
         self->m_time = logic.get_latest_offset();

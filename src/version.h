@@ -1,1 +1,1 @@
-#define ECHO_VERSION 528
+#define ECHO_VERSION 530
