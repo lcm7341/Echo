@@ -269,7 +269,7 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
                 }
             }
 
-            logic.remove_inputs(logic.get_frame());
+            logic.remove_inputs(logic.get_frame() - 1);
 
             if (!logic.get_inputs().empty()) {
                 if (logic.get_inputs().back().pressingDown) {
