@@ -129,6 +129,7 @@ void GUI::editor() {
 			ImGui::Text("Editing Input %d", selectedInput + 1);
 			ImGui::InputInt("Frame", (int*)&newInput.number);
 			ImGui::Checkbox("Down", &newInput.pressingDown);
+			ImGui::Checkbox("Player 2", &newInput.isPlayer2);
 			ImGui::SameLine();
 			if (ImGui::Button("Move Up") && selectedInput > 0) {
 				std::swap(inputs[selectedInput], inputs[selectedInput - 1]);
