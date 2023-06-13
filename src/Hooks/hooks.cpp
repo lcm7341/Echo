@@ -144,11 +144,6 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
         }
     }
     else if (logic.show_frame) {
-        // Create a new frame counter label if it doesn't exist and show_frame is true
-        auto frame_counter2 = cocos2d::CCLabelBMFont::create("Frame: ", "chatFont.fnt");
-        frame_counter2->setPosition(cocos2d::CCDirector::sharedDirector()->getWinSize().width / 2.0, 10.0);
-        frame_counter2->setOpacity(100);
-        //cpp is retarded and you can't shadow vars
         auto frame_counter2 = cocos2d::CCLabelBMFont::create("Frame: ", "chatFont.fnt"); //probably leaks memory :p
         frame_counter2->setPosition(cocos2d::CCDirector::sharedDirector()->getWinSize().width / 2.0, cocos2d::CCDirector::sharedDirector()->getWinSize().height / 2.0);
         frame_counter2->setOpacity(70);
@@ -204,7 +199,7 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
     }
 
     // INITIALIZES MACRO NAME
-    if (self->m_currentAttempt == 1)
+    if (self->m_currentAttempt == 1) {
         strcpy(logic.macro_name, self->m_level->levelName.c_str());
         logic.recorder.video_name = logic.macro_name;
     }
@@ -248,14 +243,11 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
 
         if (logic.get_inputs().empty()) return ret;
 
-        logic.remove_inputs(logic.get_frame() - 1);
-        std::cout << logic.get_frame() - 1 << std::endl;
-
         if (!logic.checkpoints.empty()) {
+            logic.set_removed(logic.get_removed() + (logic.get_frame() - logic.get_latest_checkpoint().number));
+
             bool currently_holdingP1 = self->m_player1->m_isHolding;
             bool currently_holdingP2 = self->m_player2->m_isHolding;
-
-            logic.set_removed(logic.get_removed() + (logic.get_frame() - logic.get_latest_checkpoint().number));
 
             if ((currently_holdingP1 && logic.get_inputs().empty()) || (!logic.get_inputs().empty() && logic.get_inputs().back().pressingDown != currently_holdingP1)) {
                 logic.add_input({ logic.get_frame(), true });
@@ -269,34 +261,38 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
                     pushButton(self, 0, true);
                 }
             }
+
+            logic.remove_inputs(logic.get_frame());
+
+            if (!logic.get_inputs().empty()) {
+                if (logic.get_inputs().back().pressingDown) {
+                    bool currently_holdingP1 = self->m_player1->m_isHolding;
+                    bool currently_holdingP2 = self->m_player2->m_isHolding;
+                    bool anyHolding = currently_holdingP1 || currently_holdingP2;
+
+                    if (!anyHolding) {
+                        logic.add_input({ logic.get_latest_checkpoint().number, false });
+                    }
+                }
+                if (!logic.get_inputs().back().pressingDown) {
+                    bool currently_holdingP1 = self->m_player1->m_isHolding;
+                    bool currently_holdingP2 = self->m_player2->m_isHolding;
+                    bool anyHolding = currently_holdingP1 || currently_holdingP2;
+
+                    if (anyHolding) {
+                        logic.add_input({ logic.get_latest_checkpoint().number, true });
+                    }
+                }
+            }
         }
         else {
+            logic.set_removed(0);
+            self->m_time = 0;
             logic.remove_inputs(0);
         }
 
     }
 
-    if (self->m_checkpoints->count() > 0) {
-        // Bug Fix (https://ptb.discord.com/channels/834227238764544061/872448528104951868/1117730732694044805)
-        if (logic.get_inputs().back().pressingDown) {
-            bool currently_holdingP1 = self->m_player1->m_isHolding;
-            bool currently_holdingP2 = self->m_player2->m_isHolding;
-            bool anyHolding = currently_holdingP1 || currently_holdingP2;
-
-            if (!anyHolding) {
-                logic.add_input({ logic.get_latest_checkpoint().number, false });
-            }
-        }
-        if (!logic.get_inputs().back().pressingDown) {
-            bool currently_holdingP1 = self->m_player1->m_isHolding;
-            bool currently_holdingP2 = self->m_player2->m_isHolding;
-            bool anyHolding = currently_holdingP1 || currently_holdingP2;
-
-            if (anyHolding) {
-                logic.add_input({ logic.get_latest_checkpoint().number, true });
-            }
-        }
-    }
     return ret;
 }
 
