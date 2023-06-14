@@ -126,6 +126,7 @@ public:
 	float max_cps = 15;
 
 	bool frame_advance = false;
+	bool no_overwrite = false;
 
 	std::vector<Replay> replays;
 	size_t replay_index;

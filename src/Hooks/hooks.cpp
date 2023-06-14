@@ -310,7 +310,9 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
 
         if (!logic.checkpoints.empty()) {
             logic.set_removed(logic.get_removed() + (logic.get_frame() - logic.get_latest_checkpoint().number));
-            logic.remove_inputs(logic.get_frame());
+
+            if (!logic.no_overwrite)
+                logic.remove_inputs(logic.get_frame());
 
             std::cout << logic.get_frame() << std::endl;
 
@@ -342,9 +344,10 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
             }
         }
         else {
-            logic.set_removed(0);
-            logic.remove_inputs(0);
+            if (!logic.no_overwrite)
+                logic.remove_inputs(0);
 
+            logic.set_removed(0);
             self->m_time = 0;
         }
 
