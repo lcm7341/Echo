@@ -217,9 +217,6 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
     if (logic.is_recording() || logic.is_playing())
         logic.handle_checkpoint_data();
 
-    if (logic.get_frame() == 0 && self->m_player1->m_isHolding) 
-        logic.record_input(true, true);
-
     // Section 3: Update Time and Activated Objects
     if (self->m_checkpoints->count() > 0) {
         self->m_time = logic.get_latest_offset();
@@ -252,52 +249,46 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
 
         if (!logic.checkpoints.empty()) {
             logic.set_removed(logic.get_removed() + (logic.get_frame() - logic.get_latest_checkpoint().number));
+            logic.remove_inputs(logic.get_frame());
 
-            bool currently_holdingP1 = self->m_player1->m_isHolding;
-            bool currently_holdingP2 = self->m_player2->m_isHolding;
-
-            if ((currently_holdingP1 && logic.get_inputs().empty()) || (!logic.get_inputs().empty() && logic.get_inputs().back().pressingDown != currently_holdingP1)) {
-                logic.add_input({ logic.get_frame(), true });
-                if (currently_holdingP1) {
-                    releaseButton(self, 0, true);
-                    pushButton(self, 0, true);
-                    self->m_player1->m_hasJustHeld = true;
-                }
-                else if (!logic.get_inputs().empty() && logic.get_inputs().back().pressingDown && currently_holdingP1 && logic.checkpoints.size()) {
-                    releaseButton(self, 0, true);
-                    pushButton(self, 0, true);
-                }
-            }
-
-            logic.remove_inputs(logic.get_frame() - 1);
+            std::cout << logic.get_frame() << std::endl;
 
             if (!logic.get_inputs().empty()) {
                 if (logic.get_inputs().back().pressingDown) {
                     bool currently_holdingP1 = self->m_player1->m_isHolding;
                     bool currently_holdingP2 = self->m_player2->m_isHolding;
-                    bool anyHolding = currently_holdingP1 || currently_holdingP2;
 
-                    if (!anyHolding) {
-                        logic.add_input({ logic.get_latest_checkpoint().number, false });
+                    if (currently_holdingP1) {
+                        logic.add_input({ logic.get_latest_checkpoint().number, false, false });
+                    }
+
+                    if (currently_holdingP2) {
+                        logic.add_input({ logic.get_latest_checkpoint().number, false, true });
                     }
                 }
                 if (!logic.get_inputs().back().pressingDown) {
                     bool currently_holdingP1 = self->m_player1->m_isHolding;
                     bool currently_holdingP2 = self->m_player2->m_isHolding;
-                    bool anyHolding = currently_holdingP1 || currently_holdingP2;
 
-                    if (anyHolding) {
-                        logic.add_input({ logic.get_latest_checkpoint().number, true });
+                    if (currently_holdingP1) {
+                        logic.add_input({ logic.get_latest_checkpoint().number, true, false });
+                    }
+
+                    if (currently_holdingP2) {
+                        logic.add_input({ logic.get_latest_checkpoint().number, true, true });
                     }
                 }
             }
         }
         else {
             logic.set_removed(0);
-            self->m_time = 0;
             logic.remove_inputs(0);
+
+            self->m_time = 0;
         }
 
+        if (self->m_player1->m_isHolding && logic.checkpoints.empty())
+            logic.record_input(true, true);
     }
 
     return ret;

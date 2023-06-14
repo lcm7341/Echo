@@ -257,7 +257,7 @@ void Logic::read_file(const std::string& filename, bool is_path = false) {
 void Logic::remove_inputs(unsigned frame) {
     auto it = std::remove_if(inputs.begin(), inputs.end(),
         [frame](const Frame& input) {
-            return input.number > frame;
+            return input.number >= frame;
         });
     inputs.erase(it, inputs.end());
 }
