@@ -22,6 +22,7 @@ using namespace cocos2d;
 struct Frame {
 	unsigned number;
 	bool pressingDown;
+	bool isPlayer2;
 
 	// Save this even if unused, we may use it later for calculations
 	float yPosition;
