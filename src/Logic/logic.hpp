@@ -123,6 +123,8 @@ public:
 	bool ignore_actions_at_playback = true;
 	bool show_frame = false;
 
+	bool frame_advance = false;
+
 	std::vector<Replay> replays;
 	size_t replay_index;
 	bool sequence_enabled = false;

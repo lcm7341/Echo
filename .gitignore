@@ -33,3 +33,5 @@
 CMakeSettings.json
 out/
 build/
+src/version.h
+src/version.txt

@@ -446,6 +446,14 @@ void GUI::conversion() {
 		}
 
 		ImGui::Separator();
+		
+
+		ImGui::SetNextItemWidth(get_width(50.f));
+		if (ImGui::Button("Export .osu")) {
+			logic.write_osu_file(logic.macro_name);
+		}
+
+		ImGui::Separator();
 
 		ImGui::EndTabItem();
 	}
@@ -550,13 +558,6 @@ void GUI::main() {
 		ImGui::SetNextItemWidth(get_width(50.f));
 		if (ImGui::Button("Load File")) {
 			logic.read_file(logic.macro_name, false);
-		}
-
-		ImGui::SameLine();
-
-		ImGui::SetNextItemWidth(get_width(50.f));
-		if (ImGui::Button("Export .osu")) {
-			logic.write_osu_file(logic.macro_name);
 		}
 
 		if (logic.error != "") {
