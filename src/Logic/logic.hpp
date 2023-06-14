@@ -207,12 +207,6 @@ public:
 	}
 
 	void add_input(Frame input) {
-		for (const auto& existingFrame : inputs) {
-			if (existingFrame.number == input.number) {
-				// If a frame with the same number already exists, do nothing and return
-				return;
-			}
-		}
 		inputs.push_back(input);
 	}
 
