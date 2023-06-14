@@ -45,11 +45,11 @@ void Logic::play_input(Frame& input) {
     // PLAYLAYER->m_player1->setPositionX(input.xPosition);
 
     if (PLAYLAYER->m_player1->m_yAccel != input.yVelocity) {
-        std::cout << "MISMATCH Y VELOCITY " << PLAYLAYER->m_player1->m_yAccel << ":" << input.yVelocity << std::endl;
+        printf("MISMATCH Y VELOCITY %f:%f", PLAYLAYER->m_player1->m_yAccel, input.yVelocity);
     }
 
     if (PLAYLAYER->m_player1->m_xAccel != input.xVelocity) {
-        std::cout << "MISMATCH X VELOCITY " << PLAYLAYER->m_player1->m_xAccel << ":" << input.xVelocity << std::endl;
+        printf("MISMATCH Y VELOCITY %f:%f", PLAYLAYER->m_player1->m_xAccel, input.xVelocity);
     }
 
     if (PLAYLAYER) {
@@ -360,10 +360,10 @@ void Logic::convert_file(const std::string& filename, bool is_path = false) {
         file.close();
     }
     catch (std::exception& e) {
-        std::cout << "Caught exception: " << e.what() << std::endl;
+        printf("Caught exception: %s", e.what());
     }
     catch (...) {
-        std::cout << "Caught unknown exception." << std::endl;
+        printf("Caught unknown exception.");
     }
 }
 

@@ -402,19 +402,13 @@ void GUI::tools() {
 
 
 		ImGui::Separator();
-		ImGui::SetNextItemWidth(get_width(50.f));
-		if (ImGui::Button("Uninject DLL")) {
-			// TO-DO
-			// Create custom loader so that we can fetch the dll's base address without needing 2000 lines of code to support every OS
-		}
 
-		ImGui::SameLine;
 		ImGui::SetNextItemWidth(get_width(50.f));
 		if (ImGui::Button("Open Debug Console")) {
 			// Allows for debugging, can be removed later
 			AllocConsole();
 			freopen("CONOUT$", "w", stdout);  // Redirects stdout to the new console
-			std::cout << "Opened Debugging Console" << std::endl;
+			std::printf("Opened Debugging Console");
 		}
 
 		ImGui::EndTabItem();

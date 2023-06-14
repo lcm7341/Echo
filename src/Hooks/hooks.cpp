@@ -323,7 +323,6 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
 
     // Section 4: Handle Recording
     if (logic.is_recording()) {
-        std::cout << "Test 1" << std::endl;
 
         if (logic.get_inputs().empty()) return ret;
 
@@ -333,7 +332,7 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
             if (!logic.no_overwrite)
                 logic.remove_inputs(logic.get_frame());
 
-            std::cout << logic.get_frame() << std::endl;
+            printf("%i", logic.get_frame());
 
             if (!logic.get_inputs().empty()) {
                 if (logic.get_inputs().back().pressingDown) {
