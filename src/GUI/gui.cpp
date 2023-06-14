@@ -477,10 +477,32 @@ void GUI::main() {
 		if (ImGui::Button(logic.is_playing() ? "Stop Playing" : "Start Playing", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.48f, 0))) {
 			logic.toggle_playing();
 		}
-		ImGui::Spacing();
-		//ImGui::EndDisabled();
+		// Change ImGui style for small gray buttons
+		ImGuiStyle& style = ImGui::GetStyle();
+		ImVec4 tempColor = style.Colors[ImGuiCol_Button];
+		ImVec4 tempColor2 = style.Colors[ImGuiCol_ButtonHovered];
+		ImVec4 tempColor3 = style.Colors[ImGuiCol_ButtonActive];
+		style.Colors[ImGuiCol_Button] = ImVec4(0.6f, 0.6f, 0.6f, 0);
+		style.Colors[ImGuiCol_ButtonHovered] = ImVec4(0.6f, 0.6f, 0.6f, 0.2f);
+		style.Colors[ImGuiCol_ButtonActive] = ImVec4(0.6f, 0.6f, 0.6f, 0.3f);
 
-		//ImGui::Text("Currently: %s", logic.is_idle() ? "Disabled" : logic.is_recording() ? "Recording" : "Playing");
+		// Smaller buttons for keybinds
+		if (ImGui::Button("Keybind: Q", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.5f, 30))) {
+			// logic to change left keybind
+		}
+
+		ImGui::SameLine();
+
+		if (ImGui::Button("Keybind: E", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.48f, 30))) {
+			// logic to change right keybind
+		}
+
+		// Revert ImGui style back to default
+		style.Colors[ImGuiCol_Button] = tempColor;
+		style.Colors[ImGuiCol_ButtonHovered] = tempColor2;
+		style.Colors[ImGuiCol_ButtonActive] = tempColor3;
+
+		ImGui::Spacing();
 
 		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Playback Settings");
 		ImGui::Separator();
@@ -505,13 +527,18 @@ void GUI::main() {
 
 		ImGui::Checkbox("Real Time Mode", &logic.real_time_mode);
 
+		ImGui::Checkbox("No Macro Overwrite", &logic.no_overwrite);
+
 		ImGui::Checkbox("Ignore actions during playback", &logic.ignore_actions_at_playback);
 
 		ImGui::Spacing();
 		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Macro Options");
 		ImGui::Separator();
 
-		ImGui::Checkbox("Show frame", &logic.show_frame); //move this somewhere else if u want
+		ImGui::Checkbox("Show frame", &logic.show_frame);
+		ImGui::SameLine();
+		ImGui::Checkbox("Show CPS", &logic.show_cps);
+		ImGui::DragFloat("Max CPS", &logic.max_cps, 0, 1, 100, "%.2f");
 
 		ImGui::Text("Macro Size: %i", logic.get_inputs().size());
 
