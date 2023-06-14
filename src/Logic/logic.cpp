@@ -28,6 +28,11 @@ void Logic::record_input(bool down, bool player1) {
     if (is_recording() || is_both()) {
         auto twoplayer = PLAYLAYER->m_levelSettings->m_twoPlayerMode;
         player1 ^= 1 && gd::GameManager::sharedState()->getGameVariable("0010"); // what the fuck ?
+        if (down) {
+            if (count_presses_in_last_second() > max_cps) {
+                cps_percents.push_back((PLAYLAYER->m_player1->getPositionX() / PLAYLAYER->m_endPortal->getPositionX()) * 100.f); // player %
+            }
+        }
         add_input({ get_frame(), down, twoplayer && !player1, PLAYLAYER->m_player1->getPositionY(), PLAYLAYER->m_player1->getPositionX(), PLAYLAYER->m_player1->getRotation(), PLAYLAYER->m_player1->m_yAccel, PLAYLAYER->m_player1->m_xAccel });
     }
 }
@@ -72,6 +77,12 @@ void Logic::play_input(Frame& input) {
                     Hooks::PlayLayer::releaseButton(PLAYLAYER, 0, !PLAYLAYER->m_player1 ^ gamevar);
                 }
         }
+        live_inputs.push_back(input);
+        if (input.pressingDown) {
+            if (count_presses_in_last_second() > max_cps) {
+                cps_percents.push_back((PLAYLAYER->m_player1->getPositionX() / PLAYLAYER->m_endPortal->getPositionX()) * 100.f); // player %
+            }
+        }
     }
 }
 
@@ -81,16 +92,51 @@ unsigned Logic::count_presses_in_last_second() {
         frame_limit = 0;
 
     unsigned press_count = 0;
-    for (auto it = inputs.rbegin(); it != inputs.rend(); ++it) {
-        if (it->number > frame_limit && it->pressingDown) {
-            press_count++;
+    if (is_recording()) {
+        for (auto it = inputs.rbegin(); it != inputs.rend(); ++it) {
+            if (it->number > frame_limit && it->pressingDown) {
+                press_count++;
+            }
+        }
+    }
+    else if (is_playing()) {
+        for (auto it = live_inputs.rbegin(); it != live_inputs.rend(); ++it) {
+            if (it->number > frame_limit && it->pressingDown) {
+                press_count++;
+            }
+        }
+    }
+    
+    if (press_count > max_cps) {
+        over_max_cps = true;
+    }
+
+    current_cps = press_count;
+
+    return press_count;
+}
+
+std::string Logic::highest_cps() {
+    int highest_cps = 0;
+    std::string to_return = "0";
+
+    for (Frame frames : inputs) {
+        int frame_limit = frames.number - get_fps() > 0 ? frames.number - get_fps() : 0;
+
+        unsigned press_count = 0;
+        for (Frame frame : inputs) {
+            if (frame.number >= frame_limit && frame.number <= frames.number && frame.pressingDown) {
+                press_count++;
+            }
+        }
+
+        if (press_count > highest_cps) {
+            highest_cps = press_count;
+            to_return = std::to_string(highest_cps) + " (" + std::to_string(frame_limit) + " to " + std::to_string(frames.number) + ")";
         }
     }
 
-    if (press_count > max_cps)
-        return max_cps;
-
-    return press_count;
+    return to_return;
 }
 
 void Logic::write_osu_file(const std::string& filename) {
@@ -222,12 +268,13 @@ void Logic::write_file(const std::string& filename) {
     for (auto& input : inputs) {
         w_b(input.number);
         w_b(input.pressingDown);
+        w_b(input.isPlayer2);
 
-        w_b(input.yPosition);
+        /*w_b(input.yPosition);
         w_b(input.xPosition);
         w_b(input.rotation);
         w_b(input.yVelocity);
-        w_b(input.xVelocity);
+        w_b(input.xVelocity);*/
     }
 
     file.close();
@@ -255,12 +302,13 @@ void Logic::read_file(const std::string& filename, bool is_path = false) {
         Frame input;
         r_b(input.number);
         r_b(input.pressingDown);
+        r_b(input.isPlayer2);
 
-        r_b(input.yPosition);
+        /*r_b(input.yPosition);
         r_b(input.xPosition);
         r_b(input.rotation);
         r_b(input.yVelocity);
-        r_b(input.xVelocity);
+        r_b(input.xVelocity);*/
 
         if (file.eof()) {
             break;

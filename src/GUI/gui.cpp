@@ -508,6 +508,7 @@ void GUI::main() {
 		ImGui::Separator();
 
 		ImGui::Text("Frame: %i", logic.get_frame());
+		ImGui::Text("Highest CPS: %s", logic.highest_cps_cached().c_str());
 
 		ImGui::PushItemFlag(ImGuiItemFlags_NoTabStop, true);
 		ImGui::SetNextItemWidth(get_width(30));
@@ -538,7 +539,18 @@ void GUI::main() {
 		ImGui::Checkbox("Show frame", &logic.show_frame);
 		ImGui::SameLine();
 		ImGui::Checkbox("Show CPS", &logic.show_cps);
-		ImGui::DragFloat("Max CPS", &logic.max_cps, 0, 1, 100, "%.2f");
+		ImGui::DragFloat("Max CPS", &logic.max_cps, 0.01, 1, 100, "%.2f");
+
+		if (!logic.cps_percents.empty()) {
+			std::string percents = "";
+			for (int i = 0; i < logic.cps_percents.size(); i++) {
+				percents += std::to_string(logic.cps_percents[i]);
+				percents.append(", ");
+			}
+			ImGui::Text("CPS Breaks: %s", percents.c_str());
+		}
+
+		ImGui::Separator();
 
 		ImGui::Text("Macro Size: %i", logic.get_inputs().size());
 

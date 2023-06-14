@@ -124,6 +124,34 @@ public:
 	bool show_frame = false;
 	bool show_cps = false;
 	float max_cps = 15;
+	float current_cps = 0;
+	bool over_max_cps = false;
+	std::vector<float> cps_percents; // level percents where the macro goes above 15cps
+
+	std::vector<Frame> live_inputs; // for CPS counter, this acts as if when playing back, ur recording
+
+	std::string highest_cps();
+
+	unsigned cached_inputs_hash = 0;
+	std::string cached_highest_cps = "0";
+	std::string highest_cps_cached() {
+		// Calculate a simple sum "hash" of the input frame numbers
+		unsigned inputs_hash = 0;
+		for (const Frame& frame : inputs)
+			inputs_hash += frame.number;
+
+		// Check if the inputs hash has changed
+		if (inputs_hash != cached_inputs_hash) {
+			std::string cps = highest_cps();
+
+			cached_highest_cps = cps;
+			cached_inputs_hash = inputs_hash;
+
+			return cps;
+		}
+
+		return cached_highest_cps;
+	}
 
 	bool frame_advance = false;
 	bool no_overwrite = false;

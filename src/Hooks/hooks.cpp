@@ -4,6 +4,7 @@
 
 #define FRAME_LABEL_ID 82369 + 1 //random value :P
 #define CPS_LABEL_ID 82369 + 2 //random value :P
+#define CPS_BREAKS_LABEL_ID 82369 + 3 //random value :P
 
 #define HOOK(o, f) MH_CreateHook(reinterpret_cast<void*>(gd::base + o), f##_h, reinterpret_cast<void**>(&f));
 // gracias matcool :]
@@ -193,12 +194,20 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
 
 
     auto cps_counter = (cocos2d::CCLabelBMFont*)self->getChildByTag(CPS_LABEL_ID);
+
     if (cps_counter) {
         if (logic.show_cps) {
             char out[24];
             sprintf_s(out, "CPS: %i", logic.count_presses_in_last_second());
             cps_counter->setString(out);
+            if (logic.current_cps > logic.max_cps) {
+                cps_counter->setColor({ 255, 0, 0 });
+            }
+            else if (logic.over_max_cps) {
+                cps_counter->setColor({ 255, 72, 0 });
+            }
         }
+
         else {
             cps_counter->removeFromParent();
             cps_counter->release();
@@ -246,6 +255,16 @@ int __fastcall Hooks::PlayLayer::releaseButton_h(gd::PlayLayer* self, int, int i
 int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
     int ret = resetLevel(self); // calling the original function
     auto& logic = Logic::get();
+
+    logic.live_inputs.clear();
+    logic.cps_percents.clear();
+    logic.over_max_cps = false;
+
+    auto cps_counter = (cocos2d::CCLabelBMFont*)self->getChildByTag(CPS_LABEL_ID);
+
+    if (cps_counter) {
+        cps_counter->setColor({ 255, 255, 255 });
+    }
 
     // Section 1: Handle Sequencing
     if (logic.sequence_enabled) {
