@@ -21,6 +21,8 @@ void Hooks::init_hooks() {
 
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x20D810), PlayLayer::exitLevel_h, reinterpret_cast<void**>(&PlayLayer::exitLevel));
 
+    MH_CreateHook(GetProcAddress(GetModuleHandleA("libcocos2d.dll"), "?dispatchKeyboardMSG@CCKeyboardDispatcher@cocos2d@@QAE_NW4enumKeyCodes@2@_N@Z"), CCKeyboardDispatcher_dispatchKeyboardMSG_h, reinterpret_cast<void**>(&CCKeyboardDispatcher_dispatchKeyboardMSG));;
+
     HOOK(0x205460, PlayLayer::updateVisibility)
 
     MH_CreateHook(GetProcAddress(GetModuleHandleA("libcocos2d.dll"), "?update@CCScheduler@cocos2d@@UAEXM@Z"), CCScheduler_update_h, reinterpret_cast<void**>(&CCScheduler_update));
@@ -33,6 +35,8 @@ float g_left_over = 0.f;
 
 void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
     auto& logic = Logic::get();
+
+    if (logic.frame_advance) return;
 
     if (logic.real_time_mode) {
         self->setTimeScale(logic.speedhack);
@@ -74,6 +78,27 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
         CCScheduler_update(self, dt);
     }
 }
+
+void __fastcall Hooks::CCKeyboardDispatcher_dispatchKeyboardMSG_h(CCKeyboardDispatcher* self, int, int key, bool down) {
+    auto& logic = Logic::get();
+
+    if (down) {
+        auto scheduler = gd::GameManager::sharedState()->getScheduler();
+
+        if (key == 'C') {
+            logic.frame_advance = false;
+            CCScheduler_update_h(scheduler, 0, 1.f / logic.fps);
+            logic.frame_advance = true;
+        }
+        else if (key == 'V') {
+            logic.frame_advance = !logic.frame_advance;
+        }
+    }
+
+
+    CCKeyboardDispatcher_dispatchKeyboardMSG(self, key, down);
+}
+
 
 bool __fastcall Hooks::PlayLayer::init_h(gd::PlayLayer* self, void* edx, gd::GJGameLevel* level) {
     auto& logic = Logic::get();

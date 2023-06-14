@@ -19,6 +19,8 @@ namespace Hooks {
 	inline int(__fastcall* createCheckpoint)(gd::PlayLayer* self); int __fastcall createCheckpoint_h(gd::PlayLayer* self);
 
 	inline int(__fastcall* removeCheckpoint)(gd::PlayLayer* self); int __fastcall removeCheckpoint_h(gd::PlayLayer* self);
+	
+	inline void(__thiscall* CCKeyboardDispatcher_dispatchKeyboardMSG)(CCKeyboardDispatcher* self, int key, bool down); void __fastcall CCKeyboardDispatcher_dispatchKeyboardMSG_h(CCKeyboardDispatcher* self, int, int key, bool down);
 
 	namespace PlayLayer {
 		inline bool(__thiscall* init)(gd::PlayLayer*, gd::GJGameLevel* level); bool __fastcall init_h(gd::PlayLayer* self, void* edx, gd::GJGameLevel* level);
@@ -34,7 +36,8 @@ namespace Hooks {
 		inline int(__thiscall* resetLevel)(gd::PlayLayer* self); int __fastcall resetLevel_h(gd::PlayLayer* self, int);
 
 		inline void* (__thiscall* exitLevel)(gd::PlayLayer* self); void* __fastcall exitLevel_h(gd::PlayLayer* self, int);
-	}
+
+		}
 
 	void init_hooks();
 }
