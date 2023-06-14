@@ -75,6 +75,24 @@ void Logic::play_input(Frame& input) {
     }
 }
 
+unsigned Logic::count_presses_in_last_second() {
+    unsigned frame_limit = round((((PLAYLAYER->m_time) * get_fps()) - get_removed()) - get_fps());
+    if (frame_limit > ((((PLAYLAYER->m_time) * get_fps()) - get_removed()) + 2))
+        frame_limit = 0;
+
+    unsigned press_count = 0;
+    for (auto it = inputs.rbegin(); it != inputs.rend(); ++it) {
+        if (it->number > frame_limit && it->pressingDown) {
+            press_count++;
+        }
+    }
+
+    if (press_count > max_cps)
+        return max_cps;
+
+    return press_count;
+}
+
 void Logic::write_osu_file(const std::string& filename) {
     std::string dir = ".echo\\osu\\" + filename + "\\";
     std::filesystem::create_directory(dir);

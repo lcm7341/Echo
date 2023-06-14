@@ -122,6 +122,8 @@ public:
 
 	bool ignore_actions_at_playback = true;
 	bool show_frame = false;
+	bool show_cps = false;
+	float max_cps = 15;
 
 	bool frame_advance = false;
 
@@ -213,6 +215,8 @@ public:
 	float get_fps() {
 		return fps;
 	}
+
+	unsigned count_presses_in_last_second();
 
 	float last_xpos = 0.0f;
 	unsigned int frame = 0;

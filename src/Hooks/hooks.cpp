@@ -3,11 +3,23 @@
 #include <chrono>
 
 #define FRAME_LABEL_ID 82369 + 1 //random value :P
+#define CPS_LABEL_ID 82369 + 2 //random value :P
 
 #define HOOK(o, f) MH_CreateHook(reinterpret_cast<void*>(gd::base + o), f##_h, reinterpret_cast<void**>(&f));
 // gracias matcool :]
 
 #define HOOK_COCOS(o, f) MH_CreateHook(GetProcAddress(GetModuleHandleA("libcocos2d.dll"), o), f##_h, reinterpret_cast<void**>(&f));
+
+void nopInstruction(void* address) {
+    DWORD oldProtect;
+    // Change the memory protection to PAGE_EXECUTE_READWRITE
+    if (VirtualProtect(address, 1, PAGE_EXECUTE_READWRITE, &oldProtect)) {
+        // Write the NOP instruction (0x90) to the address
+        *(BYTE*)address = 0x90;
+        // Restore the original memory protection
+        VirtualProtect(address, 1, oldProtect, &oldProtect);
+    }
+}
 
 void Hooks::init_hooks() {
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x1fb780), PlayLayer::init_h, reinterpret_cast<void**>(&PlayLayer::init));
@@ -28,6 +40,9 @@ void Hooks::init_hooks() {
     MH_CreateHook(GetProcAddress(GetModuleHandleA("libcocos2d.dll"), "?update@CCScheduler@cocos2d@@UAEXM@Z"), CCScheduler_update_h, reinterpret_cast<void**>(&CCScheduler_update));
 
     MH_EnableHook(MH_ALL_HOOKS);
+
+    nopInstruction((void*)(gd::base + 0x1E9A07));
+    nopInstruction((void*)(gd::base + 0x1E99F6));
 }
 
 bool g_disable_render = false;
@@ -174,6 +189,27 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
         frame_counter2->setOpacity(70);
 
         self->addChild(frame_counter2, 999, FRAME_LABEL_ID);
+    }
+
+
+    auto cps_counter = (cocos2d::CCLabelBMFont*)self->getChildByTag(CPS_LABEL_ID);
+    if (cps_counter) {
+        if (logic.show_cps) {
+            char out[24];
+            sprintf_s(out, "CPS: %i", logic.count_presses_in_last_second());
+            cps_counter->setString(out);
+        }
+        else {
+            cps_counter->removeFromParent();
+            cps_counter->release();
+        }
+    }
+    else if (logic.show_cps) {
+        auto cps_counter2 = cocos2d::CCLabelBMFont::create("CPS: ", "chatFont.fnt");
+        cps_counter2->setPosition(30, 20);
+        cps_counter2->setOpacity(70);
+
+        self->addChild(cps_counter2, 999, CPS_LABEL_ID);
     }
 
     if (self->m_isPaused) {
