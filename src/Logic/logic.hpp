@@ -135,12 +135,12 @@ public:
 	unsigned get_frame();
 	double get_time();
 
-	inline bool is_playing() { 
-		return state == PLAYING; 
+	inline bool is_playing() {
+		return state == PLAYING;
 	}
 
-	inline bool is_recording() { 
-		return state == RECORDING; 
+	inline bool is_recording() {
+		return state == RECORDING;
 	}
 
 	inline bool is_both() {
@@ -170,9 +170,9 @@ public:
 	void record_input(bool down, bool player1);
 
 	void offset_inputs(int lower, int upper);
-	
+
 	void play_input(Frame& input);
-	
+
 	bool play_macro(int& offset);
 
 	int find_closest_input();
@@ -218,6 +218,28 @@ public:
 	}
 
 	unsigned count_presses_in_last_second();
+	std::string highest_cps();
+
+	unsigned cached_inputs_hash = 0;
+	std::string cached_highest_cps = "0";
+	std::string highest_cps_cached() {
+		// Calculate a simple sum "hash" of the input frame numbers
+		unsigned inputs_hash = 0;
+		for (const Frame& frame : inputs)
+			inputs_hash += frame.number;
+
+		// Check if the inputs hash has changed
+		if (inputs_hash != cached_inputs_hash) {
+			std::string cps = highest_cps();
+
+			cached_highest_cps = cps;
+			cached_inputs_hash = inputs_hash;
+
+			return cps;
+		}
+
+		return cached_highest_cps;
+	}
 
 	float last_xpos = 0.0f;
 	unsigned int frame = 0;

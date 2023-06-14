@@ -508,6 +508,7 @@ void GUI::main() {
 		ImGui::Separator();
 
 		ImGui::Text("Frame: %i", logic.get_frame());
+		ImGui::Text("Highest CPS: %s", logic.highest_cps_cached().c_str());
 
 		ImGui::PushItemFlag(ImGuiItemFlags_NoTabStop, true);
 		ImGui::SetNextItemWidth(get_width(30));
