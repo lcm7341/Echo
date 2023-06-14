@@ -283,15 +283,15 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
                     bool currently_holdingP1 = self->m_player1->m_isHolding;
                     bool currently_holdingP2 = self->m_player2->m_isHolding;
 
-                    if (currently_holdingP1) {
+                    if (!currently_holdingP1) {
                         logic.add_input({ logic.get_latest_checkpoint().number, false, false });
                     }
 
-                    if (currently_holdingP2) {
+                    if (!currently_holdingP2 && self->m_level->twoPlayerMode) {
                         logic.add_input({ logic.get_latest_checkpoint().number, false, true });
                     }
                 }
-                if (!logic.get_inputs().back().pressingDown) {
+                else {
                     bool currently_holdingP1 = self->m_player1->m_isHolding;
                     bool currently_holdingP2 = self->m_player2->m_isHolding;
 
@@ -299,7 +299,7 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
                         logic.add_input({ logic.get_latest_checkpoint().number, true, false });
                     }
 
-                    if (currently_holdingP2) {
+                    if (currently_holdingP2 && self->m_level->twoPlayerMode) {
                         logic.add_input({ logic.get_latest_checkpoint().number, true, true });
                     }
                 }
