@@ -4,6 +4,7 @@
 #include <cocos2d.h>
 #include <imgui.h>
 #include <MinHook.h>
+#include <cmath>
 #include <sstream>
 #include <imgui-hook.hpp>
 #include <string_view>
@@ -86,7 +87,6 @@ float get_width(float percent) {
 	return (ImGui::GetWindowContentRegionWidth() - ImGui::GetStyle().ItemSpacing.x) * (percent / 100.f);
 }
 
-float offset = ImGui::GetColumnOffset() + 2.0f;
 void GUI::editor() {
 	auto& logic = Logic::get();
 
@@ -102,10 +102,18 @@ void GUI::editor() {
 	if (ImGui::BeginTabItem("Editor")) {
 		float firstChildHeight = 300;
 
-		ImGui::Columns(2, "##Columns", false); // false means no border
+		ImGui::Columns(2, "##Columns", false);
+
+		static bool isOffsetSet = false;
+
+		if (!isOffsetSet) {
+			ImGui::SetColumnOffset(1, ImGui::GetColumnOffset(1) + 5);
+			ImGui::SetColumnOffset(2, ImGui::GetColumnOffset(2) + 5);
+			isOffsetSet = true;
+		}
 
 		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Inputs");
-		ImGui::BeginChild("##List", ImVec2(0, firstChildHeight - ImGui::GetFrameHeightWithSpacing()), true);
+		ImGui::BeginChild("##List", ImVec2(0, firstChildHeight - ImGui::GetFrameHeightWithSpacing() + 1), true);
 		if (!inputs.empty()) {
 			for (unsigned i = 0; i < inputs.size(); i++) {
 				ImGui::PushID(i);
@@ -135,8 +143,6 @@ void GUI::editor() {
 		}
 
 		ImGui::NextColumn();
-		ImGui::SetColumnOffset(-1, 10);
-		printf("%f", ImGui::GetColumnOffset());
 
 		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "CPS Breaks");
 		ImGui::BeginChild("##List2", ImVec2(0, firstChildHeight), true);
@@ -145,7 +151,13 @@ void GUI::editor() {
 			try {
 				for (unsigned i = 0; i < logic.cps_percents.size(); i++) {
 					ImGui::PushID(i);
-					std::string percent = std::to_string(logic.cps_percents[i]);
+					if (std::_Is_nan(logic.cps_percents[i]) || std::isinf(logic.cps_percents[i])) {
+						printf("Invalid number at index %d\n", i);
+						continue;
+					}
+					std::ostringstream stream;
+					stream << std::fixed << std::setprecision(2) << logic.cps_percents[i];
+					std::string percent = stream.str();
 					ImGui::SameLine();
 					ImGui::Text("%s", percent);
 					ImGui::PopID();
@@ -193,9 +205,17 @@ void GUI::editor() {
 		ImGui::InputFloat("###frames", &offset_frames, 0, 0, "%.0f"); ImGui::SameLine();
 		ImGui::PopItemFlag();
 
-		if (ImGui::Button("Offset Replay")) {
+		if (ImGui::Button("Random Offset Frames")) {
 			logic.offset_inputs(-offset_frames, offset_frames);
 			offset_frames = 0;
+		}
+
+		ImGui::SameLine();
+
+		ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "(?)");
+
+		if (ImGui::IsItemHovered()) {
+			ImGui::SetTooltip("Randomly offsets all frames in replay from -input to +input");
 		}
 
 		ImGui::EndTabItem();
@@ -417,8 +437,27 @@ void GUI::tools() {
 		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Macro Tools");
 		ImGui::Separator();
 
-		ImGui::Checkbox("Click Both Players", &logic.click_both_players);
+		ImGui::FileBrowser fileDialog;
+		fileDialog.SetTitle("Replays");
+		fileDialog.SetPwd(std::filesystem::path(".echo"));
+		fileDialog.SetTypeFilters({ ".echo", ".bin" });
 
+		if (ImGui::Button("Merge With Replay")) {
+			fileDialog.Open();
+		}
+
+		fileDialog.Display();
+
+		if (fileDialog.HasSelected())
+		{
+			std::vector<Frame> before_inputs = logic.get_inputs();
+			logic.read_file(fileDialog.GetSelected().string(), true);
+			logic.sort_inputs();
+			fileDialog.ClearSelected();
+		}
+
+		ImGui::Checkbox("Click Both Players", &logic.click_both_players);
+		ImGui::SameLine();
 		ImGui::Checkbox("Swap Player Input", &logic.swap_player_input);
 
 		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Game Modifications");
@@ -443,26 +482,6 @@ void GUI::tools() {
 				noclip.deactivate();
 			}
 		}
-
-		ImGui::FileBrowser fileDialog;
-		fileDialog.SetTitle("Replays");
-		fileDialog.SetPwd(std::filesystem::path(".echo"));
-		fileDialog.SetTypeFilters({ ".echo", ".bin" });
-
-		if (ImGui::Button("Merge With Replay")) {
-			fileDialog.Open();
-		}
-
-		fileDialog.Display();
-
-		if (fileDialog.HasSelected())
-		{
-			std::vector<Frame> before_inputs = logic.get_inputs();
-			logic.read_file(fileDialog.GetSelected().string(), true);
-			logic.sort_inputs();
-			fileDialog.ClearSelected();
-		}
-
 
 		ImGui::Separator();
 
@@ -570,8 +589,6 @@ void GUI::main() {
 			style.Colors[ImGuiCol_ButtonHovered] = tempColor2;
 			style.Colors[ImGuiCol_ButtonActive] = tempColor3;
 		}
-
-		// Change ImGui style for small gray buttons
 
 		// Revert ImGui style back to default
 		style.Colors[ImGuiCol_Button] = tempColor;
