@@ -462,34 +462,53 @@ void GUI::main() {
 		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Recording Controls");
 		ImGui::Separator();
 
+		ImGuiStyle& style = ImGui::GetStyle();
+
+		ImVec4 tempColor = style.Colors[ImGuiCol_Button];
+		ImVec4 tempColor2 = style.Colors[ImGuiCol_ButtonHovered];
+		ImVec4 tempColor3 = style.Colors[ImGuiCol_ButtonActive];
+
+		if (logic.is_recording()) {
+			ImVec4 tempColor = style.Colors[ImGuiCol_Button];
+			ImVec4 tempColor2 = style.Colors[ImGuiCol_ButtonHovered];
+			ImVec4 tempColor3 = style.Colors[ImGuiCol_ButtonActive];
+			style.Colors[ImGuiCol_Button] = ImVec4(0.6f, 0.6f, 0.6f, 0.2f);
+			style.Colors[ImGuiCol_ButtonHovered] = ImVec4(0.6f, 0.6f, 0.6f, 0.3f);
+			style.Colors[ImGuiCol_ButtonActive] = ImVec4(0.6f, 0.6f, 0.6f, 0.4f);
+		}
+
 		if (ImGui::Button(logic.is_recording() ? "Stop Recording" : "Start Recording", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.5f, 0))) {
 			logic.toggle_recording();
 		}
 
+		if (logic.is_recording()) {
+			style.Colors[ImGuiCol_Button] = tempColor;
+			style.Colors[ImGuiCol_ButtonHovered] = tempColor2;
+			style.Colors[ImGuiCol_ButtonActive] = tempColor3;
+		}
+
 		ImGui::SameLine();
+
+		if (logic.is_playing()) {
+			ImVec4 tempColor = style.Colors[ImGuiCol_Button];
+			ImVec4 tempColor2 = style.Colors[ImGuiCol_ButtonHovered];
+			ImVec4 tempColor3 = style.Colors[ImGuiCol_ButtonActive];
+			style.Colors[ImGuiCol_Button] = ImVec4(0.6f, 0.6f, 0.6f, 0);
+			style.Colors[ImGuiCol_ButtonHovered] = ImVec4(0.6f, 0.6f, 0.6f, 0.2f);
+			style.Colors[ImGuiCol_ButtonActive] = ImVec4(0.6f, 0.6f, 0.6f, 0.3f);
+		}
 
 		if (ImGui::Button(logic.is_playing() ? "Stop Playing" : "Start Playing", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.48f, 0))) {
 			logic.toggle_playing();
 		}
+
+		if (logic.is_playing()) {
+			style.Colors[ImGuiCol_Button] = tempColor;
+			style.Colors[ImGuiCol_ButtonHovered] = tempColor2;
+			style.Colors[ImGuiCol_ButtonActive] = tempColor3;
+		}
+
 		// Change ImGui style for small gray buttons
-		ImGuiStyle& style = ImGui::GetStyle();
-		ImVec4 tempColor = style.Colors[ImGuiCol_Button];
-		ImVec4 tempColor2 = style.Colors[ImGuiCol_ButtonHovered];
-		ImVec4 tempColor3 = style.Colors[ImGuiCol_ButtonActive];
-		style.Colors[ImGuiCol_Button] = ImVec4(0.6f, 0.6f, 0.6f, 0);
-		style.Colors[ImGuiCol_ButtonHovered] = ImVec4(0.6f, 0.6f, 0.6f, 0.2f);
-		style.Colors[ImGuiCol_ButtonActive] = ImVec4(0.6f, 0.6f, 0.6f, 0.3f);
-
-		// Smaller buttons for keybinds
-		if (ImGui::Button("Keybind: Q", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.5f, 30))) {
-			// logic to change left keybind
-		}
-
-		ImGui::SameLine();
-
-		if (ImGui::Button("Keybind: E", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.48f, 30))) {
-			// logic to change right keybind
-		}
 
 		// Revert ImGui style back to default
 		style.Colors[ImGuiCol_Button] = tempColor;
@@ -504,19 +523,23 @@ void GUI::main() {
 		ImGui::Text("Frame: %i", logic.get_frame());
 		ImGui::Text("Highest CPS: %s", logic.highest_cps_cached().c_str());
 
+
+		if (logic.is_playing() || logic.is_recording()) ImGui::BeginDisabled();
 		ImGui::PushItemFlag(ImGuiItemFlags_NoTabStop, true);
 		ImGui::SetNextItemWidth(get_width(30));
 		ImGui::InputFloat("###fps", &input_fps, 0, 0, "%.0f");
 		ImGui::PopItemFlag();
 
 		ImGui::SameLine();
-		
+
 		if (ImGui::Button("Set FPS")) {
 			if (!logic.is_recording() && !logic.is_playing()) {
 				logic.fps = input_fps;
 			}
 			CCDirector::sharedDirector()->setAnimationInterval(1.f / logic.fps);
 		}
+
+		if (logic.is_playing() || logic.is_recording()) ImGui::EndDisabled();
 
 		ImGui::DragFloat("Speed", &logic.speedhack, 0.01, 0.01f, 100.f, "%.2f");
 

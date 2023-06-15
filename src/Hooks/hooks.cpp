@@ -233,6 +233,11 @@ int __fastcall Hooks::PlayLayer::pushButton_h(gd::PlayLayer* self, int, int idk,
 
     if (logic.is_playing() && logic.ignore_actions_at_playback) return 0;
 
+    if (logic.click_both_players) {
+        logic.record_input(true, !button);
+        pushButton(self, idk, !button);
+    }
+
     if (logic.swap_player_input) button = !button;
 
     logic.record_input(true, button);
@@ -244,6 +249,11 @@ int __fastcall Hooks::PlayLayer::releaseButton_h(gd::PlayLayer* self, int, int i
     auto& logic = Logic::get();
 
     if (logic.is_playing() && logic.ignore_actions_at_playback) return 0;
+
+    if (logic.click_both_players) {
+        logic.record_input(false, !button);
+        pushButton(self, idk, !button);
+    }
 
     if (logic.swap_player_input) button = !button;
 

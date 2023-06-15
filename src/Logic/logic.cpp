@@ -45,19 +45,15 @@ void Logic::play_input(Frame& input) {
     // PLAYLAYER->m_player1->setPositionX(input.xPosition);
 
     if (PLAYLAYER->m_player1->m_yAccel != input.yVelocity) {
-        printf("MISMATCH Y VELOCITY %f:%f", PLAYLAYER->m_player1->m_yAccel, input.yVelocity);
+        printf("MISMATCH Y VELOCITY %f:%f\n", PLAYLAYER->m_player1->m_yAccel, input.yVelocity);
     }
 
     if (PLAYLAYER->m_player1->m_xAccel != input.xVelocity) {
-        printf("MISMATCH Y VELOCITY %f:%f", PLAYLAYER->m_player1->m_xAccel, input.xVelocity);
+        printf("MISMATCH Y VELOCITY %f:%f\n", PLAYLAYER->m_player1->m_xAccel, input.xVelocity);
     }
 
     if (PLAYLAYER) {
         if (input.pressingDown) {
-            if (click_both_players) {
-                Hooks::PlayLayer::pushButton(PLAYLAYER, 0, !PLAYLAYER->m_player1 ^ gamevar);
-                Hooks::PlayLayer::pushButton(PLAYLAYER, 0, !PLAYLAYER->m_player2 ^ gamevar);
-            } else
             if (input.isPlayer2) {
                 Hooks::PlayLayer::pushButton(PLAYLAYER, 0, !PLAYLAYER->m_player2 ^ gamevar);
             }
@@ -65,11 +61,6 @@ void Logic::play_input(Frame& input) {
                 Hooks::PlayLayer::pushButton(PLAYLAYER, 0, !PLAYLAYER->m_player1 ^ gamevar);
             }
         } else {
-            if (click_both_players) {
-                Hooks::PlayLayer::releaseButton(PLAYLAYER, 0, !PLAYLAYER->m_player1 ^ gamevar);
-                Hooks::PlayLayer::releaseButton(PLAYLAYER, 0, !PLAYLAYER->m_player2 ^ gamevar);
-            }
-            else
                 if (input.isPlayer2) {
                     Hooks::PlayLayer::releaseButton(PLAYLAYER, 0, !PLAYLAYER->m_player2 ^ gamevar);
                 }
