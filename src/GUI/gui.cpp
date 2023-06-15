@@ -4,6 +4,7 @@
 #include <cocos2d.h>
 #include <imgui.h>
 #include <MinHook.h>
+#include <cmath>
 #include <sstream>
 #include <imgui-hook.hpp>
 #include <string_view>
@@ -98,12 +99,28 @@ void GUI::editor() {
 
 	if (ImGui::BeginTabItem("Editor")) {
 
-		ImGui::BeginChild("##List", ImVec2(0, 0), true);
-		for (unsigned i = 0; i < inputs.size(); i++) {
-			ImGui::PushID(i);
-			if (ImGui::Selectable("##Input", selectedInput == i, ImGuiSelectableFlags_AllowDoubleClick)) {
-				selectedInput = i;
-				newInput = inputs[i];
+		ImGui::Columns(2, "##Columns", false);
+
+		static bool isOffsetSet = false;
+
+		if (!isOffsetSet) {
+			ImGui::SetColumnOffset(1, ImGui::GetColumnOffset(1) + 5);
+			ImGui::SetColumnOffset(2, ImGui::GetColumnOffset(2) + 5);
+			isOffsetSet = true;
+		}
+
+		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Inputs");
+		ImGui::BeginChild("##List", ImVec2(0, firstChildHeight - ImGui::GetFrameHeightWithSpacing() + 1), true);
+		if (!inputs.empty()) {
+			for (unsigned i = 0; i < inputs.size(); i++) {
+				ImGui::PushID(i);
+				if (ImGui::Selectable("##Input", selectedInput == i, ImGuiSelectableFlags_AllowDoubleClick)) {
+					selectedInput = i;
+					newInput = inputs[i];
+				}
+				ImGui::SameLine();
+				ImGui::Text("%s at %d", inputs[i].pressingDown ? "Click" : "Release", inputs[i].number);
+				ImGui::PopID();
 			}
 			ImGui::SameLine();
 			ImGui::Text("%s at %d", inputs[i].pressingDown ? "Click" : "Release", inputs[i].number);
@@ -122,6 +139,37 @@ void GUI::editor() {
 			}
 			newInput = Frame();
 		}
+
+		ImGui::NextColumn();
+
+		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "CPS Breaks");
+		ImGui::BeginChild("##List2", ImVec2(0, firstChildHeight), true);
+
+		if (!logic.cps_percents.empty()) {
+			try {
+				for (unsigned i = 0; i < logic.cps_percents.size(); i++) {
+					ImGui::PushID(i);
+					if (std::_Is_nan(logic.cps_percents[i]) || std::isinf(logic.cps_percents[i])) {
+						printf("Invalid number at index %d\n", i);
+						continue;
+					}
+					std::ostringstream stream;
+					stream << std::fixed << std::setprecision(2) << logic.cps_percents[i];
+					std::string percent = stream.str();
+					ImGui::SameLine();
+					ImGui::Text("%s", percent);
+					ImGui::PopID();
+				}
+			} catch (const std::exception& e) {
+				printf("An error occurred: %s\n", e.what());
+			}
+		}
+		else {
+			ImGui::TextColored(ImVec4(1, 1, 1, 1), "No CPS Breaks");
+		}
+
+		ImGui::EndChild();
+		ImGui::Columns(1);
 
 		ImGui::Separator();
 		ImGui::BeginChild("##EditArea", ImVec2(0, editAreaHeight), true);
@@ -155,9 +203,17 @@ void GUI::editor() {
 		ImGui::InputFloat("###frames", &offset_frames, 0, 0, "%.0f"); ImGui::SameLine();
 		ImGui::PopItemFlag();
 
-		if (ImGui::Button("Offset Replay")) {
+		if (ImGui::Button("Random Offset Frames")) {
 			logic.offset_inputs(-offset_frames, offset_frames);
 			offset_frames = 0;
+		}
+
+		ImGui::SameLine();
+
+		ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "(?)");
+
+		if (ImGui::IsItemHovered()) {
+			ImGui::SetTooltip("Randomly offsets all frames in replay from -input to +input");
 		}
 
 		ImGui::EndTabItem();
@@ -376,10 +432,8 @@ void GUI::tools() {
 
 	if (ImGui::BeginTabItem("Tools")) {
 
-		ImGui::Checkbox("Click Both Players", &logic.click_both_players);
-
-		ImGui::Checkbox("Swap Player Input", &logic.swap_player_input);
-
+		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Macro Tools");
+		ImGui::Separator();
 
 		ImGui::FileBrowser fileDialog;
 		fileDialog.SetTitle("Replays");
@@ -399,6 +453,10 @@ void GUI::tools() {
 			logic.sort_inputs();
 			fileDialog.ClearSelected();
 		}
+
+		ImGui::Checkbox("Click Both Players", &logic.click_both_players);
+		ImGui::SameLine();
+		ImGui::Checkbox("Swap Player Input", &logic.swap_player_input);
 
 
 		ImGui::Separator();
@@ -507,8 +565,6 @@ void GUI::main() {
 			style.Colors[ImGuiCol_ButtonHovered] = tempColor2;
 			style.Colors[ImGuiCol_ButtonActive] = tempColor3;
 		}
-
-		// Change ImGui style for small gray buttons
 
 		// Revert ImGui style back to default
 		style.Colors[ImGuiCol_Button] = tempColor;
