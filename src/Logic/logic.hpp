@@ -130,29 +130,6 @@ public:
 
 	std::vector<Frame> live_inputs; // for CPS counter, this acts as if when playing back, ur recording
 
-	std::string highest_cps();
-
-	unsigned cached_inputs_hash = 0;
-	std::string cached_highest_cps = "0";
-	std::string highest_cps_cached() {
-		// Calculate a simple sum "hash" of the input frame numbers
-		unsigned inputs_hash = 0;
-		for (const Frame& frame : inputs)
-			inputs_hash += frame.number;
-
-		// Check if the inputs hash has changed
-		if (inputs_hash != cached_inputs_hash) {
-			std::string cps = highest_cps();
-
-			cached_highest_cps = cps;
-			cached_inputs_hash = inputs_hash;
-
-			return cps;
-		}
-
-		return cached_highest_cps;
-	}
-
 	bool frame_advance = false;
 	bool no_overwrite = false;
 

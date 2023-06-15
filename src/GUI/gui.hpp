@@ -1,4 +1,5 @@
 #pragma once
+#include "../Hack/opcode.hpp"
 
 class GUI {
 public:

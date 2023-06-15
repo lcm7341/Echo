@@ -107,29 +107,6 @@ unsigned Logic::count_presses_in_last_second() {
     return press_count;
 }
 
-std::string Logic::highest_cps() {
-    int highest_cps = 0;
-    std::string to_return = "0";
-
-    for (Frame frames : inputs) {
-        int frame_limit = frames.number - get_fps() > 0 ? frames.number - get_fps() : 0;
-
-        unsigned press_count = 0;
-        for (Frame frame : inputs) {
-            if (frame.number >= frame_limit && frame.number <= frames.number && frame.pressingDown) {
-                press_count++;
-            }
-        }
-
-        if (press_count > highest_cps) {
-            highest_cps = press_count;
-            to_return = std::to_string(highest_cps) + " (" + std::to_string(frame_limit) + " to " + std::to_string(frames.number) + ")";
-        }
-    }
-
-    return to_return;
-}
-
 // A cpu trojan
 std::string Logic::highest_cps() {
     int highest_cps = 0;
