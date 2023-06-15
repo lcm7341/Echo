@@ -107,6 +107,7 @@ unsigned Logic::count_presses_in_last_second() {
     return press_count;
 }
 
+// A cpu trojan
 std::string Logic::highest_cps() {
     int highest_cps = 0;
     std::string to_return = "0";
