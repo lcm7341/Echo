@@ -34,7 +34,7 @@ struct Frame {
 
 struct CheckpointData {
 	double x_accel, y_accel, jump_accel;
-	bool is_upside_down, is_on_ground, is_dashing, is_sliding, is_rising;
+	bool is_upside_down, is_on_ground, is_dashing, is_sliding, is_rising, black_orb;
 	float vehicle_size, player_speed, rotation_x, rotation_y, x_pos, y_pos;
 
 	static CheckpointData create(gd::PlayerObject* player) {
@@ -47,6 +47,8 @@ struct CheckpointData {
 			player->m_isDashing,
 			player->m_isSliding,
 			player->m_isRising,
+			player->m_blackOrb,
+
 			player->m_vehicleSize,
 			player->m_playerSpeed,
 
@@ -68,6 +70,7 @@ struct CheckpointData {
 		player->m_isRising = is_rising;
 		player->m_vehicleSize = vehicle_size;
 		player->m_playerSpeed = player_speed;
+		player->m_blackOrb = black_orb;
 
 		player->setRotationX(rotation_x);
 		player->setRotationY(rotation_y);
