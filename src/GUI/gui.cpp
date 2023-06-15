@@ -402,19 +402,13 @@ void GUI::tools() {
 
 
 		ImGui::Separator();
-		ImGui::SetNextItemWidth(get_width(50.f));
-		if (ImGui::Button("Uninject DLL")) {
-			// TO-DO
-			// Create custom loader so that we can fetch the dll's base address without needing 2000 lines of code to support every OS
-		}
 
-		ImGui::SameLine;
 		ImGui::SetNextItemWidth(get_width(50.f));
 		if (ImGui::Button("Open Debug Console")) {
 			// Allows for debugging, can be removed later
 			AllocConsole();
 			freopen("CONOUT$", "w", stdout);  // Redirects stdout to the new console
-			std::cout << "Opened Debugging Console" << std::endl;
+			std::printf("Opened Debugging Console");
 		}
 
 		ImGui::EndTabItem();
@@ -468,34 +462,53 @@ void GUI::main() {
 		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Recording Controls");
 		ImGui::Separator();
 
+		ImGuiStyle& style = ImGui::GetStyle();
+
+		ImVec4 tempColor = style.Colors[ImGuiCol_Button];
+		ImVec4 tempColor2 = style.Colors[ImGuiCol_ButtonHovered];
+		ImVec4 tempColor3 = style.Colors[ImGuiCol_ButtonActive];
+
+		if (logic.is_recording()) {
+			ImVec4 tempColor = style.Colors[ImGuiCol_Button];
+			ImVec4 tempColor2 = style.Colors[ImGuiCol_ButtonHovered];
+			ImVec4 tempColor3 = style.Colors[ImGuiCol_ButtonActive];
+			style.Colors[ImGuiCol_Button] = ImVec4(0.6f, 0.6f, 0.6f, 0.2f);
+			style.Colors[ImGuiCol_ButtonHovered] = ImVec4(0.6f, 0.6f, 0.6f, 0.3f);
+			style.Colors[ImGuiCol_ButtonActive] = ImVec4(0.6f, 0.6f, 0.6f, 0.4f);
+		}
+
 		if (ImGui::Button(logic.is_recording() ? "Stop Recording" : "Start Recording", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.5f, 0))) {
 			logic.toggle_recording();
 		}
 
+		if (logic.is_recording()) {
+			style.Colors[ImGuiCol_Button] = tempColor;
+			style.Colors[ImGuiCol_ButtonHovered] = tempColor2;
+			style.Colors[ImGuiCol_ButtonActive] = tempColor3;
+		}
+
 		ImGui::SameLine();
+
+		if (logic.is_playing()) {
+			ImVec4 tempColor = style.Colors[ImGuiCol_Button];
+			ImVec4 tempColor2 = style.Colors[ImGuiCol_ButtonHovered];
+			ImVec4 tempColor3 = style.Colors[ImGuiCol_ButtonActive];
+			style.Colors[ImGuiCol_Button] = ImVec4(0.6f, 0.6f, 0.6f, 0);
+			style.Colors[ImGuiCol_ButtonHovered] = ImVec4(0.6f, 0.6f, 0.6f, 0.2f);
+			style.Colors[ImGuiCol_ButtonActive] = ImVec4(0.6f, 0.6f, 0.6f, 0.3f);
+		}
 
 		if (ImGui::Button(logic.is_playing() ? "Stop Playing" : "Start Playing", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.48f, 0))) {
 			logic.toggle_playing();
 		}
+
+		if (logic.is_playing()) {
+			style.Colors[ImGuiCol_Button] = tempColor;
+			style.Colors[ImGuiCol_ButtonHovered] = tempColor2;
+			style.Colors[ImGuiCol_ButtonActive] = tempColor3;
+		}
+
 		// Change ImGui style for small gray buttons
-		ImGuiStyle& style = ImGui::GetStyle();
-		ImVec4 tempColor = style.Colors[ImGuiCol_Button];
-		ImVec4 tempColor2 = style.Colors[ImGuiCol_ButtonHovered];
-		ImVec4 tempColor3 = style.Colors[ImGuiCol_ButtonActive];
-		style.Colors[ImGuiCol_Button] = ImVec4(0.6f, 0.6f, 0.6f, 0);
-		style.Colors[ImGuiCol_ButtonHovered] = ImVec4(0.6f, 0.6f, 0.6f, 0.2f);
-		style.Colors[ImGuiCol_ButtonActive] = ImVec4(0.6f, 0.6f, 0.6f, 0.3f);
-
-		// Smaller buttons for keybinds
-		if (ImGui::Button("Keybind: Q", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.5f, 30))) {
-			// logic to change left keybind
-		}
-
-		ImGui::SameLine();
-
-		if (ImGui::Button("Keybind: E", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.48f, 30))) {
-			// logic to change right keybind
-		}
 
 		// Revert ImGui style back to default
 		style.Colors[ImGuiCol_Button] = tempColor;
@@ -510,19 +523,23 @@ void GUI::main() {
 		ImGui::Text("Frame: %i", logic.get_frame());
 		ImGui::Text("Highest CPS: %s", logic.highest_cps_cached().c_str());
 
+
+		if (logic.is_playing() || logic.is_recording()) ImGui::BeginDisabled();
 		ImGui::PushItemFlag(ImGuiItemFlags_NoTabStop, true);
 		ImGui::SetNextItemWidth(get_width(30));
 		ImGui::InputFloat("###fps", &input_fps, 0, 0, "%.0f");
 		ImGui::PopItemFlag();
 
 		ImGui::SameLine();
-		
+
 		if (ImGui::Button("Set FPS")) {
 			if (!logic.is_recording() && !logic.is_playing()) {
 				logic.fps = input_fps;
 			}
 			CCDirector::sharedDirector()->setAnimationInterval(1.f / logic.fps);
 		}
+
+		if (logic.is_playing() || logic.is_recording()) ImGui::EndDisabled();
 
 		ImGui::DragFloat("Speed", &logic.speedhack, 0.01, 0.01f, 100.f, "%.2f");
 
@@ -539,7 +556,18 @@ void GUI::main() {
 		ImGui::Checkbox("Show frame", &logic.show_frame);
 		ImGui::SameLine();
 		ImGui::Checkbox("Show CPS", &logic.show_cps);
-		ImGui::DragFloat("Max CPS", &logic.max_cps, 0, 1, 100, "%.2f");
+		ImGui::DragFloat("Max CPS", &logic.max_cps, 0.01, 1, 100, "%.2f");
+
+		if (!logic.cps_percents.empty()) {
+			std::string percents = "";
+			for (int i = 0; i < logic.cps_percents.size(); i++) {
+				percents += std::to_string(logic.cps_percents[i]);
+				percents.append(", ");
+			}
+			ImGui::Text("CPS Breaks: %s", percents.c_str());
+		}
+
+		ImGui::Separator();
 
 		ImGui::Text("Macro Size: %i", logic.get_inputs().size());
 
