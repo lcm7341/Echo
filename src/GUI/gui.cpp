@@ -48,8 +48,6 @@ namespace fs = std::filesystem;
 using namespace cocos2d;
 
 static ImFont* g_font = nullptr;
-static Opcode anticheatBypass(Cheat::AntiCheatBypass);
-static Opcode noclip(Cheat::NoClip);
 
 void GUI::draw() {
 	if (g_font) ImGui::PushFont(g_font);
@@ -86,7 +84,6 @@ float get_width(float percent) {
 	return (ImGui::GetWindowContentRegionWidth() - ImGui::GetStyle().ItemSpacing.x) * (percent / 100.f);
 }
 
-float offset = ImGui::GetColumnOffset() + 2.0f;
 void GUI::editor() {
 	auto& logic = Logic::get();
 
@@ -100,28 +97,20 @@ void GUI::editor() {
 	ImGui::SetNextWindowSizeConstraints(ImVec2(300, 300), ImVec2(300, 300));
 
 	if (ImGui::BeginTabItem("Editor")) {
-		float firstChildHeight = 300;
 
-		ImGui::Columns(2, "##Columns", false); // false means no border
-
-		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Inputs");
-		ImGui::BeginChild("##List", ImVec2(0, firstChildHeight - ImGui::GetFrameHeightWithSpacing()), true);
-		if (!inputs.empty()) {
-			for (unsigned i = 0; i < inputs.size(); i++) {
-				ImGui::PushID(i);
-				if (ImGui::Selectable("##Input", selectedInput == i, ImGuiSelectableFlags_AllowDoubleClick)) {
-					selectedInput = i;
-					newInput = inputs[i];
-				}
-				ImGui::SameLine();
-				ImGui::Text("%s at %d", inputs[i].pressingDown ? "Click" : "Release", inputs[i].number);
-				ImGui::PopID();
+		ImGui::BeginChild("##List", ImVec2(0, 0), true);
+		for (unsigned i = 0; i < inputs.size(); i++) {
+			ImGui::PushID(i);
+			if (ImGui::Selectable("##Input", selectedInput == i, ImGuiSelectableFlags_AllowDoubleClick)) {
+				selectedInput = i;
+				newInput = inputs[i];
 			}
-		}
-		else {
-			ImGui::TextColored(ImVec4(1, 1, 1, 1), "No Inputs");
+			ImGui::SameLine();
+			ImGui::Text("%s at %d", inputs[i].pressingDown ? "Click" : "Release", inputs[i].number);
+			ImGui::PopID();
 		}
 		ImGui::EndChild();
+
 
 		if (ImGui::Button("Add Input")) {
 			if (selectedInput == -1) {
@@ -133,33 +122,6 @@ void GUI::editor() {
 			}
 			newInput = Frame();
 		}
-
-		ImGui::NextColumn();
-		ImGui::SetColumnOffset(-1, 10);
-		printf("%f", ImGui::GetColumnOffset());
-
-		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "CPS Breaks");
-		ImGui::BeginChild("##List2", ImVec2(0, firstChildHeight), true);
-
-		if (!logic.cps_percents.empty()) {
-			try {
-				for (unsigned i = 0; i < logic.cps_percents.size(); i++) {
-					ImGui::PushID(i);
-					std::string percent = std::to_string(logic.cps_percents[i]);
-					ImGui::SameLine();
-					ImGui::Text("%s", percent);
-					ImGui::PopID();
-				}
-			} catch (const std::exception& e) {
-				printf("An error occurred: %s\n", e.what());
-			}
-		}
-		else {
-			ImGui::TextColored(ImVec4(1, 1, 1, 1), "No CPS Breaks");
-		}
-
-		ImGui::EndChild();
-		ImGui::Columns(1);
 
 		ImGui::Separator();
 		ImGui::BeginChild("##EditArea", ImVec2(0, editAreaHeight), true);
@@ -414,35 +376,10 @@ void GUI::tools() {
 
 	if (ImGui::BeginTabItem("Tools")) {
 
-		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Macro Tools");
-		ImGui::Separator();
-
 		ImGui::Checkbox("Click Both Players", &logic.click_both_players);
 
 		ImGui::Checkbox("Swap Player Input", &logic.swap_player_input);
 
-		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Game Modifications");
-		ImGui::Separator();
-
-		bool antiCheatBypass = anticheatBypass.isActivated();
-		if (ImGui::Checkbox("Disable Anticheat", &antiCheatBypass)) {
-			if (antiCheatBypass) {
-				anticheatBypass.activate();
-			}
-			else {
-				anticheatBypass.deactivate();
-			}
-		}
-
-		bool noclipActivated = noclip.isActivated();
-		if (ImGui::Checkbox("Toggle Noclip", &noclipActivated)) {
-			if (noclipActivated) {
-				noclip.activate();
-			}
-			else {
-				noclip.deactivate();
-			}
-		}
 
 		ImGui::FileBrowser fileDialog;
 		fileDialog.SetTitle("Replays");
@@ -620,6 +557,15 @@ void GUI::main() {
 		ImGui::SameLine();
 		ImGui::Checkbox("Show CPS", &logic.show_cps);
 		ImGui::DragFloat("Max CPS", &logic.max_cps, 0.01, 1, 100, "%.2f");
+
+		if (!logic.cps_percents.empty()) {
+			std::string percents = "";
+			for (int i = 0; i < logic.cps_percents.size(); i++) {
+				percents += std::to_string(logic.cps_percents[i]);
+				percents.append(", ");
+			}
+			ImGui::Text("CPS Breaks: %s", percents.c_str());
+		}
 
 		ImGui::Separator();
 

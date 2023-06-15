@@ -34,7 +34,7 @@ struct Frame {
 
 struct CheckpointData {
 	double x_accel, y_accel, jump_accel;
-	bool is_upside_down, is_on_ground, is_dashing, is_sliding, is_rising, black_orb;
+	bool is_upside_down, is_on_ground, is_dashing, is_sliding, is_rising;
 	float vehicle_size, player_speed, rotation_x, rotation_y, x_pos, y_pos;
 
 	static CheckpointData create(gd::PlayerObject* player) {
@@ -47,8 +47,6 @@ struct CheckpointData {
 			player->m_isDashing,
 			player->m_isSliding,
 			player->m_isRising,
-			player->m_blackOrb,
-
 			player->m_vehicleSize,
 			player->m_playerSpeed,
 
@@ -70,7 +68,6 @@ struct CheckpointData {
 		player->m_isRising = is_rising;
 		player->m_vehicleSize = vehicle_size;
 		player->m_playerSpeed = player_speed;
-		player->m_blackOrb = black_orb;
 
 		player->setRotationX(rotation_x);
 		player->setRotationY(rotation_y);
@@ -133,6 +130,29 @@ public:
 
 	std::vector<Frame> live_inputs; // for CPS counter, this acts as if when playing back, ur recording
 
+	std::string highest_cps();
+
+	unsigned cached_inputs_hash = 0;
+	std::string cached_highest_cps = "0";
+	std::string highest_cps_cached() {
+		// Calculate a simple sum "hash" of the input frame numbers
+		unsigned inputs_hash = 0;
+		for (const Frame& frame : inputs)
+			inputs_hash += frame.number;
+
+		// Check if the inputs hash has changed
+		if (inputs_hash != cached_inputs_hash) {
+			std::string cps = highest_cps();
+
+			cached_highest_cps = cps;
+			cached_inputs_hash = inputs_hash;
+
+			return cps;
+		}
+
+		return cached_highest_cps;
+	}
+
 	bool frame_advance = false;
 	bool no_overwrite = false;
 
@@ -143,12 +163,12 @@ public:
 	unsigned get_frame();
 	double get_time();
 
-	inline bool is_playing() {
-		return state == PLAYING;
+	inline bool is_playing() { 
+		return state == PLAYING; 
 	}
 
-	inline bool is_recording() {
-		return state == RECORDING;
+	inline bool is_recording() { 
+		return state == RECORDING; 
 	}
 
 	inline bool is_both() {
@@ -178,9 +198,9 @@ public:
 	void record_input(bool down, bool player1);
 
 	void offset_inputs(int lower, int upper);
-
+	
 	void play_input(Frame& input);
-
+	
 	bool play_macro(int& offset);
 
 	int find_closest_input();
@@ -226,28 +246,6 @@ public:
 	}
 
 	unsigned count_presses_in_last_second();
-	std::string highest_cps();
-
-	unsigned cached_inputs_hash = 0;
-	std::string cached_highest_cps = "0";
-	std::string highest_cps_cached() {
-		// Calculate a simple sum "hash" of the input frame numbers
-		unsigned inputs_hash = 0;
-		for (const Frame& frame : inputs)
-			inputs_hash += frame.number;
-
-		// Check if the inputs hash has changed
-		if (inputs_hash != cached_inputs_hash) {
-			std::string cps = highest_cps();
-
-			cached_highest_cps = cps;
-			cached_inputs_hash = inputs_hash;
-
-			return cps;
-		}
-
-		return cached_highest_cps;
-	}
 
 	float last_xpos = 0.0f;
 	unsigned int frame = 0;
