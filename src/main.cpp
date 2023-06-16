@@ -5,6 +5,7 @@
 #include <filesystem>
 #include "Logic/logic.hpp"
 #include "nlohmann/json.hpp"
+#include "Hack/audiopitchHack.hpp"
 
 using json = nlohmann::json;
 
@@ -93,6 +94,7 @@ void readConfig() {
 DWORD WINAPI my_thread(void* hModule) {
 	MH_Initialize();
 	auto& instance = GUI::get();
+	AudiopitchHack::getInstance().initialize();
 
 	readConfig();
 

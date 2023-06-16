@@ -21,6 +21,10 @@
 #include <random>
 #include "../imfilebrowser.h"
 #include "../Hack/audiopitchHack.hpp"
+#include "../Logic/convertible.h"
+#include "../Logic/Conversions/tasbot.h"
+#include "../Logic/Conversions/mhr.h"
+#include "../Logic/Conversions/osu.h"
 
 int getRandomInt(int N) {
 	// Seed the random number generator with current time
@@ -522,39 +526,69 @@ void GUI::tools() {
 	}
 }
 
+std::map<std::string, std::shared_ptr<Convertible>> options = {
+	{"TASBot", std::make_shared<TASBot>()},
+	{"Osu", std::make_shared<Osu>()},
+	{"MHR", std::make_shared<MHR>()}
+};
 
 void GUI::conversion() {
 	auto& logic = Logic::get();
 
 	if (ImGui::BeginTabItem("Conversion")) {
-		ImGui::FileBrowser fileDialog;
-		fileDialog.SetTitle("Replays");
-		fileDialog.SetPwd(std::filesystem::path(".echo"));
-		fileDialog.SetTypeFilters({ ".json" });
+		static std::string current_option = "TASBot";
+		if (ImGui::BeginCombo("Options", current_option.c_str())) {
+			for (auto& option : options) {
+				bool is_selected = (current_option == option.first);
+				if (ImGui::Selectable(option.first.c_str(), is_selected)) {
+					current_option = option.first;
+				}
 
-		if (ImGui::Button("Convert TASBot")) {
+				if (is_selected) {
+					ImGui::SetItemDefaultFocus();
+				}
+			}
+			ImGui::EndCombo();
+		}
+
+		ImGui::SameLine(); 
+
+		ImGui::FileBrowser fileDialog;
+		if (ImGui::Button("Import")) {
 			fileDialog.Open();
 		}
+		ImGui::SameLine();
+		if (ImGui::Button("Export")) {
+			std::string filename = logic.macro_name;
+			try {
+				options[current_option]->export_to(filename);
+				logic.conversion_message = "Success! Exported " + filename + " as a " + options[current_option]->get_type_filter() + " file";
+			}
+			catch (std::runtime_error& e) {
+				logic.conversion_message = "Error! Could not export as " + options[current_option]->get_type_filter();
+			}
+		}
 
+		// Setup and use the FileBrowser dialog
+		fileDialog.SetTitle("Replays");
+		fileDialog.SetPwd(std::filesystem::path(".echo"));
+		fileDialog.SetTypeFilters({ options[current_option]->get_type_filter() });
 		fileDialog.Display();
 
-		if (fileDialog.HasSelected())
-		{
-			logic.convert_file(fileDialog.GetSelected().string(), true);
-			logic.sort_inputs();
-
-			fileDialog.ClearSelected();
+		if (fileDialog.HasSelected()) {
+			try {
+				options[current_option]->import(fileDialog.GetSelected().string());
+				logic.sort_inputs();
+				fileDialog.ClearSelected();
+				logic.conversion_message = "Success! Imported replay as a " + current_option + " file";
+			}
+			catch (std::runtime_error& e) {
+				logic.conversion_message = "Error! Could not import " + fileDialog.GetSelected().filename().string();
+			}
 		}
 
 		ImGui::Separator();
-
-
-		ImGui::SetNextItemWidth(get_width(50.f));
-		if (ImGui::Button("Export .osu")) {
-			logic.write_osu_file(logic.macro_name);
-		}
-
-		ImGui::Separator();
+		ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 1.0f), "%s", logic.conversion_message);
 
 		ImGui::EndTabItem();
 	}
@@ -713,14 +747,34 @@ void GUI::main() {
 
 		ImGui::SetNextItemWidth((ImGui::GetWindowContentRegionWidth() - ImGui::GetStyle().ItemSpacing.x) * (50.f / 100.f));
 		if (ImGui::Button("Save File")) {
-			logic.write_file(logic.macro_name);
+			if (logic.use_json_for_files) {
+				logic.write_file_json(logic.macro_name);
+			}
+			else {
+				logic.write_file(logic.macro_name);
+			}
 		}
 
 		ImGui::SameLine();
 
 		ImGui::SetNextItemWidth(get_width(50.f));
 		if (ImGui::Button("Load File")) {
-			logic.read_file(logic.macro_name, false);
+			if (logic.use_json_for_files) {
+				logic.read_file_json(logic.macro_name, false);
+			}
+			else {
+				logic.read_file(logic.macro_name, false);
+			}
+		}
+
+		ImGui::SameLine();
+
+		ImGui::Checkbox("Use JSON", &logic.use_json_for_files);
+
+		ImGui::SameLine();
+		bool useBinary = !logic.use_json_for_files;
+		if (ImGui::Checkbox("Use Binary", &useBinary)) {
+			logic.use_json_for_files = !useBinary;
 		}
 
 		if (logic.error != "") {

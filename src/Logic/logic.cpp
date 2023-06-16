@@ -130,74 +130,8 @@ std::string Logic::highest_cps() {
     return to_return;
 }
 
-
-void Logic::write_osu_file(const std::string& filename) {
-    std::string dir = ".echo\\osu\\" + filename + "\\";
-    std::filesystem::create_directory(dir);
-    std::string ext = ".osu";
-    std::string full_filename = dir + filename + ext;
-
-    std::ofstream osu_file(full_filename);
-    if (!osu_file.is_open()) {
-        error = "Error writing file '" + filename + "'!";
-        return;
-    }
-    error = "";
-
-    // osu file header
-    osu_file << "osu file format v14\n\n";
-
-    // General section
-    osu_file << "[General]\n";
-    osu_file << "StackLeniency: 0.7\n";
-    osu_file << "AudioLeadIn: 0\n";
-    osu_file << "Mode: 1\n"; // Mode 1 is for Taiko
-    osu_file << "Countdown: 0\n"; // No countdown before the song starts
-    osu_file << "\n";
-
-    // Metadata section
-    osu_file << "[Metadata]\n";
-    osu_file << "Title:" + filename + "\n";
-    osu_file << "Artist:EchoBot\n";
-    osu_file << "Creator:EchoBot\n";
-    osu_file << "Version:1.0\n";
-    osu_file << "\n";
-
-    // Difficulty section
-    osu_file << "[Difficulty]\n";
-    osu_file << "HPDrainRate:5\n";
-    osu_file << "CircleSize:5\n";
-    osu_file << "OverallDifficulty:5\n";
-    osu_file << "\n";
-
-    // TimingPoints section
-    osu_file << "[TimingPoints]\n";
-    osu_file << "0,500,4,1,0,100,1,0\n";
-    osu_file << "\n";
-
-    // HitObjects section
-    osu_file << "[HitObjects]\n";
-
-    for (auto& input : inputs) {
-
-        if (input.pressingDown) {
-            // Calculate the time in milliseconds
-            int time = round(input.number / get_fps() * 1000 * (2 - speedhack));
-
-            // For Taiko mode, there's no positional data needed.
-            // The format for a single hit object is: time,x,y,type,hitSound,objectParams,hitSample
-            // type: 1 for a regular hit, 2 for a drumroll (slider in standard osu), 8 for a spinner.
-            // hitSound: 0 for a normal hit sound, 2 for whistle, 4 for finish, 8 for clap.
-            osu_file << "256,192," << time << ",1,0,0:0:0:0:\n";
-        }
-    }
-
-    osu_file.close();
-}
-
 int Logic::find_closest_input() {
     if (inputs.empty()) {
-        // Return -1 or throw an exception if there are no inputs.
         return -1;
     }
 
@@ -322,43 +256,78 @@ void Logic::remove_inputs(unsigned frame) {
     inputs.erase(it, inputs.end());
 }
 
-void Logic::convert_file(const std::string& filename, bool is_path = false) {
-    try {
-        std::string dir = ".echo\\";
-        std::string ext = ".json";
+void Logic::write_file_json(const std::string& filename) {
+    std::string dir = ".echo\\";
+    std::string ext = ".json";
 
-        std::string full_filename = is_path ? filename : dir + filename + ext;
+    std::string full_filename = dir + filename + ext;
 
-        std::ifstream file(full_filename);
-        if (!file.is_open()) {
-            error = "Error reading file '" + filename + "'!";
-            return;
-        }
-        error = "";
-
-        json j;
-        file >> j;
-
-        fps = j["fps"].get<double>();
-
-        inputs.clear();
-        for (auto& macro : j["macro"]) {
-            Frame input;
-
-            input.number = macro["frame"].get<unsigned>();
-            input.pressingDown = macro["player_1"]["click"].get<int>() != 2;
-
-            inputs.push_back(input);
-        }
-
-        file.close();
+    std::ofstream file(full_filename);
+    if (!file.is_open()) {
+        error = "Error writing file '" + filename + "'!";
+        return;
     }
-    catch (std::exception& e) {
-        printf("Caught exception: %s", e.what());
+    error = "";
+
+    // Create a JSON object to store the state data
+    json state;
+
+    state["fps"] = fps;
+    state["end_portal_position"] = end_portal_position;
+
+    // Create a JSON array to store the input data
+    json json_inputs = json::array();
+    for (auto& input : inputs) {
+        // Each input is a JSON object
+        json json_input;
+        json_input["number"] = input.number;
+        json_input["pressingDown"] = input.pressingDown;
+        json_input["isPlayer2"] = input.isPlayer2;
+        // Add the input object to the array
+        json_inputs.push_back(json_input);
     }
-    catch (...) {
-        printf("Caught unknown exception.");
+
+    // Add the array to the state object
+    state["inputs"] = json_inputs;
+
+    // Write the JSON object to the file
+    file << state.dump(4);  // 4 spaces for indentation
+
+    file.close();
+}
+
+void Logic::read_file_json(const std::string& filename, bool is_path = false) {
+    std::string dir = ".echo\\";
+    std::string ext = ".json";
+
+    std::string full_filename = is_path ? filename : dir + filename + ext;
+
+    std::ifstream file(full_filename);
+    if (!file.is_open()) {
+        error = "Error reading file '" + filename + "'!";
+        return;
     }
+    error = "";
+
+    // Parse the JSON object from the file
+    json state;
+    file >> state;
+
+    // Extract the state data from the JSON object
+    fps = state["fps"].get<double>();
+    end_portal_position = state["end_portal_position"].get<double>();
+
+    inputs.clear();
+    // Extract the input data from the JSON object
+    for (auto& json_input : state["inputs"]) {
+        Frame input;
+        input.number = json_input["number"].get<unsigned>();
+        input.pressingDown = json_input["pressingDown"].get<bool>();
+        input.isPlayer2 = json_input["isPlayer2"].get<bool>();
+        inputs.push_back(input);
+    }
+
+    file.close();
 }
 
 void Logic::sort_inputs() {
