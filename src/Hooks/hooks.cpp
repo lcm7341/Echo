@@ -34,6 +34,7 @@ void Hooks::init_hooks() {
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x20b830), removeCheckpoint_h, reinterpret_cast<void**>(&removeCheckpoint));
 
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x20D810), PlayLayer::exitLevel_h, reinterpret_cast<void**>(&PlayLayer::exitLevel));
+    MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x1E4620), PauseLayer::init_h, reinterpret_cast<void**>(&PauseLayer::init));
 
     MH_CreateHook(GetProcAddress(GetModuleHandleA("libcocos2d.dll"), "?dispatchKeyboardMSG@CCKeyboardDispatcher@cocos2d@@QAE_NW4enumKeyCodes@2@_N@Z"), CCKeyboardDispatcher_dispatchKeyboardMSG_h, reinterpret_cast<void**>(&CCKeyboardDispatcher_dispatchKeyboardMSG));;
 
@@ -133,6 +134,17 @@ bool __fastcall Hooks::PlayLayer::init_h(gd::PlayLayer* self, void* edx, gd::GJG
     bool ret = Hooks::PlayLayer::init(self, level);
 
     return ret;
+}
+
+bool __fastcall Hooks::PauseLayer::init_h(gd::PauseLayer *self) {
+    auto& logic = Logic::get();
+
+    if (logic.is_recording()) {
+        logic.record_input(false, true);
+        logic.record_input(false, false);
+    }
+
+    return Hooks::PauseLayer::init(self);
 }
 
 void __fastcall Hooks::PlayLayer::updateVisibility_h(gd::PlayLayer* self) {
