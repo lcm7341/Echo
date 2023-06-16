@@ -111,7 +111,7 @@ void GUI::editor() {
 
 		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Inputs");
 		ImGui::BeginChild("##List", ImVec2(0, firstChildHeight - ImGui::GetFrameHeightWithSpacing() + 1), true);
-		if (!inputs.empty()) {
+		if (!inputs.empty()) {				
 			for (unsigned i = 0; i < inputs.size(); i++) {
 				ImGui::PushID(i);
 				if (ImGui::Selectable("##Input", selectedInput == i, ImGuiSelectableFlags_AllowDoubleClick)) {
@@ -145,28 +145,25 @@ void GUI::editor() {
 		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "CPS Breaks");
 		ImGui::BeginChild("##List2", ImVec2(0, firstChildHeight), true);
 
-		if (!logic.cps_percents.empty()) {
-			try {
-				for (unsigned i = 0; i < logic.cps_percents.size(); i++) {
-					ImGui::PushID(i);
-					if (std::_Is_nan(logic.cps_percents[i]) || std::isinf(logic.cps_percents[i])) {
-						printf("Invalid number at index %d\n", i);
-						continue;
-					}
-					std::ostringstream stream;
-					stream << std::fixed << std::setprecision(2) << logic.cps_percents[i];
-					std::string percent = stream.str();
-					ImGui::SameLine();
-					ImGui::Text("%s", percent);
-					ImGui::PopID();
+		if (!logic.cps_over_percents.empty()) {
+			for (unsigned i = 0; i < logic.cps_over_percents.size(); i++) {
+				float val = logic.cps_over_percents[i];
+				std::string percent = std::to_string(val);
+
+				// Truncate the string to have only 2 decimal places
+				size_t dot_pos = percent.find(".");
+				if (dot_pos != std::string::npos && dot_pos + 3 < percent.length()) {
+					percent = percent.substr(0, dot_pos + 3);
 				}
-			} catch (const std::exception& e) {
-				printf("An error occurred: %s\n", e.what());
+
+				ImGui::SameLine();
+				ImGui::Text("%s%", percent.c_str());
 			}
 		}
 		else {
 			ImGui::TextColored(ImVec4(1, 1, 1, 1), "No CPS Breaks");
 		}
+
 
 		ImGui::EndChild();
 		ImGui::Columns(1);
@@ -197,11 +194,14 @@ void GUI::editor() {
 			inputs[selectedInput] = newInput;
 		}
 		ImGui::EndChild();
+		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Replay Editor");
 
 		ImGui::PushItemFlag(ImGuiItemFlags_NoTabStop, true);
 		ImGui::SetNextItemWidth((ImGui::GetWindowContentRegionWidth() - ImGui::GetStyle().ItemSpacing.x) * 0.3f);
 		ImGui::InputFloat("###frames", &offset_frames, 0, 0, "%.0f"); ImGui::SameLine();
 		ImGui::PopItemFlag();
+
+		ImGui::NewLine();
 
 		if (ImGui::Button("Random Offset Frames")) {
 			logic.offset_inputs(-offset_frames, offset_frames);
@@ -214,6 +214,19 @@ void GUI::editor() {
 
 		if (ImGui::IsItemHovered()) {
 			ImGui::SetTooltip("Randomly offsets all frames in replay from -input to +input");
+		}
+
+		if (ImGui::Button("Offset Frames")) {
+			logic.offset_frames(offset_frames);
+			offset_frames = 0;
+		}
+
+		ImGui::SameLine();
+
+		ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "(?)");
+
+		if (ImGui::IsItemHovered()) {
+			ImGui::SetTooltip("Offsets all frames in replay");
 		}
 
 		ImGui::EndTabItem();
