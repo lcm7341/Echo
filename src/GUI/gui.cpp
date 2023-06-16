@@ -713,14 +713,34 @@ void GUI::main() {
 
 		ImGui::SetNextItemWidth((ImGui::GetWindowContentRegionWidth() - ImGui::GetStyle().ItemSpacing.x) * (50.f / 100.f));
 		if (ImGui::Button("Save File")) {
-			logic.write_file(logic.macro_name);
+			if (logic.use_json_for_files) {
+				logic.write_file_json(logic.macro_name);
+			}
+			else {
+				logic.write_file(logic.macro_name);
+			}
 		}
 
 		ImGui::SameLine();
 
 		ImGui::SetNextItemWidth(get_width(50.f));
 		if (ImGui::Button("Load File")) {
-			logic.read_file(logic.macro_name, false);
+			if (logic.use_json_for_files) {
+				logic.read_file_json(logic.macro_name, false);
+			}
+			else {
+				logic.read_file(logic.macro_name, false);
+			}
+		}
+
+		ImGui::SameLine();
+
+		ImGui::Checkbox("Use JSON", &logic.use_json_for_files);
+
+		ImGui::SameLine();
+		bool useBinary = !logic.use_json_for_files;
+		if (ImGui::Checkbox("Use Binary", &useBinary)) {
+			logic.use_json_for_files = !useBinary;
 		}
 
 		if (logic.error != "") {

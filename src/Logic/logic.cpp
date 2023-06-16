@@ -321,6 +321,81 @@ void Logic::remove_inputs(unsigned frame) {
     inputs.erase(it, inputs.end());
 }
 
+void Logic::write_file_json(const std::string& filename) {
+    std::string dir = ".echo\\";
+    std::string ext = ".json";
+
+    std::string full_filename = dir + filename + ext;
+
+    std::ofstream file(full_filename);
+    if (!file.is_open()) {
+        error = "Error writing file '" + filename + "'!";
+        return;
+    }
+    error = "";
+
+    // Create a JSON object to store the state data
+    json state;
+
+    state["fps"] = fps;
+    state["end_portal_position"] = end_portal_position;
+
+    // Create a JSON array to store the input data
+    json json_inputs = json::array();
+    for (auto& input : inputs) {
+        // Each input is a JSON object
+        json json_input;
+        json_input["number"] = input.number;
+        json_input["pressingDown"] = input.pressingDown;
+        json_input["isPlayer2"] = input.isPlayer2;
+        // Add the input object to the array
+        json_inputs.push_back(json_input);
+    }
+
+    // Add the array to the state object
+    state["inputs"] = json_inputs;
+
+    // Write the JSON object to the file
+    file << state.dump(4);  // 4 spaces for indentation
+
+    file.close();
+}
+
+void Logic::read_file_json(const std::string& filename, bool is_path = false) {
+    std::string dir = ".echo\\";
+    std::string ext = ".json";
+
+    std::string full_filename = is_path ? filename : dir + filename + ext;
+
+    std::ifstream file(full_filename);
+    if (!file.is_open()) {
+        error = "Error reading file '" + filename + "'!";
+        return;
+    }
+    error = "";
+
+    // Parse the JSON object from the file
+    json state;
+    file >> state;
+
+    // Extract the state data from the JSON object
+    fps = state["fps"].get<double>();
+    end_portal_position = state["end_portal_position"].get<double>();
+
+    inputs.clear();
+    // Extract the input data from the JSON object
+    for (auto& json_input : state["inputs"]) {
+        Frame input;
+        input.number = json_input["number"].get<unsigned>();
+        input.pressingDown = json_input["pressingDown"].get<bool>();
+        input.isPlayer2 = json_input["isPlayer2"].get<bool>();
+        inputs.push_back(input);
+    }
+
+    file.close();
+}
+
+
 void Logic::convert_file(const std::string& filename, bool is_path = false) {
     try {
         std::string dir = ".echo\\";
