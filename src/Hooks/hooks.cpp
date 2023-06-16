@@ -34,6 +34,7 @@ void Hooks::init_hooks() {
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x20b830), removeCheckpoint_h, reinterpret_cast<void**>(&removeCheckpoint));
 
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x20D810), PlayLayer::exitLevel_h, reinterpret_cast<void**>(&PlayLayer::exitLevel));
+    MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x1E4620), PauseLayer::init_h, reinterpret_cast<void**>(&PauseLayer::init));
 
     MH_CreateHook(GetProcAddress(GetModuleHandleA("libcocos2d.dll"), "?dispatchKeyboardMSG@CCKeyboardDispatcher@cocos2d@@QAE_NW4enumKeyCodes@2@_N@Z"), CCKeyboardDispatcher_dispatchKeyboardMSG_h, reinterpret_cast<void**>(&CCKeyboardDispatcher_dispatchKeyboardMSG));;
 
@@ -61,8 +62,12 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
 
     auto& audiospeedhack = AudiopitchHack::getInstance();
     bool isEnabled = audiospeedhack.isEnabled();
-    if (isEnabled)
-        audiospeedhack.setPitch(CCDirector::sharedDirector()->getScheduler()->getTimeScale());
+    if (isEnabled) {
+        audiospeedhack.setPitch(self->getTimeScale());
+    }
+    else {
+        audiospeedhack.setPitch(1);
+    }
 
     if (logic.is_recording() || logic.is_playing()) {
         CCDirector::sharedDirector()->setAnimationInterval(1.f / logic.fps);
@@ -129,6 +134,18 @@ bool __fastcall Hooks::PlayLayer::init_h(gd::PlayLayer* self, void* edx, gd::GJG
     bool ret = Hooks::PlayLayer::init(self, level);
 
     return ret;
+}
+
+bool __fastcall Hooks::PauseLayer::init_h(gd::PauseLayer *self) {
+    auto& logic = Logic::get();
+
+    if (logic.is_recording()) {
+        if (logic.get_inputs().front().pressingDown) {
+            logic.record_input(false, false);
+        }
+    }
+
+    return Hooks::PauseLayer::init(self);
 }
 
 void __fastcall Hooks::PlayLayer::updateVisibility_h(gd::PlayLayer* self) {

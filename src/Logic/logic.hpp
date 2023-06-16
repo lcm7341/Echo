@@ -99,8 +99,6 @@ class Logic {
 	unsigned replay_pos = 0;
 	unsigned removed_time = 0;
 
-	std::vector<Frame> inputs;
-
 	std::vector<double> offsets;
 
 public:
@@ -110,6 +108,7 @@ public:
 	}
 
 	Recorder recorder;
+	std::vector<Frame> inputs;
 
 	std::vector<Checkpoint> checkpoints;
 	std::vector<gd::GameObject*> activated_objects;
@@ -120,6 +119,7 @@ public:
 	char macro_name[1000] = "output";
 
 	std::string error = "";
+	std::string conversion_message = "Waiting! Use the panel above to export/import";
 
 	bool real_time_mode = true;
 	float speedhack = 1.f;
@@ -133,6 +133,8 @@ public:
 	bool over_max_cps = false;
 	bool frame_advance = false;
 	bool no_overwrite = false;
+	bool use_json_for_files = false;
+	bool audio_speedhack = false;
 
 	std::vector<Replay> replays;
 	size_t replay_index;
@@ -260,6 +262,10 @@ public:
 	void write_file(const std::string& filename);
 
 	void read_file(const std::string& filename, bool is_path);
+
+	void write_file_json(const std::string& filename);
+
+	void read_file_json(const std::string& filename, bool is_path);
 
 	void save_checkpoint(Checkpoint data) {
 		checkpoints.push_back(data);
