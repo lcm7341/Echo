@@ -1,6 +1,7 @@
 #include "Hooks.hpp"
 #include "../Logic/logic.hpp"
 #include <chrono>
+#include "../Hack/audiopitchHack.hpp"
 
 #define FRAME_LABEL_ID 82369 + 1 //random value :P
 #define CPS_LABEL_ID 82369 + 2 //random value :P
@@ -57,6 +58,11 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
     if (logic.real_time_mode) {
         self->setTimeScale(logic.speedhack);
     }
+
+    auto& audiospeedhack = AudiopitchHack::getInstance();
+    bool isEnabled = audiospeedhack.isEnabled();
+    if (isEnabled)
+        audiospeedhack.setPitch(CCDirector::sharedDirector()->getScheduler()->getTimeScale());
 
     if (logic.is_recording() || logic.is_playing()) {
         CCDirector::sharedDirector()->setAnimationInterval(1.f / logic.fps);
