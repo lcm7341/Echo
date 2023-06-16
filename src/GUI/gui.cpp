@@ -25,6 +25,7 @@
 #include "../Logic/Conversions/tasbot.h"
 #include "../Logic/Conversions/mhr.h"
 #include "../Logic/Conversions/osu.h"
+#include "../Logic/Conversions/plaintext.h"
 
 int getRandomInt(int N) {
 	// Seed the random number generator with current time
@@ -529,7 +530,8 @@ void GUI::tools() {
 std::map<std::string, std::shared_ptr<Convertible>> options = {
 	{"TASBot", std::make_shared<TASBot>()},
 	{"Osu", std::make_shared<Osu>()},
-	{"MHR", std::make_shared<MHR>()}
+	{"MHR", std::make_shared<MHR>()},
+	{"Plain Text", std::make_shared<PlainText>()}
 };
 
 void GUI::conversion() {
