@@ -135,6 +135,7 @@ public:
 	bool no_overwrite = false;
 	bool use_json_for_files = false;
 	bool audio_speedhack = false;
+	std::vector<Frame> live_inputs; // for CPS counter, this acts as if when playing back, ur recording
 
 	std::vector<Replay> replays;
 	size_t replay_index;

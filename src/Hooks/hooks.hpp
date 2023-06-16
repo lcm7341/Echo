@@ -39,9 +39,5 @@ namespace Hooks {
 
 		}
 
-	namespace PauseLayer {
-		inline bool(__thiscall* init)(gd::PauseLayer* self); bool __fastcall init_h(gd::PauseLayer* self);
-	}
-
 	void init_hooks();
 }
