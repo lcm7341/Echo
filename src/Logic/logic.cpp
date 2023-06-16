@@ -55,13 +55,14 @@ void Logic::play_input(Frame& input) {
             else {
                 Hooks::PlayLayer::pushButton(PLAYLAYER, 0, !PLAYLAYER->m_player1 ^ gamevar);
             }
-        } else {
-                if (input.isPlayer2) {
-                    Hooks::PlayLayer::releaseButton(PLAYLAYER, 0, !PLAYLAYER->m_player2 ^ gamevar);
-                }
-                else {
-                    Hooks::PlayLayer::releaseButton(PLAYLAYER, 0, !PLAYLAYER->m_player1 ^ gamevar);
-                }
+        }
+        else {
+            if (input.isPlayer2) {
+                Hooks::PlayLayer::releaseButton(PLAYLAYER, 0, !PLAYLAYER->m_player2 ^ gamevar);
+            }
+            else {
+                Hooks::PlayLayer::releaseButton(PLAYLAYER, 0, !PLAYLAYER->m_player1 ^ gamevar);
+            }
         }
     }
 }
@@ -194,19 +195,19 @@ void Logic::write_osu_file(const std::string& filename) {
     osu_file.close();
 }
 
-    int Logic::find_closest_input() {
-        if (inputs.empty()) {
-            // Return -1 or throw an exception if there are no inputs.
-            return -1;
-        }
-
-        unsigned current_frame = get_frame();
-        auto closest_it = std::min_element(inputs.begin(), inputs.end(),
-            [current_frame](const Frame& a, const Frame& b) {
-                return std::abs(static_cast<int>(a.number - current_frame)) < std::abs(static_cast<int>(b.number - current_frame));
-            });
-        return std::distance(inputs.begin(), closest_it);
+int Logic::find_closest_input() {
+    if (inputs.empty()) {
+        // Return -1 or throw an exception if there are no inputs.
+        return -1;
     }
+
+    unsigned current_frame = get_frame();
+    auto closest_it = std::min_element(inputs.begin(), inputs.end(),
+        [current_frame](const Frame& a, const Frame& b) {
+            return std::abs(static_cast<int>(a.number - current_frame)) < std::abs(static_cast<int>(b.number - current_frame));
+        });
+    return std::distance(inputs.begin(), closest_it);
+}
 
 bool Logic::play_macro(int& offset) {
     if (is_playing()) {
@@ -246,7 +247,7 @@ void Logic::write_file(const std::string& filename) {
     std::string ext = ".bin";
 
     std::string full_filename = dir + filename + ext;
-    
+
     std::ofstream file(full_filename, std::ios::binary);
     if (!file.is_open()) {
         error = "Error writing file '" + filename + "'!";
@@ -286,7 +287,7 @@ void Logic::read_file(const std::string& filename, bool is_path = false) {
     error = "";
 
     if (!is_path)
-    inputs.clear();
+        inputs.clear();
 
     r_b(fps);
     r_b(end_portal_position);

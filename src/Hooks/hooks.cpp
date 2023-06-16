@@ -1,6 +1,7 @@
 #include "Hooks.hpp"
 #include "../Logic/logic.hpp"
 #include <chrono>
+#include "../Hack/audiopitchHack.hpp"
 
 #define FRAME_LABEL_ID 82369 + 1 //random value :P
 #define CPS_LABEL_ID 82369 + 2 //random value :P
@@ -38,7 +39,7 @@ void Hooks::init_hooks() {
 
     HOOK(0x205460, PlayLayer::updateVisibility)
 
-    MH_CreateHook(GetProcAddress(GetModuleHandleA("libcocos2d.dll"), "?update@CCScheduler@cocos2d@@UAEXM@Z"), CCScheduler_update_h, reinterpret_cast<void**>(&CCScheduler_update));
+        MH_CreateHook(GetProcAddress(GetModuleHandleA("libcocos2d.dll"), "?update@CCScheduler@cocos2d@@UAEXM@Z"), CCScheduler_update_h, reinterpret_cast<void**>(&CCScheduler_update));
 
     MH_EnableHook(MH_ALL_HOOKS);
 
@@ -57,6 +58,11 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
     if (logic.real_time_mode) {
         self->setTimeScale(logic.speedhack);
     }
+
+    auto& audiospeedhack = AudiopitchHack::getInstance();
+    bool isEnabled = audiospeedhack.isEnabled();
+    if (isEnabled)
+        audiospeedhack.setPitch(CCDirector::sharedDirector()->getScheduler()->getTimeScale());
 
     if (logic.is_recording() || logic.is_playing()) {
         CCDirector::sharedDirector()->setAnimationInterval(1.f / logic.fps);
@@ -403,7 +409,7 @@ int __fastcall Hooks::createCheckpoint_h(gd::PlayLayer* self) {
     CheckpointData checkpointData1 = CheckpointData::create(self->m_player1);
     CheckpointData checkpointData2 = CheckpointData::create(self->m_player2);
 
-    logic.save_checkpoint({ logic.get_frame(), checkpointData1, checkpointData2, logic.activated_objects.size(), logic.activated_objects_p2.size()});
+    logic.save_checkpoint({ logic.get_frame(), checkpointData1, checkpointData2, logic.activated_objects.size(), logic.activated_objects_p2.size() });
 
     return createCheckpoint(self);
 }

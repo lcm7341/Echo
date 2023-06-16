@@ -20,6 +20,7 @@
 #include <optional>
 #include <random>
 #include "../imfilebrowser.h"
+#include "../Hack/audiopitchHack.hpp"
 
 int getRandomInt(int N) {
 	// Seed the random number generator with current time
@@ -49,6 +50,9 @@ namespace fs = std::filesystem;
 using namespace cocos2d;
 
 static ImFont* g_font = nullptr;
+static Opcode anticheatBypass(Cheat::AntiCheatBypass);
+static Opcode noclip(Cheat::NoClip);
+static Opcode practiceMusic(Cheat::PracticeMusic);
 
 void GUI::draw() {
 	if (g_font) ImGui::PushFont(g_font);
@@ -98,6 +102,7 @@ void GUI::editor() {
 	ImGui::SetNextWindowSizeConstraints(ImVec2(300, 300), ImVec2(300, 300));
 
 	if (ImGui::BeginTabItem("Editor")) {
+		float firstChildHeight = 300;
 
 		ImGui::Columns(2, "##Columns", false);
 
@@ -111,7 +116,7 @@ void GUI::editor() {
 
 		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Inputs");
 		ImGui::BeginChild("##List", ImVec2(0, firstChildHeight - ImGui::GetFrameHeightWithSpacing() + 1), true);
-		if (!inputs.empty()) {				
+		if (!inputs.empty()) {
 			for (unsigned i = 0; i < inputs.size(); i++) {
 				ImGui::PushID(i);
 				if (ImGui::Selectable("##Input", selectedInput == i, ImGuiSelectableFlags_AllowDoubleClick)) {
@@ -122,12 +127,11 @@ void GUI::editor() {
 				ImGui::Text("%s at %d", inputs[i].pressingDown ? "Click" : "Release", inputs[i].number);
 				ImGui::PopID();
 			}
-			ImGui::SameLine();
-			ImGui::Text("%s at %d", inputs[i].pressingDown ? "Click" : "Release", inputs[i].number);
-			ImGui::PopID();
+		}
+		else {
+			ImGui::TextColored(ImVec4(1, 1, 1, 1), "No Inputs");
 		}
 		ImGui::EndChild();
-
 
 		if (ImGui::Button("Add Input")) {
 			if (selectedInput == -1) {
@@ -295,7 +299,7 @@ void GUI::renderer() {
 		ImGui::Separator();
 
 		ImGui::InputText("Extra Args", &logic.recorder.m_extra_args);
-		
+
 		ImGui::InputText("Extra Audio Args", &logic.recorder.m_extra_audio_args);
 
 		ImGui::InputFloat("Extra Time", &logic.recorder.m_after_end_duration);
@@ -371,7 +375,7 @@ void GUI::sequential_replay() {
 		ImGui::BeginChild("##seq_replay_list", ImVec2(0, 0), true);
 		for (unsigned i = 0; i < logic.replays.size(); i++) {
 			ImGui::PushID(i);
-			
+
 			if (ImGui::Selectable("##replay", selected_replay_index.has_value() && selected_replay_index.value() == i, ImGuiSelectableFlags_AllowDoubleClick)) {
 				selected_replay_index = i;
 			}
@@ -385,7 +389,7 @@ void GUI::sequential_replay() {
 		ImGui::EndChild();
 
 		ImGui::Separator();
-		
+
 		ImGui::BeginChild("##seq_replay_child", ImVec2(0, child_height), true); //idk how 2 name dis
 
 		if (selected_replay_index.has_value() && selected_replay_index.value() < logic.replays.size()) {
@@ -418,7 +422,7 @@ void GUI::sequential_replay() {
 				logic.read_file(replay_name, false);
 
 				for (int i = 0; i < amount; i++) {
-				auto inputs = logic.get_inputs();
+					auto inputs = logic.get_inputs();
 					logic.replays.push_back(Replay{
 							replay_name,
 							0,
@@ -471,6 +475,38 @@ void GUI::tools() {
 		ImGui::SameLine();
 		ImGui::Checkbox("Swap Player Input", &logic.swap_player_input);
 
+		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Game Modifications");
+		ImGui::Separator();
+
+		bool antiCheatBypass = anticheatBypass.isActivated();
+		if (ImGui::Checkbox("Disable Anticheat", &antiCheatBypass)) {
+			if (antiCheatBypass) {
+				anticheatBypass.activate();
+			}
+			else {
+				anticheatBypass.deactivate();
+			}
+		}
+
+		bool noclipActivated = noclip.isActivated();
+		if (ImGui::Checkbox("Toggle Noclip", &noclipActivated)) {
+			if (noclipActivated) {
+				noclip.activate();
+			}
+			else {
+				noclip.deactivate();
+			}
+		}
+
+		bool practiceActivated = practiceMusic.isActivated();
+		if (ImGui::Checkbox("Overwrite Practice Music", &practiceActivated)) {
+			if (practiceActivated) {
+				practiceMusic.activate();
+			}
+			else {
+				practiceMusic.deactivate();
+			}
+		}
 
 		ImGui::Separator();
 
@@ -503,7 +539,7 @@ void GUI::conversion() {
 		fileDialog.Display();
 
 		if (fileDialog.HasSelected())
-		{			                 
+		{
 			logic.convert_file(fileDialog.GetSelected().string(), true);
 			logic.sort_inputs();
 
@@ -511,7 +547,7 @@ void GUI::conversion() {
 		}
 
 		ImGui::Separator();
-		
+
 
 		ImGui::SetNextItemWidth(get_width(50.f));
 		if (ImGui::Button("Export .osu")) {
@@ -612,6 +648,17 @@ void GUI::main() {
 
 		ImGui::DragFloat("Speed", &logic.speedhack, 0.01, 0.01f, 100.f, "%.2f");
 
+		auto& audiospeedhack = AudiopitchHack::getInstance();
+		bool isEnabled = audiospeedhack.isEnabled();
+		if (ImGui::Checkbox("Audio Speedhack", &isEnabled)) {
+			if (isEnabled) {
+				audiospeedhack.setEnabled(true);
+			}
+			else {
+				audiospeedhack.setEnabled(false);
+			}
+		}
+
 		ImGui::Checkbox("Real Time Mode", &logic.real_time_mode);
 
 		ImGui::Checkbox("No Macro Overwrite", &logic.no_overwrite);
@@ -626,15 +673,6 @@ void GUI::main() {
 		ImGui::SameLine();
 		ImGui::Checkbox("Show CPS", &logic.show_cps);
 		ImGui::DragFloat("Max CPS", &logic.max_cps, 0.01, 1, 100, "%.2f");
-
-		if (!logic.cps_percents.empty()) {
-			std::string percents = "";
-			for (int i = 0; i < logic.cps_percents.size(); i++) {
-				percents += std::to_string(logic.cps_percents[i]);
-				percents.append(", ");
-			}
-			ImGui::Text("CPS Breaks: %s", percents.c_str());
-		}
 
 		ImGui::Separator();
 
