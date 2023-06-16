@@ -159,7 +159,7 @@ void GUI::editor() {
 				}
 
 				ImGui::SameLine();
-				ImGui::Text("%s", percent.c_str());
+				ImGui::Text("%s%", percent.c_str());
 			}
 		}
 		else {
