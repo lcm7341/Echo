@@ -99,8 +99,6 @@ class Logic {
 	unsigned replay_pos = 0;
 	unsigned removed_time = 0;
 
-	std::vector<Frame> inputs;
-
 	std::vector<double> offsets;
 
 public:
@@ -110,6 +108,7 @@ public:
 	}
 
 	Recorder recorder;
+	std::vector<Frame> inputs;
 
 	std::vector<Checkpoint> checkpoints;
 	std::vector<gd::GameObject*> activated_objects;
@@ -120,6 +119,7 @@ public:
 	char macro_name[1000] = "output";
 
 	std::string error = "";
+	std::string conversion_message = "Waiting! Use the panel above to export/import";
 
 	bool real_time_mode = true;
 	float speedhack = 1.f;
