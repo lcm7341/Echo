@@ -11,16 +11,16 @@ public:
     void setEnabled(bool enabled);
     void setPitch(float freq);
 
+    bool initialized = false;
+    bool enabled;
     void* channel;
     float speed;
-    bool initialized;
-    bool enabled;
 
 private:
     AudiopitchHack();
     void initialize();
 };
 
-void* __stdcall volumeAdjustHook(void* t_channel, float volume);
+void* __stdcall setVolumeHook(void* t_channel, float volume);
 
 #endif // AUDIOPITCH_HACK_H

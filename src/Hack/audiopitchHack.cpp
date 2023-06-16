@@ -1,6 +1,7 @@
 #include "audiopitchHack.hpp"
 #include <Windows.h> 
 #include "MinHook.h" 
+#include <stdio.h>
 
 // Global function pointers
 void* (__stdcall* setVolume)(void* t_channel, float volume);
@@ -25,26 +26,29 @@ void AudiopitchHack::setEnabled(bool enabled) {
 }
 
 void AudiopitchHack::setPitch(float freq) {
-    if (!initialized || !enabled || channel == nullptr) return;
+    if (!initialized || !enabled) return;
     speed = freq;
     setFrequency(channel, freq);
 }
 
 void AudiopitchHack::initialize() {
     if (initialized) return;
+
+    printf("Initialized");
     setFrequency = (decltype(setFrequency))GetProcAddress(GetModuleHandle("fmod.dll"), "?setPitch@ChannelControl@FMOD@@QAG?AW4FMOD_RESULT@@M@Z");
     DWORD hookAddr = (DWORD)GetProcAddress(GetModuleHandle("fmod.dll"), "?setVolume@ChannelControl@FMOD@@QAG?AW4FMOD_RESULT@@M@Z");
 
     MH_CreateHook(
         (PVOID)hookAddr,
-        &volumeAdjustHook,
+        setVolumeHook,
         (PVOID*)&setVolume
     );
 
     initialized = true;
 }
 
-void* __stdcall volumeAdjustHook(void* t_channel, float volume) {
+void* __stdcall setVolumeHook(void* t_channel, float volume) {
+    printf("Hooked");
     AudiopitchHack& self = AudiopitchHack::getInstance();
     self.channel = t_channel;
     if (self.speed != 1.f) setFrequency(self.channel, self.speed);

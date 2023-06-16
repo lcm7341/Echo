@@ -62,7 +62,7 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
     auto& audiospeedhack = AudiopitchHack::getInstance();
     bool isEnabled = audiospeedhack.isEnabled();
     if (isEnabled)
-        audiospeedhack.setPitch(CCDirector::sharedDirector()->getScheduler()->getTimeScale());
+        audiospeedhack.setPitch(0.5);
 
     if (logic.is_recording() || logic.is_playing()) {
         CCDirector::sharedDirector()->setAnimationInterval(1.f / logic.fps);

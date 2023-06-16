@@ -133,6 +133,7 @@ public:
 	bool over_max_cps = false;
 	bool frame_advance = false;
 	bool no_overwrite = false;
+	bool audio_speedhack = false;
 
 	std::vector<Replay> replays;
 	size_t replay_index;
