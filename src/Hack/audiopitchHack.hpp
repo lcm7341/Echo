@@ -1,6 +1,10 @@
 class AudiopitchHack {
 public:
-    static AudiopitchHack& getInstance();
+    static auto& getInstance() {
+        static AudiopitchHack instance;
+        return instance;
+    }
+
     AudiopitchHack(AudiopitchHack const&) = delete;
     void operator=(AudiopitchHack const&) = delete;
     void initialize();

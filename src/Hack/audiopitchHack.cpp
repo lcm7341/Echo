@@ -9,10 +9,6 @@ void* __stdcall setVolumeHook(void* t_channel, float volume);
 
 AudiopitchHack::AudiopitchHack() : channel(nullptr), speed(1.f), enabled(false) {}
 
-AudiopitchHack& AudiopitchHack::getInstance() {
-    static AudiopitchHack instance;
-    return instance;
-}
 
 bool AudiopitchHack::isEnabled() const {
     return enabled;

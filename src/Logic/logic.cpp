@@ -315,15 +315,15 @@ void Logic::read_file_json(const std::string& filename, bool is_path = false) {
 
     // Extract the state data from the JSON object
     fps = state["fps"].get<double>();
-    end_portal_position = state["end_portal_position"].get<double>();
+    end_portal_position = state["end_xpos"].get<double>();
 
     inputs.clear();
     // Extract the input data from the JSON object
     for (auto& json_input : state["inputs"]) {
         Frame input;
-        input.number = json_input["number"].get<unsigned>();
-        input.pressingDown = json_input["pressingDown"].get<bool>();
-        input.isPlayer2 = json_input["isPlayer2"].get<bool>();
+        input.number = json_input["frame"].get<unsigned>();
+        input.pressingDown = json_input["holding"].get<bool>();
+        input.isPlayer2 = json_input["player_2"].get<bool>();
         inputs.push_back(input);
     }
 
