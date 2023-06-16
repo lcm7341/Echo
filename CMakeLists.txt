@@ -16,7 +16,7 @@ file(
   src/*.hpp
 )
 
-add_library(Echo SHARED ${SOURCE_FILES})
+add_library(Echo SHARED ${SOURCE_FILES} "src/Logic/Conversions/plaintext.h")
 
 add_dependencies(Echo
     increment_version_number

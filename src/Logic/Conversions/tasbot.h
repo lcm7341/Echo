@@ -10,12 +10,7 @@ public:
     void import(const std::string& filename) override {
         auto& logic = Logic::get();
 
-        std::string dir = ".echo\\";
-        std::string ext = ".json";
-
-        std::string full_filename = dir + filename + ext;
-
-        std::ifstream file(full_filename);
+        std::ifstream file(filename);
 
         json state;
         file >> state;
