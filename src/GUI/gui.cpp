@@ -20,7 +20,6 @@
 #include <optional>
 #include <random>
 #include "../imfilebrowser.h"
-#include "../Hack/audiopitchHack.hpp"
 
 int getRandomInt(int N) {
 	// Seed the random number generator with current time
@@ -52,7 +51,6 @@ using namespace cocos2d;
 static ImFont* g_font = nullptr;
 static Opcode anticheatBypass(Cheat::AntiCheatBypass);
 static Opcode noclip(Cheat::NoClip);
-static Opcode practiceMusic(Cheat::PracticeMusic);
 
 void GUI::draw() {
 	if (g_font) ImGui::PushFont(g_font);
@@ -498,16 +496,6 @@ void GUI::tools() {
 			}
 		}
 
-		bool practiceActivated = practiceMusic.isActivated();
-		if (ImGui::Checkbox("Overwrite Practice Music", &practiceActivated)) {
-			if (practiceActivated) {
-				practiceMusic.activate();
-			}
-			else {
-				practiceMusic.deactivate();
-			}
-		}
-
 		ImGui::Separator();
 
 		ImGui::SetNextItemWidth(get_width(50.f));
@@ -647,17 +635,6 @@ void GUI::main() {
 		if (logic.is_playing() || logic.is_recording()) ImGui::EndDisabled();
 
 		ImGui::DragFloat("Speed", &logic.speedhack, 0.01, 0.01f, 100.f, "%.2f");
-
-		auto& audiospeedhack = AudiopitchHack::getInstance();
-		bool isEnabled = audiospeedhack.isEnabled();
-		if (ImGui::Checkbox("Audio Speedhack", &isEnabled)) {
-			if (isEnabled) {
-				audiospeedhack.setEnabled(true);
-			}
-			else {
-				audiospeedhack.setEnabled(false);
-			}
-		}
 
 		ImGui::Checkbox("Real Time Mode", &logic.real_time_mode);
 
