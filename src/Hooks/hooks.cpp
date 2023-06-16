@@ -266,9 +266,10 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
     int ret = resetLevel(self); // calling the original function
     auto& logic = Logic::get();
 
-    logic.live_inputs.clear();
-    logic.cps_percents.clear();
+    logic.cps_over_percents.clear();
     logic.over_max_cps = false;
+
+    logic.end_portal_position = self->m_endPortal->getPositionX();
 
     auto cps_counter = (cocos2d::CCLabelBMFont*)self->getChildByTag(CPS_LABEL_ID);
 

@@ -28,11 +28,6 @@ void Logic::record_input(bool down, bool player1) {
     if (is_recording() || is_both()) {
         auto twoplayer = PLAYLAYER->m_levelSettings->m_twoPlayerMode;
         player1 ^= 1 && gd::GameManager::sharedState()->getGameVariable("0010"); // what the fuck ?
-        if (down) {
-            if (count_presses_in_last_second() > max_cps) {
-                cps_percents.push_back((PLAYLAYER->m_player1->getPositionX() / PLAYLAYER->m_endPortal->getPositionX()) * 100.f); // player %
-            }
-        }
         add_input({ get_frame(), down, twoplayer && !player1, PLAYLAYER->m_player1->getPositionY(), PLAYLAYER->m_player1->getPositionX(), PLAYLAYER->m_player1->getRotation(), PLAYLAYER->m_player1->m_yAccel, PLAYLAYER->m_player1->m_xAccel });
     }
 }
@@ -68,12 +63,6 @@ void Logic::play_input(Frame& input) {
                     Hooks::PlayLayer::releaseButton(PLAYLAYER, 0, !PLAYLAYER->m_player1 ^ gamevar);
                 }
         }
-        live_inputs.push_back(input);
-        if (input.pressingDown) {
-            if (count_presses_in_last_second() > max_cps) {
-                cps_percents.push_back((PLAYLAYER->m_player1->getPositionX() / PLAYLAYER->m_endPortal->getPositionX()) * 100.f); // player %
-            }
-        }
     }
 }
 
@@ -82,22 +71,15 @@ unsigned Logic::count_presses_in_last_second() {
     if (frame_limit > ((((PLAYLAYER->m_time) * get_fps()) - get_removed()) + 2))
         frame_limit = 0;
 
+    std::vector<float> cps_percents;
+
     unsigned press_count = 0;
-    if (is_recording()) {
-        for (auto it = inputs.rbegin(); it != inputs.rend(); ++it) {
-            if (it->number > frame_limit && it->pressingDown) {
-                press_count++;
-            }
+    for (auto it = inputs.rbegin(); it != inputs.rend(); ++it) {
+        if (it->number > frame_limit && it->pressingDown) {
+            press_count++;
         }
     }
-    else if (is_playing()) {
-        for (auto it = live_inputs.rbegin(); it != live_inputs.rend(); ++it) {
-            if (it->number > frame_limit && it->pressingDown) {
-                press_count++;
-            }
-        }
-    }
-    
+
     if (press_count > max_cps) {
         over_max_cps = true;
     }
@@ -107,11 +89,11 @@ unsigned Logic::count_presses_in_last_second() {
     return press_count;
 }
 
-// A cpu trojan
 std::string Logic::highest_cps() {
     int highest_cps = 0;
     std::string to_return = "0";
 
+    std::vector<float> cps_percents;
     for (Frame frames : inputs) {
         int frame_limit = frames.number - get_fps() > 0 ? frames.number - get_fps() : 0;
 
@@ -122,14 +104,31 @@ std::string Logic::highest_cps() {
             }
         }
 
+        // Check if press_count > max_cps after incrementing press_count in the loop
+        if (press_count > max_cps) {
+            float current_percent = std::round(((frames.number / end_portal_position) * 100.f) * 100) / 100;
+            bool should_push = true;
+            for (const auto& percent : cps_percents) {
+                if (std::abs(percent - current_percent) <= 1) {
+                    should_push = false;
+                }
+            }
+            if (should_push) {
+                cps_percents.push_back(current_percent);
+            }
+        }
+
         if (press_count > highest_cps) {
             highest_cps = press_count;
             to_return = std::to_string(highest_cps) + " (" + std::to_string(frame_limit) + " to " + std::to_string(frames.number) + ")";
         }
     }
 
+    cps_over_percents = cps_percents;
+
     return to_return;
 }
+
 
 void Logic::write_osu_file(const std::string& filename) {
     std::string dir = ".echo\\osu\\" + filename + "\\";
@@ -256,6 +255,7 @@ void Logic::write_file(const std::string& filename) {
     error = "";
 
     w_b(fps);
+    w_b(end_portal_position);
 
     for (auto& input : inputs) {
         w_b(input.number);
@@ -289,6 +289,7 @@ void Logic::read_file(const std::string& filename, bool is_path = false) {
     inputs.clear();
 
     r_b(fps);
+    r_b(end_portal_position);
 
     while (true) {
         Frame input;

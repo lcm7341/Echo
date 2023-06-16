@@ -114,6 +114,7 @@ public:
 	std::vector<Checkpoint> checkpoints;
 	std::vector<gd::GameObject*> activated_objects;
 	std::vector<gd::GameObject*> activated_objects_p2;
+	std::vector<float> cps_over_percents;
 
 	float fps = 60.f;
 	char macro_name[1000] = "output";
@@ -126,13 +127,10 @@ public:
 	bool ignore_actions_at_playback = true;
 	bool show_frame = false;
 	bool show_cps = false;
+	float end_portal_position = 0;
 	float max_cps = 15;
 	float current_cps = 0;
 	bool over_max_cps = false;
-	std::vector<float> cps_percents; // level percents where the macro goes above 15cps
-
-	std::vector<Frame> live_inputs; // for CPS counter, this acts as if when playing back, ur recording
-
 	bool frame_advance = false;
 	bool no_overwrite = false;
 
@@ -269,6 +267,17 @@ public:
 
 	void remove_last_checkpoint() {
 		checkpoints.pop_back();
+	}
+
+	void offset_frames(int offset) {
+		for (auto& replay : replays) {
+			for (auto& frame : replay.actions) {
+				// Ensure that the offset does not result in a negative frame number
+				if (static_cast<int>(frame.number) + offset >= 0) {
+					frame.number += offset;
+				}
+			}
+		}
 	}
 
 	Checkpoint get_latest_checkpoint() {
