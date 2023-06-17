@@ -50,13 +50,7 @@ struct Frame {
   FIELD(bool, unk4B0) \
   FIELD(bool, unk4D4) \
   FIELD(bool, unk4DC) \
-  FIELD(double, m_gravity) \
   FIELD(bool, unk538) \
-  FIELD(bool, unk539) \
-  FIELD(bool, unk53A) \
-  FIELD(bool, unk53B) \
-  FIELD(bool, unk53D) \
-  FIELD(bool, unk53E) \
   FIELD(bool, unk53F) \
   FIELD(bool, unk558) \
   FIELD(bool, unk5B0) \
