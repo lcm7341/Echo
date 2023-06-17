@@ -42,8 +42,6 @@ struct Frame {
   FIELD(bool, m_isSliding) \
   FIELD(bool, m_isRising) \
   FIELD(bool, m_blackOrb) \
-  FIELD(bool, m_isHolding) \
-  FIELD(bool, m_isHolding2) \
   FIELD(float, m_vehicleSize) \
   FIELD(float, m_playerSpeed) \
   FIELD(bool, unk480) \
@@ -51,6 +49,11 @@ struct Frame {
   FIELD(bool, unk4D4) \
   FIELD(bool, unk4DC) \
   FIELD(bool, unk538) \
+  FIELD(bool, unk539) \
+  FIELD(bool, unk53A) \
+  FIELD(bool, unk53B) \
+  FIELD(bool, unk53D) \
+  FIELD(bool, unk53E) \
   FIELD(bool, unk53F) \
   FIELD(bool, unk558) \
   FIELD(bool, unk5B0) \
