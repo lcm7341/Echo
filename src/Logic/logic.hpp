@@ -32,50 +32,56 @@ struct Frame {
 	double xVelocity;
 };
 
+#define PLAYER_FIELDS \
+  FIELD(double, m_xAccel) \
+  FIELD(double, m_yAccel) \
+  FIELD(double, m_jumpAccel) \
+  FIELD(bool, m_isUpsideDown) \
+  FIELD(bool, m_isOnGround) \
+  FIELD(bool, m_isDashing) \
+  FIELD(bool, m_isSliding) \
+  FIELD(bool, m_isRising) \
+  FIELD(bool, m_blackOrb) \
+  FIELD(bool, m_isHolding) \
+  FIELD(bool, m_isHolding2) \
+  FIELD(float, m_vehicleSize) \
+  FIELD(float, m_playerSpeed) \
+  FIELD(bool, unk480) \
+  FIELD(bool, unk4B0) \
+  FIELD(bool, unk4D4) \
+  FIELD(bool, unk4DC) \
+  FIELD(double, m_gravity) \
+  FIELD(bool, unk538) \
+  FIELD(bool, unk539) \
+  FIELD(bool, unk53A) \
+  FIELD(bool, unk53B) \
+  FIELD(bool, unk53D) \
+  FIELD(bool, unk53E) \
+  FIELD(bool, unk53F) \
+  FIELD(bool, unk558) \
+  FIELD(bool, unk5B0) \
+  FIELD(bool, unk5FC) \
+  FIELD(bool, unk5FD) \
+  FIELD(bool, unk610) \
+  FIELD(bool, m_canRobotJump) \
+
 struct CheckpointData {
-	double x_accel, y_accel, jump_accel;
-	bool is_upside_down, is_on_ground, is_dashing, is_sliding, is_rising, black_orb;
-	float vehicle_size, player_speed, rotation_x, rotation_y, x_pos, y_pos;
+	#define FIELD(type, name) type name;
+		PLAYER_FIELDS
+	#undef FIELD
 
 	static CheckpointData create(gd::PlayerObject* player) {
-		return {
-			player->m_xAccel,
-			player->m_yAccel,
-			player->m_jumpAccel,
-			player->m_isUpsideDown,
-			player->m_isOnGround,
-			player->m_isDashing,
-			player->m_isSliding,
-			player->m_isRising,
-			player->m_blackOrb,
-
-			player->m_vehicleSize,
-			player->m_playerSpeed,
-
-			player->getRotationX(),
-			player->getRotationY(),
-			player->getPositionX(),
-			player->getPositionY()
-		};
+		CheckpointData data;
+		#define FIELD(type, name) data.name = player->name;
+			PLAYER_FIELDS
+		#undef FIELD
+		return data;
 	}
 
 	void apply(gd::PlayerObject* player) {
-		player->m_xAccel = x_accel;
-		player->m_yAccel = y_accel;
-		player->m_jumpAccel = jump_accel;
-		player->m_isUpsideDown = is_upside_down;
-		player->m_isOnGround = is_on_ground;
-		player->m_isDashing = is_dashing;
-		player->m_isSliding = is_sliding;
-		player->m_isRising = is_rising;
-		player->m_vehicleSize = vehicle_size;
-		player->m_playerSpeed = player_speed;
-		player->m_blackOrb = black_orb;
-
-		player->setRotationX(rotation_x);
-		player->setRotationY(rotation_y);
-		player->setPositionX(x_pos);
-		player->setPositionY(y_pos);
+		#define FIELD(type, name) player->name = name;
+			PLAYER_FIELDS
+		#undef FIELD
 	}
 };
 

@@ -640,6 +640,7 @@ void GUI::main() {
 
 		if (ImGui::Button(logic.is_playing() ? "Stop Playing" : "Start Playing", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.48f, 0))) {
 			logic.toggle_playing();
+			logic.sort_inputs();
 		}
 
 		if (logic.is_playing()) {
