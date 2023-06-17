@@ -622,6 +622,7 @@ void GUI::main() {
 
 		if (ImGui::Button(logic.is_recording() ? "Stop Recording" : "Start Recording", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.5f, 0))) {
 			logic.toggle_recording();
+			logic.sort_inputs();
 		}
 
 		if (logic.is_recording()) {
@@ -767,6 +768,7 @@ void GUI::main() {
 			else {
 				logic.read_file(logic.macro_name, false);
 			}
+			logic.sort_inputs();
 		}
 
 		ImGui::SameLine();
