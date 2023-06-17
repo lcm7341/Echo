@@ -58,6 +58,7 @@ static ImFont* g_font = nullptr;
 static Opcode anticheatBypass(Cheat::AntiCheatBypass);
 static Opcode noclip(Cheat::NoClip);
 static Opcode practiceMusic(Cheat::PracticeMusic);
+static ImGui::FileBrowser fileDialog;
 
 void GUI::draw() {
 	if (g_font) ImGui::PushFont(g_font);
@@ -84,6 +85,7 @@ void GUI::draw() {
 		}
 
 		ImGui::End();
+		fileDialog.Display();
 	}
 
 
@@ -457,16 +459,12 @@ void GUI::tools() {
 		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Macro Tools");
 		ImGui::Separator();
 
-		ImGui::FileBrowser fileDialog;
 		fileDialog.SetTitle("Replays");
-		fileDialog.SetPwd(std::filesystem::path(".echo"));
 		fileDialog.SetTypeFilters({ ".echo", ".bin" });
 
 		if (ImGui::Button("Merge With Replay")) {
 			fileDialog.Open();
 		}
-
-		fileDialog.Display();
 
 		if (fileDialog.HasSelected())
 		{
@@ -553,12 +551,12 @@ void GUI::conversion() {
 			ImGui::EndCombo();
 		}
 
-		ImGui::SameLine(); 
+		ImGui::SameLine();
 
-		ImGui::FileBrowser fileDialog;
 		if (ImGui::Button("Import")) {
 			fileDialog.Open();
 		}
+
 		ImGui::SameLine();
 		if (ImGui::Button("Export")) {
 			std::string filename = logic.macro_name;
@@ -572,10 +570,8 @@ void GUI::conversion() {
 		}
 
 		// Setup and use the FileBrowser dialog
-		fileDialog.SetTitle("Replays");
-		fileDialog.SetPwd(std::filesystem::path(".echo"));
+		fileDialog.SetTitle("Import");
 		fileDialog.SetTypeFilters({ options[current_option]->get_type_filter() });
-		fileDialog.Display();
 
 		if (fileDialog.HasSelected()) {
 			try {
@@ -791,6 +787,8 @@ void GUI::main() {
 }
 
 void GUI::init() {
+	fileDialog.SetPwd(std::filesystem::path(".echo"));
+
 	auto& style = ImGui::GetStyle();
 	style.WindowTitleAlign = ImVec2(0.5f, 0.5f);
 	style.WindowBorderSize = 0;
