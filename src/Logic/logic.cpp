@@ -48,21 +48,12 @@ void Logic::play_input(Frame& input) {
     }
 
     if (PLAYLAYER) {
+        live_inputs.push_back(input);
         if (input.pressingDown) {
-            if (input.isPlayer2) {
-                Hooks::PlayLayer::pushButton(PLAYLAYER, 0, !PLAYLAYER->m_player2 ^ gamevar);
-            }
-            else {
-                Hooks::PlayLayer::pushButton(PLAYLAYER, 0, !PLAYLAYER->m_player1 ^ gamevar);
-            }
+            Hooks::PlayLayer::pushButton(PLAYLAYER, 0, !input.isPlayer2 ^ gamevar);
         }
         else {
-            if (input.isPlayer2) {
-                Hooks::PlayLayer::releaseButton(PLAYLAYER, 0, !PLAYLAYER->m_player2 ^ gamevar);
-            }
-            else {
-                Hooks::PlayLayer::releaseButton(PLAYLAYER, 0, !PLAYLAYER->m_player1 ^ gamevar);
-            }
+            Hooks::PlayLayer::releaseButton(PLAYLAYER, 0, !input.isPlayer2 ^ gamevar);
         }
     }
 }
@@ -75,9 +66,18 @@ unsigned Logic::count_presses_in_last_second() {
     std::vector<float> cps_percents;
 
     unsigned press_count = 0;
-    for (auto it = inputs.rbegin(); it != inputs.rend(); ++it) {
-        if (it->number > frame_limit && it->pressingDown) {
-            press_count++;
+    if (is_recording()) {
+        for (auto it = inputs.rbegin(); it != inputs.rend(); ++it) {
+            if (it->number > frame_limit && it->pressingDown) {
+                press_count++;
+            }
+        }
+    }
+    else if (is_playing()) {
+        for (auto it = live_inputs.rbegin(); it != live_inputs.rend(); ++it) {
+            if (it->number > frame_limit && it->pressingDown) {
+                press_count++;
+            }
         }
     }
 
@@ -273,16 +273,16 @@ void Logic::write_file_json(const std::string& filename) {
     json state;
 
     state["fps"] = fps;
-    state["end_portal_position"] = end_portal_position;
+    state["end_xpos"] = end_portal_position;
 
     // Create a JSON array to store the input data
     json json_inputs = json::array();
     for (auto& input : inputs) {
         // Each input is a JSON object
         json json_input;
-        json_input["number"] = input.number;
-        json_input["pressingDown"] = input.pressingDown;
-        json_input["isPlayer2"] = input.isPlayer2;
+        json_input["frame"] = input.number;
+        json_input["holding"] = input.pressingDown;
+        json_input["player_2"] = input.isPlayer2;
         // Add the input object to the array
         json_inputs.push_back(json_input);
     }

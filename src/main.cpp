@@ -45,6 +45,11 @@ void writeConfig() {
 	j["video_end_duration"] = recorder.m_after_end_duration;
 	j["video_color_fix"] = recorder.color_fix;
 
+	j["max_cps"] = logic.max_cps;
+	j["audio_speedhack"] = logic.audio_speedhack;
+
+	j["use_json"] = logic.use_json_for_files;
+
 	std::ofstream file(".echo\\settings\\settings.json");
 
 	file << j.dump(4);
@@ -85,6 +90,11 @@ void readConfig() {
 	recorder.m_bitrate = getOrDefault(j, "video_bitrate", 12);
 	recorder.m_after_end_duration = getOrDefault(j, "video_end_duration", 3);
 	recorder.color_fix = getOrDefault(j, "video_color_fix", true);
+
+	logic.max_cps = getOrDefault(j, "max_cps", 15);
+	logic.audio_speedhack = getOrDefault(j, "audio_speedhack", true);
+
+	logic.use_json_for_files = getOrDefault(j, "use_json", false);
 
 	CCDirector::sharedDirector()->setAnimationInterval(1.f / GUI::get().input_fps);
 
