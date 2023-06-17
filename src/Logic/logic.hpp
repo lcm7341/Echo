@@ -236,6 +236,7 @@ public:
 	std::string highest_cps();
 
 	unsigned cached_inputs_hash = 0;
+	int cached_max_cps = 0;
 	std::string cached_highest_cps = "0";
 	std::string highest_cps_cached() {
 		// Calculate a simple sum "hash" of the input frame numbers
@@ -244,11 +245,12 @@ public:
 			inputs_hash += frame.number;
 
 		// Check if the inputs hash has changed
-		if (inputs_hash != cached_inputs_hash) {
+		if (inputs_hash != cached_inputs_hash || cached_max_cps != max_cps) {
 			std::string cps = highest_cps();
 
 			cached_highest_cps = cps;
 			cached_inputs_hash = inputs_hash;
+			cached_max_cps = max_cps;
 
 			return cps;
 		}

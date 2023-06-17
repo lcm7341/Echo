@@ -115,7 +115,7 @@ std::string Logic::highest_cps() {
                 }
             }
             if (should_push) {
-                cps_percents.push_back(current_percent);
+                cps_percents.push_back(current_percent + 0.5f);
             }
         }
 
