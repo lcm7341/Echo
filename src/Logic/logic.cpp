@@ -331,9 +331,58 @@ void Logic::read_file_json(const std::string& filename, bool is_path = false) {
 }
 
 void Logic::sort_inputs() {
-    std::sort(inputs.begin(), inputs.end(), [](const Frame& a, const Frame& b) {
-        return a.number < b.number;
-        });
+    std::map<unsigned, std::vector<Frame>> frameMap;
+
+    for (const auto& frame : inputs) {
+        frameMap[frame.number].push_back(frame);
+    }
+
+    inputs.clear();
+
+    std::map<bool, std::deque<Frame>> pressQueues;
+    std::map<bool, std::deque<Frame>> releaseQueues;
+
+    for (const auto& [frameNumber, frames] : frameMap) {
+        std::vector<Frame> mergedFrames;
+
+        for (bool isPlayer2 : {false, true}) {
+            for (const auto& frame : frames) {
+                if (frame.isPlayer2 != isPlayer2) continue;
+
+                if (frame.pressingDown) {
+                    pressQueues[isPlayer2].push_back(frame);
+                }
+                else {
+                    if (!pressQueues[isPlayer2].empty()) {
+                        mergedFrames.push_back(pressQueues[isPlayer2].front());
+                        pressQueues[isPlayer2].pop_front();
+                        mergedFrames.push_back(frame);
+                    }
+                    else {
+                        releaseQueues[isPlayer2].push_back(frame);
+                    }
+                }
+            }
+
+            while (!pressQueues[isPlayer2].empty() && !releaseQueues[isPlayer2].empty()) {
+                mergedFrames.push_back(pressQueues[isPlayer2].front());
+                pressQueues[isPlayer2].pop_front();
+                mergedFrames.push_back(releaseQueues[isPlayer2].front());
+                releaseQueues[isPlayer2].pop_front();
+            }
+
+            inputs.insert(inputs.end(), mergedFrames.begin(), mergedFrames.end());
+            mergedFrames.clear();
+        }
+    }
+
+    // If there are any unpaired 'click' frames, append them to the inputs
+    for (bool isPlayer2 : {false, true}) {
+        while (!pressQueues[isPlayer2].empty()) {
+            inputs.push_back(pressQueues[isPlayer2].front());
+            pressQueues[isPlayer2].pop_front();
+        }
+    }
 }
 
 void Logic::handle_checkpoint_data() {
