@@ -149,7 +149,7 @@ bool __fastcall Hooks::PauseLayer::init_h(gd::PauseLayer* self) {
 
     if (logic.is_recording()) {
         if (!logic.get_inputs().empty()) {
-            if (logic.get_inputs().back().pressingDown)
+            if (logic.get_inputs().back().pressingDown && (!logic.get_latest_checkpoint().player_1_data.m_isDashing || !logic.get_latest_checkpoint().player_2_data.m_isDashing))
             logic.record_input(false, false);
         }
     }
@@ -386,11 +386,11 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
                     bool currently_holdingP1 = self->m_player1->m_isHolding;
                     bool currently_holdingP2 = self->m_player2->m_isHolding;
 
-                    if (!currently_holdingP1) {
+                    if (!currently_holdingP1 && !logic.get_latest_checkpoint().player_1_data.m_isDashing) {
                         logic.add_input({ logic.get_latest_checkpoint().number, false, false });
                     }
 
-                    if (!currently_holdingP2 && self->m_level->twoPlayerMode) {
+                    if (!currently_holdingP2 && self->m_level->twoPlayerMode && (!logic.get_latest_checkpoint().player_1_data.m_isDashing || !logic.get_latest_checkpoint().player_2_data.m_isDashing)) {
                         logic.add_input({ logic.get_latest_checkpoint().number, false, true });
                     }
                 }
@@ -398,11 +398,11 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
                     bool currently_holdingP1 = self->m_player1->m_isHolding;
                     bool currently_holdingP2 = self->m_player2->m_isHolding;
 
-                    if (currently_holdingP1) {
+                    if (currently_holdingP1 && !logic.get_latest_checkpoint().player_1_data.m_isDashing) {
                         logic.add_input({ logic.get_latest_checkpoint().number, true, false });
                     }
 
-                    if (currently_holdingP2 && self->m_level->twoPlayerMode) {
+                    if (currently_holdingP2 && self->m_level->twoPlayerMode && (!logic.get_latest_checkpoint().player_1_data.m_isDashing || !logic.get_latest_checkpoint().player_2_data.m_isDashing)) {
                         logic.add_input({ logic.get_latest_checkpoint().number, true, true });
                     }
                 }
