@@ -148,7 +148,8 @@ bool __fastcall Hooks::PauseLayer::init_h(gd::PauseLayer* self) {
     auto& logic = Logic::get();
 
     if (logic.is_recording()) {
-        if (!logic.get_inputs().empty() && logic.get_inputs().front().pressingDown) {
+        if (!logic.get_inputs().empty()) {
+            if (logic.get_inputs().back().pressingDown)
             logic.record_input(false, false);
         }
     }
