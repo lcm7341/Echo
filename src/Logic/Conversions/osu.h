@@ -32,8 +32,8 @@ public:
         // Metadata section
         osu_file << "[Metadata]\n";
         osu_file << "Title:" + filename + "\n";
-        osu_file << "Artist:EchoBot\n";
-        osu_file << "Creator:EchoBot\n";
+        osu_file << "Artist:Echo\n"; // It's Echo not EchoBot you scum
+        osu_file << "Creator:Echo\n";
         osu_file << "Version:1.0\n";
         osu_file << "\n";
 
@@ -66,6 +66,7 @@ public:
             }
         }
 
+        logic.conversion_message = ""; // Clearing
         osu_file.close();
     }
 

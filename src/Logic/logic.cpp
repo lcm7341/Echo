@@ -383,6 +383,11 @@ void Logic::sort_inputs() {
             pressQueues[isPlayer2].pop_front();
         }
     }
+
+    // Sort the inputs by frames unless they have the same frame number
+    std::sort(inputs.begin(), inputs.end(), [](const Frame& a, const Frame& b) {
+        return (a.number != b.number) && (a.number < b.number);
+        });
 }
 
 void Logic::handle_checkpoint_data() {

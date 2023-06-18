@@ -26,6 +26,7 @@ public:
             logic.inputs.push_back(input);
         }
 
+        logic.conversion_message = ""; // Clearing
         file.close();
     }
 
@@ -47,6 +48,7 @@ public:
                 << (input.isPlayer2 ? 1 : 0) << "\n";
         }
 
+        logic.conversion_message = ""; // Clearing
         file.close();
     }
 

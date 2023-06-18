@@ -39,6 +39,9 @@ namespace Hooks {
 
 		}
 
+	inline void(__thiscall* PlayerObject_ringJump)(gd::PlayerObject* self, gd::GameObject* ring); void __fastcall PlayerObject_ringJump_h(gd::PlayerObject* self, int, gd::GameObject* ring);
+	inline void(__thiscall* GameObject_activateObject)(gd::GameObject* self, gd::PlayerObject* player); void __fastcall GameObject_activateObject_h(gd::GameObject* self, int, gd::PlayerObject* player);
+
 	namespace PauseLayer {
 		inline bool(__thiscall* init)(gd::PauseLayer* self); bool __fastcall init_h(gd::PauseLayer* self);
 	}

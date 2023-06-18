@@ -356,7 +356,7 @@ void GUI::sequential_replay() {
 		selected_replay_index = std::nullopt;
 	}
 
-	if (ImGui::BeginTabItem("Sequential replay")) {
+	if (ImGui::BeginTabItem("Sequence")) {
 
 		ImGui::Checkbox("Enabled", &logic.sequence_enabled);
 
@@ -482,12 +482,7 @@ void GUI::tools() {
 
 		bool antiCheatBypass = anticheatBypass.isActivated();
 		if (ImGui::Checkbox("Disable Anticheat", &antiCheatBypass)) {
-			if (antiCheatBypass) {
-				anticheatBypass.activate();
-			}
-			else {
-				anticheatBypass.deactivate();
-			}
+			antiCheatBypass ? anticheatBypass.activate() : anticheatBypass.deactivate();
 		}
 
 		bool noclipActivated = noclip.isActivated();
@@ -548,7 +543,7 @@ void GUI::conversion() {
 	auto& logic = Logic::get();
 
 	if (ImGui::BeginTabItem("Conversion")) {
-		static std::string current_option = "TASBot";
+		static std::string current_option = "Plain Text";
 		if (ImGui::BeginCombo("Options", current_option.c_str())) {
 			for (auto& option : options) {
 				bool is_selected = (current_option == option.first);
@@ -558,6 +553,8 @@ void GUI::conversion() {
 
 				if (is_selected) {
 					ImGui::SetItemDefaultFocus();
+
+					fileDialog.ClearSelected();
 				}
 			}
 			ImGui::EndCombo();
@@ -565,11 +562,23 @@ void GUI::conversion() {
 
 		ImGui::SameLine();
 
-		if (ImGui::Button("Import")) {
-			fileDialog.Open();
+		auto& style = ImGui::GetStyle();
+
+		if (current_option == "Osu") { // I fucking hate the way imgui does disabling
+			ImGui::BeginDisabled();
+
+			if (ImGui::Button("Import"))
+				fileDialog.Open();
+
+			ImGui::EndDisabled();
+		}
+		else {
+			if (ImGui::Button("Import"))
+				fileDialog.Open();
 		}
 
 		ImGui::SameLine();
+
 		if (ImGui::Button("Export")) {
 			std::string filename = logic.macro_name;
 			try {
@@ -586,11 +595,12 @@ void GUI::conversion() {
 		fileDialog.SetTypeFilters({ options[current_option]->get_type_filter() });
 
 		if (fileDialog.HasSelected()) {
+			logic.conversion_message = "";
 			try {
 				options[current_option]->import(fileDialog.GetSelected().string());
 				logic.sort_inputs();
-				fileDialog.ClearSelected();
-				logic.conversion_message = "Success! Imported replay as a " + current_option + " file";
+				if (logic.conversion_message == "")
+					logic.conversion_message = "Success! Imported replay as a " + current_option + " file";
 			}
 			catch (std::runtime_error& e) {
 				logic.conversion_message = "Error! Could not import " + fileDialog.GetSelected().filename().string();
@@ -645,9 +655,9 @@ void GUI::main() {
 			ImVec4 tempColor = style.Colors[ImGuiCol_Button];
 			ImVec4 tempColor2 = style.Colors[ImGuiCol_ButtonHovered];
 			ImVec4 tempColor3 = style.Colors[ImGuiCol_ButtonActive];
-			style.Colors[ImGuiCol_Button] = ImVec4(0.6f, 0.6f, 0.6f, 0);
-			style.Colors[ImGuiCol_ButtonHovered] = ImVec4(0.6f, 0.6f, 0.6f, 0.2f);
-			style.Colors[ImGuiCol_ButtonActive] = ImVec4(0.6f, 0.6f, 0.6f, 0.3f);
+			style.Colors[ImGuiCol_Button] = ImVec4(0.6f, 0.6f, 0.6f, 0.2f);
+			style.Colors[ImGuiCol_ButtonHovered] = ImVec4(0.6f, 0.6f, 0.6f, 0.3f);
+			style.Colors[ImGuiCol_ButtonActive] = ImVec4(0.6f, 0.6f, 0.6f, 0.4f);
 		}
 
 		if (ImGui::Button(logic.is_playing() ? "Stop Playing" : "Start Playing", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.48f, 0))) {
