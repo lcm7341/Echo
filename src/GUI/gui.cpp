@@ -325,6 +325,8 @@ void GUI::renderer() {
 
 		ImGui::InputText("Extra Args", &logic.recorder.m_extra_args);
 
+		ImGui::InputText("VF Args", &logic.recorder.m_vf_args);
+
 		ImGui::InputText("Extra Audio Args", &logic.recorder.m_extra_audio_args);
 
 		ImGui::InputFloat("Extra Time", &logic.recorder.m_after_end_duration);
@@ -334,14 +336,20 @@ void GUI::renderer() {
 		ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "(?)");
 
 		if (ImGui::IsItemHovered()) {
-			ImGui::SetTooltip("Extra Time is the time in seconds after you finish a level that the recorder automatically records for..");
+			ImGui::SetTooltip("Extra Time is the time in seconds after you finish a level that the recorder automatically records for.");
 		}
 
 		ImGui::Separator();
 
 		ImGui::InputText("Video Name", &logic.recorder.video_name);
 
-		ImGui::Checkbox("Color Fix", &logic.recorder.color_fix);
+		ImGui::Checkbox("Color Fix", &logic.recorder.color_fix); ImGui::SameLine();
+
+		ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "(?)");
+
+		if (ImGui::IsItemHovered()) {
+			ImGui::SetTooltip("The color fix vf args are: colorspace=all=bt709:iall=bt470bg:fast=1");
+		}
 
 		if (PLAYLAYER) {
 			if (!logic.recorder.m_recording) {

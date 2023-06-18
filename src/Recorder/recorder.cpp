@@ -76,7 +76,7 @@ void Recorder::start(const std::string& path) {
         else
             stream << "-pix_fmt yuv420p ";
         stream << "-cq 0 -vf " << m_vf_args << "\"vflip\"" << " -an \"" << path << "\" ";
-        m_vf_args = "";
+        //m_vf_args = "";
 
         auto process = subprocess::Popen(stream.str());
         while (m_recording || m_frame_has_data) {
