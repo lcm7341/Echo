@@ -258,7 +258,7 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
 int __fastcall Hooks::PlayLayer::pushButton_h(gd::PlayLayer* self, int, int idk, bool button) {
     auto& logic = Logic::get();
 
-    if ((logic.is_playing() && logic.ignore_actions_at_playback)) return 0;
+    if (logic.is_playing() && logic.ignore_actions_at_playback) return 0;
 
     if (button && self->m_player1->m_isDashing) {
         return 0;
@@ -268,7 +268,7 @@ int __fastcall Hooks::PlayLayer::pushButton_h(gd::PlayLayer* self, int, int idk,
         return 0;
     }
 
-    if (logic.click_both_players) {
+    if (logic.click_both_players && self->m_level->twoPlayerMode) {
         logic.record_input(true, !button);
         pushButton(self, idk, !button);
     }
@@ -285,9 +285,9 @@ int __fastcall Hooks::PlayLayer::releaseButton_h(gd::PlayLayer* self, int, int i
 
     if (logic.is_playing() && logic.ignore_actions_at_playback) return 0;
 
-    if (logic.click_both_players) {
+    if (logic.click_both_players && self->m_level->twoPlayerMode) {
         logic.record_input(false, !button);
-        pushButton(self, idk, !button);
+        releaseButton(self, idk, !button);
     }
 
     if (logic.swap_player_input) button = !button;
