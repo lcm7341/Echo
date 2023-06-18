@@ -536,7 +536,7 @@ void GUI::tools() {
 		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Autoclicker");
 		ImGui::Separator();
 
-		if (ImGui::Checkbox("Enabled", &logic.autoclicker));
+		ImGui::Checkbox("Enabled", &logic.autoclicker);
 
 		ImGui::SameLine();
 
@@ -569,11 +569,11 @@ void GUI::tools() {
 
 		ImGui::PopItemWidth();
 
-		if (ImGui::Checkbox("Click for Player 1", &logic.autoclicker_player_1));
+		ImGui::Checkbox("Click for Player 1", &logic.autoclicker_player_1);
 		ImGui::SameLine();
-		if (ImGui::Checkbox("Click for Player 2", &logic.autoclicker_player_2));
+		ImGui::Checkbox("Click for Player 2", &logic.autoclicker_player_2);
 
-		if (ImGui::Checkbox("Auto Disable", &logic.autoclicker_auto_disable));
+		ImGui::Checkbox("Auto Disable", &logic.autoclicker_auto_disable);
 
 		ImGui::SameLine();
 
