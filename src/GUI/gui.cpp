@@ -553,12 +553,6 @@ void GUI::conversion() {
 		}
 
 		ImGui::SameLine();
-
-		if (ImGui::Button("Import")) {
-			fileDialog.Open();
-		}
-
-		ImGui::SameLine();
 		if (ImGui::Button("Export")) {
 			std::string filename = logic.macro_name;
 			try {
@@ -567,6 +561,14 @@ void GUI::conversion() {
 			}
 			catch (std::runtime_error& e) {
 				logic.conversion_message = "Error! Could not export as " + options[current_option]->get_type_filter();
+			}
+		}
+
+		if (current_option != "Osu") {
+			ImGui::SameLine();
+
+			if (ImGui::Button("Import")) {
+				fileDialog.Open();
 			}
 		}
 
