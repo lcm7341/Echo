@@ -356,7 +356,7 @@ void GUI::sequential_replay() {
 		selected_replay_index = std::nullopt;
 	}
 
-	if (ImGui::BeginTabItem("Sequential replay")) {
+	if (ImGui::BeginTabItem("Sequence")) {
 
 		ImGui::Checkbox("Enabled", &logic.sequence_enabled);
 
