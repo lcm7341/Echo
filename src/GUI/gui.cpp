@@ -227,7 +227,7 @@ void GUI::editor() {
 
 		ImGui::PushItemFlag(ImGuiItemFlags_NoTabStop, true);
 		ImGui::SetNextItemWidth((ImGui::GetWindowContentRegionWidth() - ImGui::GetStyle().ItemSpacing.x) * 0.3f);
-		ImGui::InputFloat("###frames", &offset_frames, 0, 0, "%.0f"); ImGui::SameLine();
+		ImGui::InputInt("###frames", &offset_frames, 0, 0); ImGui::SameLine();
 		ImGui::PopItemFlag();
 
 		ImGui::NewLine();

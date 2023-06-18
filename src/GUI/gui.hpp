@@ -31,5 +31,5 @@ public:
 
 	float input_fps = 60.f;
 
-	float offset_frames = 0.f;
+	int offset_frames = 0;
 };
