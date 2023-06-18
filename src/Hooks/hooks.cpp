@@ -252,6 +252,7 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
             // Update the frame counter label with the current frame number
             char out[24];
             sprintf_s(out, "Frame: %i", logic.get_frame());
+            frame_counter->setPosition(logic.frame_counter_x, logic.frame_counter_y);
             frame_counter->setString(out);
         }
         else {
@@ -262,7 +263,7 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
     }
     else if (logic.show_frame) {
         auto frame_counter2 = cocos2d::CCLabelBMFont::create("Frame: ", "chatFont.fnt"); //probably leaks memory :p
-        frame_counter2->setPosition(cocos2d::CCDirector::sharedDirector()->getWinSize().width / 2.0, cocos2d::CCDirector::sharedDirector()->getWinSize().height / 2.0);
+        frame_counter2->setPosition(logic.frame_counter_x, logic.frame_counter_y);
         frame_counter2->setOpacity(70);
 
         self->addChild(frame_counter2, 999, FRAME_LABEL_ID);
@@ -282,6 +283,7 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
             else if (logic.over_max_cps) {
                 cps_counter->setColor({ 255, 72, 0 });
             }
+            cps_counter->setPosition(logic.cps_counter_x, logic.cps_counter_y);
         }
 
         else {
@@ -291,7 +293,7 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
     }
     else if (logic.show_cps) {
         auto cps_counter2 = cocos2d::CCLabelBMFont::create("CPS: ", "chatFont.fnt");
-        cps_counter2->setPosition(30, 20);
+        cps_counter2->setPosition(logic.cps_counter_x, logic.cps_counter_y);
         cps_counter2->setOpacity(70);
 
         self->addChild(cps_counter2, 999, CPS_LABEL_ID);

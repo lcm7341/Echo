@@ -151,6 +151,12 @@ public:
 
 	bool file_dialog = false;
 
+	float frame_counter_x = 50.f;
+	float frame_counter_y = 50.f;
+
+	float cps_counter_x = 30.f;
+	float cps_counter_y = 20.f;
+
 	unsigned frame_advance_hold_duration = 300; // ms
 	unsigned frame_advance_delay = 50; // ms
 

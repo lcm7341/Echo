@@ -546,17 +546,28 @@ void GUI::tools() {
 			ImGui::SetTooltip("Keybind for this setting is 'B'");
 		}
 
-		ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 0.8f), "Frames Between Presses");
+		ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 0.8f), "Intervals Between Actions");
+
+		ImGui::PushItemWidth(ImGui::GetWindowContentRegionWidth() * 0.33f);
+
 		int framesBetweenPresses = Autoclicker::get().getFramesBetweenPresses();
-		if (ImGui::DragInt("P", &framesBetweenPresses, 1.0f, 0, 10000)) {
+		if (ImGui::DragInt("Presses", &framesBetweenPresses, 1.0f, 0, 10000)) {
 			Autoclicker::get().setFramesBetweenPresses(framesBetweenPresses);
 		}
 
-		ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 0.8f), "Frames Between Releases");
+		ImGui::PopItemWidth();
+
+		ImGui::SameLine();
+
+		ImGui::PushItemWidth(ImGui::GetWindowContentRegionWidth() * 0.33f);
+
+		//ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 0.8f), "Frames Between Releases");
 		int framesBetweenReleases = Autoclicker::get().getFramesBetweenReleases();
-		if (ImGui::DragInt("R", &framesBetweenReleases, 1.0f, 0, 10000)) {
+		if (ImGui::DragInt("Releases", &framesBetweenReleases, 1.0f, 0, 10000)) {
 			Autoclicker::get().setFramesBetweenReleases(framesBetweenReleases);
 		}
+
+		ImGui::PopItemWidth();
 
 		if (ImGui::Checkbox("Click for Player 1", &logic.autoclicker_player_1));
 		ImGui::SameLine();
@@ -795,8 +806,31 @@ void GUI::main() {
 		ImGui::Separator();
 
 		ImGui::Checkbox("Show frame", &logic.show_frame);
-		ImGui::SameLine();
+
+		if (logic.show_frame) {
+			ImGui::SameLine();
+			ImGui::PushItemWidth(75);
+			ImGui::DragFloat("X###frame_x", &logic.frame_counter_x, 1);
+			ImGui::PopItemWidth();
+			ImGui::SameLine();
+			ImGui::PushItemWidth(75);
+			ImGui::DragFloat("Y###frame_y", &logic.frame_counter_y, 1);
+			ImGui::PopItemWidth();
+		}
+
 		ImGui::Checkbox("Show CPS", &logic.show_cps);
+
+		if (logic.show_cps) {
+			ImGui::SameLine();
+			ImGui::PushItemWidth(75);
+			ImGui::DragFloat("X###cps_x", &logic.cps_counter_x, 1);
+			ImGui::PopItemWidth();
+			ImGui::SameLine();
+			ImGui::PushItemWidth(75);
+			ImGui::DragFloat("Y###cps_y", &logic.cps_counter_y, 1);
+			ImGui::PopItemWidth();
+		}
+
 		ImGui::DragFloat("Max CPS", &logic.max_cps, 0.01, 1, 100, "%.2f");
 
 		ImGui::Separator();
@@ -807,11 +841,13 @@ void GUI::main() {
 
 		bool open_modal = true;
 
+		if (logic.inputs.empty()) ImGui::BeginDisabled();
 		if (ImGui::Button("Reset Macro")) {
 			logic.get_inputs().clear();
 			//ImGui::OpenPopup("Confirm Reset");
 			//ImGui::SetNextWindowPos({ ImGui::GetWindowWidth() / 2.f, ImGui::GetWindowHeight() / 2.f });
 		}
+		if (logic.inputs.empty()) ImGui::EndDisabled();
 
 		if (ImGui::BeginPopupModal("Confirm Reset", &open_modal, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize)) {
 			ImGui::Text("Are you sure you want to reset your macro?");
@@ -837,7 +873,7 @@ void GUI::main() {
 		ImGui::PopItemFlag();
 
 		ImGui::SetNextItemWidth((ImGui::GetWindowContentRegionWidth() - ImGui::GetStyle().ItemSpacing.x) * (50.f / 100.f));
-		if (ImGui::Button("Save File")) {
+		if (ImGui::Button("Save File", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.5f, 0))) {
 			if (logic.use_json_for_files) {
 				logic.write_file_json(logic.macro_name);
 			}
@@ -853,7 +889,7 @@ void GUI::main() {
 		fileDialog.SetTitle("Replays");
 		fileDialog.SetTypeFilters({ ".echo", ".bin" });
 
-		if (ImGui::Button("Load File")) {
+		if (ImGui::Button("Load File", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.48f, 0))) {
 			if (!logic.file_dialog) {
 				if (logic.use_json_for_files) {
 					logic.read_file_json(logic.macro_name, false);
@@ -885,8 +921,6 @@ void GUI::main() {
 			fileDialog.ClearSelected();
 		}
 
-
-		ImGui::SameLine();
 
 		ImGui::Checkbox("Use JSON", &logic.use_json_for_files);
 

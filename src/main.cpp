@@ -69,6 +69,12 @@ void writeConfig() {
 
 	j["file_dialog"] = logic.file_dialog;
 
+	j["frame_counter_x"] = logic.frame_counter_x;
+	j["frame_counter_y"] = logic.frame_counter_y;
+
+	j["cps_counter_x"] = logic.cps_counter_x;
+	j["cps_counter_y"] = logic.cps_counter_y;
+
 	std::ofstream file(".echo\\settings\\settings.json");
 
 	file << j.dump(4);
@@ -99,7 +105,7 @@ void readConfig() {
 	file >> j;
 
 	logic.fps = getOrDefault(j, "game_fps", 60);
-	GUI::get().input_fps = getOrDefault(j, "game_fps", 60);
+	GUI::get().input_fps = logic.fps;
 	recorder.m_fps = getOrDefault(j, "video_fps", 60);
 	recorder.m_width = getOrDefault(j, "video_width", 1920);
 	recorder.m_height = getOrDefault(j, "video_height", 1080);
@@ -131,6 +137,12 @@ void readConfig() {
 	logic.frame_advance_delay = getOrDefault(j, "frame_advance_delay", 50);
 
 	logic.file_dialog = getOrDefault(j, "file_dialog", false);
+
+	logic.frame_counter_x = getOrDefault(j, "frame_counter_x", 50);
+	logic.frame_counter_y = getOrDefault(j, "frame_counter_y", 50);
+
+	logic.cps_counter_x = getOrDefault(j, "cps_counter_x", 30);
+	logic.cps_counter_y = getOrDefault(j, "cps_counter_y", 20);
 
 	CCDirector::sharedDirector()->setAnimationInterval(1.f / GUI::get().input_fps);
 
