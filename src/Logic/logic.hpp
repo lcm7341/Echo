@@ -52,14 +52,6 @@ struct Frame {
   FIELD(bool, unk539) \
   FIELD(bool, unk53A) \
   FIELD(bool, unk53B) \
-  FIELD(bool, unk53D) \
-  FIELD(bool, unk53E) \
-  FIELD(bool, unk53F) \
-  FIELD(bool, unk558) \
-  FIELD(bool, unk5B0) \
-  FIELD(bool, unk5FC) \
-  FIELD(bool, unk5FD) \
-  FIELD(bool, unk610) \
   FIELD(bool, m_canRobotJump) \
 
 struct CheckpointData {
@@ -139,6 +131,8 @@ public:
 	bool use_json_for_files = false;
 	bool audio_speedhack = false;
 	std::vector<Frame> live_inputs; // for CPS counter, this acts as if when playing back, ur recording
+
+	bool autoclicker = false;
 
 	std::vector<Replay> replays;
 	size_t replay_index;

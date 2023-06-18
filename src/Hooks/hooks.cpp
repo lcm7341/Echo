@@ -40,7 +40,7 @@ void Hooks::init_hooks() {
 
     HOOK(0x205460, PlayLayer::updateVisibility)
 
-        MH_CreateHook(GetProcAddress(GetModuleHandleA("libcocos2d.dll"), "?update@CCScheduler@cocos2d@@UAEXM@Z"), CCScheduler_update_h, reinterpret_cast<void**>(&CCScheduler_update));
+    MH_CreateHook(GetProcAddress(GetModuleHandleA("libcocos2d.dll"), "?update@CCScheduler@cocos2d@@UAEXM@Z"), CCScheduler_update_h, reinterpret_cast<void**>(&CCScheduler_update));
 
     MH_EnableHook(MH_ALL_HOOKS);
 
@@ -119,6 +119,9 @@ void __fastcall Hooks::CCKeyboardDispatcher_dispatchKeyboardMSG_h(CCKeyboardDisp
         }
         else if (key == 'V') {
             logic.frame_advance = !logic.frame_advance;
+        }
+        else if (key == 'B') {
+            logic.autoclicker = !logic.autoclicker;
         }
     }
 

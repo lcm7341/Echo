@@ -510,6 +510,19 @@ void GUI::tools() {
 			}
 		}
 
+		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Autoclicker");
+		ImGui::Separator();
+
+		if (ImGui::Checkbox("Enabled", &logic.autoclicker));
+
+		ImGui::SameLine();
+
+		ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "(?)");
+
+		if (ImGui::IsItemHovered()) {
+			ImGui::SetTooltip("Keybind for this setting is 'B'");
+		}
+
 		ImGui::Separator();
 
 		ImGui::SetNextItemWidth(get_width(50.f));
