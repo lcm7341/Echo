@@ -482,12 +482,7 @@ void GUI::tools() {
 
 		bool antiCheatBypass = anticheatBypass.isActivated();
 		if (ImGui::Checkbox("Disable Anticheat", &antiCheatBypass)) {
-			if (antiCheatBypass) {
-				anticheatBypass.activate();
-			}
-			else {
-				anticheatBypass.deactivate();
-			}
+			antiCheatBypass ? anticheatBypass.activate() : anticheatBypass.deactivate();
 		}
 
 		bool noclipActivated = noclip.isActivated();
