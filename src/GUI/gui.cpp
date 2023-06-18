@@ -556,10 +556,6 @@ void GUI::conversion() {
 
 		auto& style = ImGui::GetStyle();
 
-		ImVec4 tempColor = style.Colors[ImGuiCol_Button];
-		ImVec4 tempColor2 = style.Colors[ImGuiCol_ButtonHovered];
-		ImVec4 tempColor3 = style.Colors[ImGuiCol_ButtonActive];
-
 		if (current_option == "Osu") { // I fucking hate the way imgui does disabling
 			ImGui::BeginDisabled();
 
