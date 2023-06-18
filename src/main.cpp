@@ -6,6 +6,10 @@
 #include "Logic/logic.hpp"
 #include "nlohmann/json.hpp"
 #include "Hack/audiopitchHack.hpp"
+#include "Logic/autoclicker.hpp"
+#include <chrono>
+#include <conio.h>
+#include <thread>
 
 using json = nlohmann::json;
 
@@ -53,6 +57,18 @@ void writeConfig() {
 
 	j["use_json"] = logic.use_json_for_files;
 
+	j["autoclicker"]["press_interval"] = Autoclicker::get().getFramesBetweenPresses();
+	j["autoclicker"]["release_interval"] = Autoclicker::get().getFramesBetweenReleases();
+	j["autoclicker"]["player_1"] = logic.autoclicker_player_1;
+	j["autoclicker"]["player_2"] = logic.autoclicker_player_2;
+
+	j["autoclicker"]["audo_disable"] = logic.autoclicker_auto_disable;
+
+	j["frame_advance_hold_duration"] = logic.frame_advance_hold_duration;
+	j["frame_advance_delay"] = logic.frame_advance_delay;
+
+	j["file_dialog"] = logic.file_dialog;
+
 	std::ofstream file(".echo\\settings\\settings.json");
 
 	file << j.dump(4);
@@ -60,6 +76,7 @@ void writeConfig() {
 	file.close();
 }
 
+// If the json object exists, set it. If it doesn't, set it to a default value
 template<typename T>
 T getOrDefault(const json& j, const std::string& key, const T& defaultValue) {
 	if (j.contains(key) && !j[key].is_null()) {
@@ -102,10 +119,24 @@ void readConfig() {
 
 	logic.use_json_for_files = getOrDefault(j, "use_json", false);
 
+	Autoclicker::get().setFramesBetweenPresses(getOrDefault(j["autoclicker"], "press_interval", 50));
+	Autoclicker::get().setFramesBetweenReleases(getOrDefault(j["autoclicker"], "release_interval", 50));
+
+	logic.autoclicker_player_1 = getOrDefault(j["autoclicker"], "player_1", true);
+	logic.autoclicker_player_2 = getOrDefault(j["autoclicker"], "player_2", true);
+
+	logic.autoclicker_auto_disable = getOrDefault(j["autoclicker"], "auto_disable", false);
+
+	logic.frame_advance_hold_duration = getOrDefault(j, "frame_advance_hold_duration", 300);
+	logic.frame_advance_delay = getOrDefault(j, "frame_advance_delay", 50);
+
+	logic.file_dialog = getOrDefault(j, "file_dialog", false);
+
 	CCDirector::sharedDirector()->setAnimationInterval(1.f / GUI::get().input_fps);
 
 	file.close();
 }
+
 
 DWORD WINAPI my_thread(void* hModule) {
 	MH_Initialize();

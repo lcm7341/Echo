@@ -16,6 +16,8 @@ enum State {
 #include <fstream>
 #include <gd.h>
 #include <cocos2d.h>
+#include <chrono>
+#include <conio.h>
 
 using namespace cocos2d;
 
@@ -116,6 +118,8 @@ public:
 	std::string error = "";
 	std::string conversion_message = "Waiting! Use the panel above to export/import";
 
+	std::chrono::steady_clock::time_point start = std::chrono::steady_clock::time_point();
+
 	bool real_time_mode = true;
 	float speedhack = 1.f;
 
@@ -141,6 +145,14 @@ public:
 	std::vector<Replay> replays;
 	size_t replay_index;
 	bool sequence_enabled = false;
+
+	bool noclip_player1 = false;
+	bool noclip_player2 = false;
+
+	bool file_dialog = false;
+
+	unsigned frame_advance_hold_duration = 300; // ms
+	unsigned frame_advance_delay = 50; // ms
 
 	unsigned get_frame();
 	double get_time();

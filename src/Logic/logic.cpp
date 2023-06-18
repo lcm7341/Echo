@@ -258,7 +258,7 @@ void Logic::remove_inputs(unsigned frame) {
 
 void Logic::write_file_json(const std::string& filename) {
     std::string dir = ".echo\\";
-    std::string ext = ".json";
+    std::string ext = ".echo";
 
     std::string full_filename = dir + filename + ext;
 
@@ -298,7 +298,7 @@ void Logic::write_file_json(const std::string& filename) {
 
 void Logic::read_file_json(const std::string& filename, bool is_path = false) {
     std::string dir = ".echo\\";
-    std::string ext = ".json";
+    std::string ext = ".echo";
 
     std::string full_filename = is_path ? filename : dir + filename + ext;
 

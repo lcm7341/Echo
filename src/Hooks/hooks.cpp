@@ -37,8 +37,10 @@ void Hooks::init_hooks() {
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x1E4570), PauseLayer::init_h, reinterpret_cast<void**>(&PauseLayer::init));
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x20D810), PlayLayer::exitLevel_h, reinterpret_cast<void**>(&PlayLayer::exitLevel));
 
-    MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x1f4ff0), PlayerObject_ringJump_h, reinterpret_cast<void**>(&PlayerObject_ringJump));;
-    MH_CreateHook(reinterpret_cast<void*>(gd::base + 0xef0e0), GameObject_activateObject_h, reinterpret_cast<void**>(&GameObject_activateObject));;
+    MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x1f4ff0), PlayerObject_ringJump_h, reinterpret_cast<void**>(&PlayerObject_ringJump));
+    MH_CreateHook(reinterpret_cast<void*>(gd::base + 0xef0e0), GameObject_activateObject_h, reinterpret_cast<void**>(&GameObject_activateObject));
+
+    MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x20A1A0), PlayLayer::death_h, reinterpret_cast<void**>(&PlayLayer::death));
 
     MH_CreateHook(GetProcAddress(GetModuleHandleA("libcocos2d.dll"), "?dispatchKeyboardMSG@CCKeyboardDispatcher@cocos2d@@QAE_NW4enumKeyCodes@2@_N@Z"), CCKeyboardDispatcher_dispatchKeyboardMSG_h, reinterpret_cast<void**>(&CCKeyboardDispatcher_dispatchKeyboardMSG));;
 
@@ -55,22 +57,36 @@ void Hooks::init_hooks() {
 bool g_disable_render = false;
 float g_left_over = 0.f;
 
-void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
+bool __fastcall Hooks::PlayLayer::death_h(void* self, void*, void* go, void* thingy) {
     auto& logic = Logic::get();
 
-    if (logic.autoclicker && logic.is_recording()) {
+    if (gd::GameManager::sharedState()->m_pPlayLayer->m_player1 == go && logic.noclip_player1 == true) { return 0; }
+    if (gd::GameManager::sharedState()->m_pPlayLayer->m_player2 == go && logic.noclip_player2 == true) { return 0; }
+
+    return Hooks::PlayLayer::death(self, go, thingy);
+
+}
+
+void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
+    auto& logic = Logic::get();
+    auto play_layer = gd::GameManager::sharedState()->getPlayLayer();
+
+    auto end = std::chrono::steady_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - logic.start);
+
+    if (logic.autoclicker && play_layer && !play_layer->m_isPaused) {
         Autoclicker::get().update(logic.get_frame());
 
         if (Autoclicker::get().shouldPress()) {
             if (logic.autoclicker_player_1)
                 gd::GameManager::sharedState()->getPlayLayer()->pushButton(0, false);
-            if (logic.autoclicker_player_2)
+            if (logic.autoclicker_player_2 && play_layer->m_level->twoPlayerMode)
                 gd::GameManager::sharedState()->getPlayLayer()->pushButton(0, true);
         }
         if (Autoclicker::get().shouldRelease()) {
             if (logic.autoclicker_player_1)
                 gd::GameManager::sharedState()->getPlayLayer()->releaseButton(0, false);
-            if (logic.autoclicker_player_2)
+            if (logic.autoclicker_player_2 && play_layer->m_level->twoPlayerMode)
                 gd::GameManager::sharedState()->getPlayLayer()->releaseButton(0, true);
         }
 
@@ -142,6 +158,8 @@ void __fastcall Hooks::CCKeyboardDispatcher_dispatchKeyboardMSG_h(CCKeyboardDisp
         auto scheduler = gd::GameManager::sharedState()->getScheduler();
 
         if (key == 'C') {
+            if (logic.start == std::chrono::steady_clock::time_point())
+                logic.start = std::chrono::steady_clock::now();
             logic.frame_advance = false;
             CCScheduler_update_h(scheduler, 0, 1.f / logic.fps);
             logic.frame_advance = true;
@@ -153,7 +171,9 @@ void __fastcall Hooks::CCKeyboardDispatcher_dispatchKeyboardMSG_h(CCKeyboardDisp
             logic.autoclicker = !logic.autoclicker;
         }
     }
-
+    else {
+        logic.start = std::chrono::steady_clock::time_point();
+    }
 
     CCKeyboardDispatcher_dispatchKeyboardMSG(self, key, down);
 }
@@ -176,7 +196,6 @@ void __fastcall Hooks::PlayLayer::updateVisibility_h(gd::PlayLayer* self) {
 bool __fastcall Hooks::PauseLayer::init_h(gd::PauseLayer* self) {
     auto& logic = Logic::get();
 
-    logic.autoclicker = false;
     if (logic.is_recording()) {
         if (!logic.get_inputs().empty()) {
             if (logic.get_inputs().back().pressingDown && (!logic.get_latest_checkpoint().player_1_data.m_isDashing || !logic.get_latest_checkpoint().player_2_data.m_isDashing))

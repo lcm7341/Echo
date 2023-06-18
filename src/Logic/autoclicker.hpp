@@ -48,9 +48,9 @@ public:
 
 private:
     Autoclicker()
-        : frames_between_presses(0),
-        frames_between_releases(0),
+        : frames_between_presses(50),
         current_frame(0),
+        frames_between_releases(50),
         is_pressed(false)
     {}
 

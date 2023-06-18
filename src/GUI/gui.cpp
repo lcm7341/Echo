@@ -27,6 +27,7 @@
 #include "../Logic/Conversions/mhr.h"
 #include "../Logic/Conversions/osu.h"
 #include "../Logic/Conversions/plaintext.h"
+#include "../Hooks/hooks.hpp"
 
 int getRandomInt(int N) {
 	// Seed the random number generator with current time
@@ -61,6 +62,15 @@ static Opcode noclip(Cheat::NoClip);
 static Opcode practiceMusic(Cheat::PracticeMusic);
 static ImGui::FileBrowser fileDialog;
 
+void delay(int milliseconds) {
+	auto start = std::chrono::steady_clock::now();
+	auto end = start + std::chrono::milliseconds(milliseconds);
+
+	while (std::chrono::steady_clock::now() < end) {
+		// Do nothing, just wait
+	}
+}
+
 void GUI::draw() {
 	if (g_font) ImGui::PushFont(g_font);
 
@@ -69,7 +79,7 @@ void GUI::draw() {
 
 		full_title << "Echo [" << ECHO_VERSION << "b]";
 
-		ImGui::Begin(full_title.str().c_str(), nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize);
+		ImGui::Begin(full_title.str().c_str(), nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize);
 		ImGuiIO& io = ImGui::GetIO();
 		io.ConfigFlags |= ImGuiConfigFlags_NavNoCaptureKeyboard;
 
@@ -89,7 +99,15 @@ void GUI::draw() {
 		fileDialog.Display();
 	}
 
+	auto end = std::chrono::steady_clock::now();
+	auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - Logic::get().start);
 
+	if (duration.count() >= Logic::get().frame_advance_hold_duration && Logic::get().start != std::chrono::steady_clock::time_point()) {
+		Logic::get().frame_advance = false;
+		Hooks::CCScheduler_update_h(gd::GameManager::sharedState()->getScheduler(), 0, 1.f / Logic::get().fps);
+		Logic::get().frame_advance = true;
+		delay(Logic::get().frame_advance_delay);
+	}
 	if (g_font) ImGui::PopFont();
 }
 
@@ -469,7 +487,14 @@ void GUI::tools() {
 		if (fileDialog.HasSelected())
 		{
 			std::vector<Frame> before_inputs = logic.get_inputs();
-			logic.read_file(fileDialog.GetSelected().string(), true);
+
+			if (fileDialog.GetSelected().extension() == ".bin")
+				logic.read_file(fileDialog.GetSelected().string(), true);
+			else
+				logic.read_file_json(fileDialog.GetSelected().string(), true);
+
+			logic.inputs.insert(logic.inputs.end(), before_inputs.begin(), before_inputs.end());
+
 			logic.sort_inputs();
 			fileDialog.ClearSelected();
 		}
@@ -486,15 +511,9 @@ void GUI::tools() {
 			antiCheatBypass ? anticheatBypass.activate() : anticheatBypass.deactivate();
 		}
 
-		bool noclipActivated = noclip.isActivated();
-		if (ImGui::Checkbox("Toggle Noclip", &noclipActivated)) {
-			if (noclipActivated) {
-				noclip.activate();
-			}
-			else {
-				noclip.deactivate();
-			}
-		}
+		ImGui::Checkbox("Noclip Player 1", &logic.noclip_player1);
+		ImGui::SameLine();
+		ImGui::Checkbox("Noclip Player 2", &logic.noclip_player2);
 
 		bool practiceActivated = practiceMusic.isActivated();
 		if (ImGui::Checkbox("Overwrite Practice Music", &practiceActivated)) {
@@ -553,6 +572,12 @@ void GUI::tools() {
 		else {
 			ImGui::DragInt("Frames", &logic.autoclicker_disable_in, 1.0f, 1, 10000);
 		}
+
+		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Frame Advance");
+		ImGui::Separator();
+
+		ImGui::DragInt("Hold Time (ms)", (int*)&logic.frame_advance_hold_duration, 1, 0);
+		ImGui::DragInt("Delay Time (ms)", (int*)&logic.frame_advance_delay, 1, 0);
 
 		ImGui::Separator();
 
@@ -816,25 +841,56 @@ void GUI::main() {
 		ImGui::SameLine();
 
 		ImGui::SetNextItemWidth(get_width(50.f));
+
+		fileDialog.SetTitle("Replays");
+		fileDialog.SetTypeFilters({ ".echo", ".bin" });
+
 		if (ImGui::Button("Load File")) {
-			if (logic.use_json_for_files) {
-				logic.read_file_json(logic.macro_name, false);
+			if (!logic.file_dialog) {
+				if (logic.use_json_for_files) {
+					logic.read_file_json(logic.macro_name, false);
+				}
+				else {
+					logic.read_file(logic.macro_name, false);
+				}
 			}
 			else {
-				logic.read_file(logic.macro_name, false);
+				fileDialog.Open();
 			}
 			logic.sort_inputs();
 		}
+
+		if (fileDialog.HasSelected())
+		{
+			// Find the position of the last dot in the filename
+			size_t dotPosition = fileDialog.GetSelected().filename().string().find_last_of(".");
+
+			// Extract the substring from the beginning of the filename till the dot
+			std::string nameWithoutExtension = fileDialog.GetSelected().filename().string().substr(0, dotPosition);
+
+			if (fileDialog.GetSelected().extension() == ".bin")
+				logic.read_file(fileDialog.GetSelected().string(), true);
+			else
+				logic.read_file_json(fileDialog.GetSelected().string(), true);
+
+			strcpy(logic.macro_name, nameWithoutExtension.c_str());
+			fileDialog.ClearSelected();
+		}
+
 
 		ImGui::SameLine();
 
 		ImGui::Checkbox("Use JSON", &logic.use_json_for_files);
 
 		ImGui::SameLine();
+
+		ImGui::Checkbox("Use File Dialog", &logic.file_dialog);
+
+		/*
 		bool useBinary = !logic.use_json_for_files;
 		if (ImGui::Checkbox("Use Binary", &useBinary)) {
 			logic.use_json_for_files = !useBinary;
-		}
+		}*/
 
 		if (logic.error != "") {
 			ImGui::Separator();
