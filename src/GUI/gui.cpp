@@ -553,6 +553,28 @@ void GUI::conversion() {
 		}
 
 		ImGui::SameLine();
+
+		auto& style = ImGui::GetStyle();
+
+		ImVec4 tempColor = style.Colors[ImGuiCol_Button];
+		ImVec4 tempColor2 = style.Colors[ImGuiCol_ButtonHovered];
+		ImVec4 tempColor3 = style.Colors[ImGuiCol_ButtonActive];
+
+		if (current_option == "Osu") { // I fucking hate the way imgui does disabling
+			ImGui::BeginDisabled();
+
+			if (ImGui::Button("Import"))
+				fileDialog.Open();
+
+			ImGui::EndDisabled();
+		}
+		else {
+			if (ImGui::Button("Import"))
+				fileDialog.Open();
+		}
+
+		ImGui::SameLine();
+
 		if (ImGui::Button("Export")) {
 			std::string filename = logic.macro_name;
 			try {
@@ -561,14 +583,6 @@ void GUI::conversion() {
 			}
 			catch (std::runtime_error& e) {
 				logic.conversion_message = "Error! Could not export as " + options[current_option]->get_type_filter();
-			}
-		}
-
-		if (current_option != "Osu") {
-			ImGui::SameLine();
-
-			if (ImGui::Button("Import")) {
-				fileDialog.Open();
 			}
 		}
 
@@ -637,9 +651,9 @@ void GUI::main() {
 			ImVec4 tempColor = style.Colors[ImGuiCol_Button];
 			ImVec4 tempColor2 = style.Colors[ImGuiCol_ButtonHovered];
 			ImVec4 tempColor3 = style.Colors[ImGuiCol_ButtonActive];
-			style.Colors[ImGuiCol_Button] = ImVec4(0.6f, 0.6f, 0.6f, 0);
-			style.Colors[ImGuiCol_ButtonHovered] = ImVec4(0.6f, 0.6f, 0.6f, 0.2f);
-			style.Colors[ImGuiCol_ButtonActive] = ImVec4(0.6f, 0.6f, 0.6f, 0.3f);
+			style.Colors[ImGuiCol_Button] = ImVec4(0.6f, 0.6f, 0.6f, 0.2f);
+			style.Colors[ImGuiCol_ButtonHovered] = ImVec4(0.6f, 0.6f, 0.6f, 0.3f);
+			style.Colors[ImGuiCol_ButtonActive] = ImVec4(0.6f, 0.6f, 0.6f, 0.4f);
 		}
 
 		if (ImGui::Button(logic.is_playing() ? "Stop Playing" : "Start Playing", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.48f, 0))) {
