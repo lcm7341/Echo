@@ -14,6 +14,7 @@
 #include <gd.h>
 #include <filesystem>
 #include "../Logic/logic.hpp"
+#include "../Logic/autoclicker.hpp"
 #include <imgui_internal.h>
 #include "../version.h"
 #include <sstream>
@@ -503,6 +504,54 @@ void GUI::tools() {
 			else {
 				practiceMusic.deactivate();
 			}
+		}
+
+		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Autoclicker");
+		ImGui::Separator();
+
+		if (ImGui::Checkbox("Enabled", &logic.autoclicker));
+
+		ImGui::SameLine();
+
+		ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "(?)");
+
+		if (ImGui::IsItemHovered()) {
+			ImGui::SetTooltip("Keybind for this setting is 'B'");
+		}
+
+		ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 0.8f), "Frames Between Presses");
+		int framesBetweenPresses = Autoclicker::get().getFramesBetweenPresses();
+		if (ImGui::DragInt("P", &framesBetweenPresses, 1.0f, 0, 10000)) {
+			Autoclicker::get().setFramesBetweenPresses(framesBetweenPresses);
+		}
+
+		ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 0.8f), "Frames Between Releases");
+		int framesBetweenReleases = Autoclicker::get().getFramesBetweenReleases();
+		if (ImGui::DragInt("R", &framesBetweenReleases, 1.0f, 0, 10000)) {
+			Autoclicker::get().setFramesBetweenReleases(framesBetweenReleases);
+		}
+
+		if (ImGui::Checkbox("Click for Player 1", &logic.autoclicker_player_1));
+		ImGui::SameLine();
+		if (ImGui::Checkbox("Click for Player 2", &logic.autoclicker_player_2));
+
+		if (ImGui::Checkbox("Auto Disable", &logic.autoclicker_auto_disable));
+
+		ImGui::SameLine();
+
+		ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "(?)");
+
+		if (ImGui::IsItemHovered()) {
+			ImGui::SetTooltip("Automatically disables the autoclicker in X frames");
+		}
+
+		if (!logic.autoclicker_auto_disable) {
+			ImGui::BeginDisabled();
+			ImGui::DragInt("Frames", &logic.autoclicker_disable_in, 1.0f, 1, 10000);
+			ImGui::EndDisabled();
+		}
+		else {
+			ImGui::DragInt("Frames", &logic.autoclicker_disable_in, 1.0f, 1, 10000);
 		}
 
 		ImGui::Separator();

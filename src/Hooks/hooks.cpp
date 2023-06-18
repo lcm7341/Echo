@@ -2,6 +2,7 @@
 #include "../Logic/logic.hpp"
 #include <chrono>
 #include "../Hack/audiopitchHack.hpp"
+#include "../Logic/autoclicker.hpp"
 
 #define FRAME_LABEL_ID 82369 + 1 //random value :P
 #define CPS_LABEL_ID 82369 + 2 //random value :P
@@ -43,7 +44,7 @@ void Hooks::init_hooks() {
 
     HOOK(0x205460, PlayLayer::updateVisibility)
 
-        MH_CreateHook(GetProcAddress(GetModuleHandleA("libcocos2d.dll"), "?update@CCScheduler@cocos2d@@UAEXM@Z"), CCScheduler_update_h, reinterpret_cast<void**>(&CCScheduler_update));
+    MH_CreateHook(GetProcAddress(GetModuleHandleA("libcocos2d.dll"), "?update@CCScheduler@cocos2d@@UAEXM@Z"), CCScheduler_update_h, reinterpret_cast<void**>(&CCScheduler_update));
 
     MH_EnableHook(MH_ALL_HOOKS);
 
@@ -56,6 +57,31 @@ float g_left_over = 0.f;
 
 void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
     auto& logic = Logic::get();
+
+    if (logic.autoclicker && logic.is_recording()) {
+        Autoclicker::get().update(logic.get_frame());
+
+        if (Autoclicker::get().shouldPress()) {
+            if (logic.autoclicker_player_1)
+                gd::GameManager::sharedState()->getPlayLayer()->pushButton(0, false);
+            if (logic.autoclicker_player_2)
+                gd::GameManager::sharedState()->getPlayLayer()->pushButton(0, true);
+        }
+        if (Autoclicker::get().shouldRelease()) {
+            if (logic.autoclicker_player_1)
+                gd::GameManager::sharedState()->getPlayLayer()->releaseButton(0, false);
+            if (logic.autoclicker_player_2)
+                gd::GameManager::sharedState()->getPlayLayer()->releaseButton(0, true);
+        }
+
+        if (logic.autoclicker_auto_disable) {
+            if (logic.autoclicker_disable_in == 0) {
+                logic.autoclicker_auto_disable = false;
+                logic.autoclicker = false;
+            }
+            logic.autoclicker_disable_in--;
+        }
+    }
 
     if (logic.frame_advance) return;
 
@@ -123,6 +149,9 @@ void __fastcall Hooks::CCKeyboardDispatcher_dispatchKeyboardMSG_h(CCKeyboardDisp
         else if (key == 'V') {
             logic.frame_advance = !logic.frame_advance;
         }
+        else if (key == 'B') {
+            logic.autoclicker = !logic.autoclicker;
+        }
     }
 
 
@@ -147,6 +176,7 @@ void __fastcall Hooks::PlayLayer::updateVisibility_h(gd::PlayLayer* self) {
 bool __fastcall Hooks::PauseLayer::init_h(gd::PauseLayer* self) {
     auto& logic = Logic::get();
 
+    logic.autoclicker = false;
     if (logic.is_recording()) {
         if (!logic.get_inputs().empty()) {
             if (logic.get_inputs().back().pressingDown && (!logic.get_latest_checkpoint().player_1_data.m_isDashing || !logic.get_latest_checkpoint().player_2_data.m_isDashing))
@@ -443,6 +473,7 @@ void __fastcall Hooks::GameObject_activateObject_h(gd::GameObject* self, int, gd
 void* __fastcall Hooks::PlayLayer::exitLevel_h(gd::PlayLayer* self, int) {
     auto& logic = Logic::get();
 
+    logic.autoclicker = false;
     logic.checkpoints.clear();
     logic.set_removed(0);
 
