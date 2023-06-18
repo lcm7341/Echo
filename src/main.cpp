@@ -46,7 +46,10 @@ void writeConfig() {
 	j["video_color_fix"] = recorder.color_fix;
 
 	j["max_cps"] = logic.max_cps;
-	j["audio_speedhack"] = logic.audio_speedhack;
+
+	auto& audiospeedhack = AudiopitchHack::getInstance();
+
+	j["audio_speedhack"] = audiospeedhack.isEnabled();
 
 	j["use_json"] = logic.use_json_for_files;
 
@@ -92,7 +95,10 @@ void readConfig() {
 	recorder.color_fix = getOrDefault(j, "video_color_fix", true);
 
 	logic.max_cps = getOrDefault(j, "max_cps", 15);
-	logic.audio_speedhack = getOrDefault(j, "audio_speedhack", true);
+
+	auto& audiospeedhack = AudiopitchHack::getInstance();
+
+	audiospeedhack.setEnabled(getOrDefault(j, "audio_speedhack", true));
 
 	logic.use_json_for_files = getOrDefault(j, "use_json", false);
 
