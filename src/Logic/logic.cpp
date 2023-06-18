@@ -331,7 +331,7 @@ void Logic::read_file_json(const std::string& filename, bool is_path = false) {
 }
 
 void Logic::sort_inputs() {
-    std::map<unsigned, std::vector<Frame>> frameMap;
+    std::unordered_map<unsigned, std::vector<Frame>> frameMap;
 
     for (const auto& frame : inputs) {
         frameMap[frame.number].push_back(frame);
@@ -339,8 +339,8 @@ void Logic::sort_inputs() {
 
     inputs.clear();
 
-    std::map<bool, std::deque<Frame>> pressQueues;
-    std::map<bool, std::deque<Frame>> releaseQueues;
+    std::unordered_map<bool, std::deque<Frame>> pressQueues;
+    std::unordered_map<bool, std::deque<Frame>> releaseQueues;
 
     for (const auto& [frameNumber, frames] : frameMap) {
         std::vector<Frame> mergedFrames;
