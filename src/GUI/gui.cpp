@@ -535,7 +535,7 @@ void GUI::conversion() {
 	auto& logic = Logic::get();
 
 	if (ImGui::BeginTabItem("Conversion")) {
-		static std::string current_option = "TASBot";
+		static std::string current_option = "Plain Text";
 		if (ImGui::BeginCombo("Options", current_option.c_str())) {
 			for (auto& option : options) {
 				bool is_selected = (current_option == option.first);
@@ -545,6 +545,8 @@ void GUI::conversion() {
 
 				if (is_selected) {
 					ImGui::SetItemDefaultFocus();
+
+					fileDialog.ClearSelected();
 				}
 			}
 			ImGui::EndCombo();
@@ -573,11 +575,12 @@ void GUI::conversion() {
 		fileDialog.SetTypeFilters({ options[current_option]->get_type_filter() });
 
 		if (fileDialog.HasSelected()) {
+			logic.conversion_message = "";
 			try {
 				options[current_option]->import(fileDialog.GetSelected().string());
 				logic.sort_inputs();
-				fileDialog.ClearSelected();
-				logic.conversion_message = "Success! Imported replay as a " + current_option + " file";
+				if (logic.conversion_message == "")
+					logic.conversion_message = "Success! Imported replay as a " + current_option + " file";
 			}
 			catch (std::runtime_error& e) {
 				logic.conversion_message = "Error! Could not import " + fileDialog.GetSelected().filename().string();

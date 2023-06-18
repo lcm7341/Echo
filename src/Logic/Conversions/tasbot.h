@@ -27,6 +27,7 @@ public:
             logic.inputs.push_back(input);
         }
 
+        logic.conversion_message = ""; // Clearing
         file.close();
     }
 
@@ -58,6 +59,7 @@ public:
 
         file << state.dump(4);
 
+        logic.conversion_message = ""; // Clearing
         file.close();
     }
 
