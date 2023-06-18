@@ -65,9 +65,6 @@ void Recorder::start(const std::string& path) {
         std::stringstream stream;
         stream << '"' << m_ffmpeg_path << '"' << " -y -f rawvideo -pix_fmt rgb24 -s " << m_width << "x" << m_height << " -r " << m_fps
             << " -i - ";
-        if (color_fix) {
-            m_vf_args += " colorspace=all=bt709:iall=bt470bg:fast=1,";
-        }
         if (!m_codec.empty())
             stream << "-c:v " << m_codec << " ";
         stream << "-b:v " << m_bitrate << "M ";
@@ -75,7 +72,9 @@ void Recorder::start(const std::string& path) {
             stream << m_extra_args << " ";
         else
             stream << "-pix_fmt yuv420p ";
-        stream << "-cq 0 -vf " << m_vf_args << "\"vflip\"" << " -an \"" << path << "\" ";
+        if (color_fix) {
+            stream << "-cq 0 -vf colorspace=all=bt709:iall=bt470bg:fast=1," << m_vf_args << "\"vflip\"" << " -an \"" << path << "\" ";
+        } else stream << "-cq 0 -vf " << m_vf_args << "\"vflip\"" << " -an \"" << path << "\" ";
         //m_vf_args = "";
 
         auto process = subprocess::Popen(stream.str());
