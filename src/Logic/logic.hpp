@@ -133,6 +133,10 @@ public:
 	std::vector<Frame> live_inputs; // for CPS counter, this acts as if when playing back, ur recording
 
 	bool autoclicker = false;
+	bool autoclicker_auto_disable = false;
+	bool autoclicker_player_1 = false;
+	bool autoclicker_player_2 = false;
+	int autoclicker_disable_in = 1;
 
 	std::vector<Replay> replays;
 	size_t replay_index;
