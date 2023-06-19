@@ -38,12 +38,13 @@ struct Frame {
   FIELD(double, m_xAccel) \
   FIELD(double, m_yAccel) \
   FIELD(double, m_jumpAccel) \
+  FIELD(bool, m_blackOrb) \
+  FIELD(bool, m_isDashing) \
+  FIELD(bool, m_isHolding) \
   FIELD(bool, m_isUpsideDown) \
   FIELD(bool, m_isOnGround) \
-  FIELD(bool, m_isDashing) \
   FIELD(bool, m_isSliding) \
   FIELD(bool, m_isRising) \
-  FIELD(bool, m_blackOrb) \
   FIELD(float, m_vehicleSize) \
   FIELD(float, m_playerSpeed) \
   FIELD(bool, unk480) \
@@ -118,7 +119,7 @@ public:
 	char macro_name[1000] = "output";
 
 	std::string error = "";
-	std::string conversion_message = "Waiting! Use the panel above to export/import";
+	std::string conversion_message = "Waiting... Use the panel above to export/import";
 
 	std::chrono::steady_clock::time_point start = std::chrono::steady_clock::time_point();
 
