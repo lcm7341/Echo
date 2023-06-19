@@ -140,18 +140,30 @@ void GUI::editor() {
 			isOffsetSet = true;
 		}
 
+		ImGuiStyle& style = ImGui::GetStyle();
+		ImVec4 tempColor = style.Colors[ImGuiCol_Header];
+
 		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Inputs");
 		ImGui::BeginChild("##List", ImVec2(0, firstChildHeight - ImGui::GetFrameHeightWithSpacing() + 1), true);
 		if (!inputs.empty()) {
 			for (unsigned i = 0; i < inputs.size(); i++) {
-				ImGui::PushID(i);
+
+
+				if (inputs[i].isPlayer2)
+					style.Colors[ImGuiCol_Header] = ImVec4(0.f, 1.f, 0.4f, 0.2f);
+				else {
+					style.Colors[ImGuiCol_Header] = ImVec4(0.f, 0.73f, 1.f, 0.2f);
+				}
+
 				if (ImGui::Selectable("##Input", selectedInput == i, ImGuiSelectableFlags_AllowDoubleClick)) {
 					selectedInput = i;
 					newInput = inputs[i];
 				}
+
 				ImGui::SameLine();
 				ImGui::Text("%s at %d", inputs[i].pressingDown ? "Click" : "Release", inputs[i].number);
 				ImGui::PopID();
+				style.Colors[ImGuiCol_Header] = tempColor;
 			}
 		}
 		else {
@@ -710,9 +722,6 @@ void GUI::main() {
 		ImVec4 tempColor3 = style.Colors[ImGuiCol_ButtonActive];
 
 		if (logic.is_recording()) {
-			ImVec4 tempColor = style.Colors[ImGuiCol_Button];
-			ImVec4 tempColor2 = style.Colors[ImGuiCol_ButtonHovered];
-			ImVec4 tempColor3 = style.Colors[ImGuiCol_ButtonActive];
 			style.Colors[ImGuiCol_Button] = ImVec4(0.6f, 0.6f, 0.6f, 0.2f);
 			style.Colors[ImGuiCol_ButtonHovered] = ImVec4(0.6f, 0.6f, 0.6f, 0.3f);
 			style.Colors[ImGuiCol_ButtonActive] = ImVec4(0.6f, 0.6f, 0.6f, 0.4f);
