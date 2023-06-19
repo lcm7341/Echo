@@ -40,7 +40,6 @@ struct Frame {
   FIELD(double, m_jumpAccel) \
   FIELD(bool, m_blackOrb) \
   FIELD(bool, m_isDashing) \
-  FIELD(bool, m_isHolding) \
   FIELD(bool, m_isUpsideDown) \
   FIELD(bool, m_isOnGround) \
   FIELD(bool, m_isSliding) \
