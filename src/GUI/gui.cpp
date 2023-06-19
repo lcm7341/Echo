@@ -104,7 +104,7 @@ void GUI::draw() {
 
 	if (duration.count() >= Logic::get().frame_advance_hold_duration && Logic::get().start != std::chrono::steady_clock::time_point()) {
 		Logic::get().frame_advance = false;
-		Hooks::CCScheduler_update_h(gd::GameManager::sharedState()->getScheduler(), 0, 1.f / Logic::get().fps);
+		Hooks::CCScheduler_update_h(gd::GameManager::sharedState()->getScheduler(), 0, 1.f / Logic::get().fps / Logic::get().speedhack);
 		Logic::get().frame_advance = true;
 		delay(Logic::get().frame_advance_delay);
 	}

@@ -7,6 +7,7 @@
 #define FRAME_LABEL_ID 82369 + 1 //random value :P
 #define CPS_LABEL_ID 82369 + 2 //random value :P
 #define CPS_BREAKS_LABEL_ID 82369 + 3 //random value :P
+#define RECORDING_LABEL_ID 82369 + 4 //random value :P
 
 #define HOOK(o, f) MH_CreateHook(reinterpret_cast<void*>(gd::base + o), f##_h, reinterpret_cast<void**>(&f));
 // gracias matcool :]
@@ -166,7 +167,7 @@ void __fastcall Hooks::CCKeyboardDispatcher_dispatchKeyboardMSG_h(CCKeyboardDisp
             if (logic.start == std::chrono::steady_clock::time_point())
                 logic.start = std::chrono::steady_clock::now();
             logic.frame_advance = false;
-            CCScheduler_update_h(scheduler, 0, 1.f / logic.fps);
+            CCScheduler_update_h(scheduler, 0, 1.f / logic.fps / logic.speedhack);
             logic.frame_advance = true;
         }
         else if (key == 'V') {
@@ -272,6 +273,29 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
         frame_counter2->setOpacity(70);
 
         self->addChild(frame_counter2, 999, FRAME_LABEL_ID);
+    }
+
+    auto recording_label = (cocos2d::CCLabelBMFont*)self->getChildByTag(RECORDING_LABEL_ID);
+    if (recording_label) {
+        if (logic.is_recording()) {
+            // Update the frame counter label with the current frame number
+            char out[24];
+            sprintf_s(out, "Recording: %i", logic.inputs.size());
+            recording_label->setPosition(cocos2d::CCDirector::sharedDirector()->getWinSize().width / 2.f, 20);
+            recording_label->setString(out);
+        }
+        else {
+            // Remove and release the frame counter label if show_frame is false
+            recording_label->removeFromParent();
+            recording_label->release();
+        }
+    }
+    else if (logic.is_recording()) {
+        auto recording_label2 = cocos2d::CCLabelBMFont::create("Recording: %i", "chatFont.fnt"); //probably leaks memory :p
+        recording_label2->setPosition(cocos2d::CCDirector::sharedDirector()->getWinSize().width / 2.f, 20);
+        recording_label2->setOpacity(70);
+
+        self->addChild(recording_label2, 999, RECORDING_LABEL_ID);
     }
 
 
