@@ -14,17 +14,6 @@
 
 #define HOOK_COCOS(o, f) MH_CreateHook(GetProcAddress(GetModuleHandleA("libcocos2d.dll"), o), f##_h, reinterpret_cast<void**>(&f));
 
-void nopInstruction(void* address) {
-    DWORD oldProtect;
-    // Change the memory protection to PAGE_EXECUTE_READWRITE
-    if (VirtualProtect(address, 1, PAGE_EXECUTE_READWRITE, &oldProtect)) {
-        // Write the NOP instruction (0x90) to the address
-        *(BYTE*)address = 0x90;
-        // Restore the original memory protection
-        VirtualProtect(address, 1, oldProtect, &oldProtect);
-    }
-}
-
 void Hooks::init_hooks() {
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x1fb780), PlayLayer::init_h, reinterpret_cast<void**>(&PlayLayer::init));
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x2029C0), PlayLayer::update_h, reinterpret_cast<void**>(&PlayLayer::update));
@@ -50,9 +39,6 @@ void Hooks::init_hooks() {
     MH_CreateHook(GetProcAddress(GetModuleHandleA("libcocos2d.dll"), "?update@CCScheduler@cocos2d@@UAEXM@Z"), CCScheduler_update_h, reinterpret_cast<void**>(&CCScheduler_update));
 
     MH_EnableHook(MH_ALL_HOOKS);
-
-    nopInstruction((void*)(gd::base + 0x1E9A07));
-    nopInstruction((void*)(gd::base + 0x1E99F6));
 }
 
 bool g_disable_render = false;
