@@ -74,6 +74,11 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
     auto end = std::chrono::steady_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - logic.start);
 
+    if (logic.recorder.m_recording) {
+        dt = 1.f / logic.fps;
+        return CCScheduler_update(self, dt);
+    }
+
     if (logic.autoclicker && play_layer && !play_layer->m_isPaused) {
         Autoclicker::get().update(logic.get_frame());
 
