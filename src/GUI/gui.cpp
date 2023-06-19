@@ -806,7 +806,7 @@ void GUI::main() {
 
 		ImGui::Checkbox("Real Time Mode", &logic.real_time_mode);
 
-		ImGui::Checkbox("No Macro Overwrite", &logic.no_overwrite);
+		ImGui::Checkbox("No Input Overwrite", &logic.no_overwrite);
 
 		ImGui::Checkbox("Ignore actions during playback", &logic.ignore_actions_at_playback);
 
