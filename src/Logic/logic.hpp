@@ -56,6 +56,7 @@ struct Frame {
   FIELD(bool, unk53A) \
   FIELD(bool, unk53B) \
   FIELD(bool, m_canRobotJump) \
+  FIELD(float, m_groundHeight) \
 
 struct CheckpointData {
 	#define FIELD(type, name) type name;
