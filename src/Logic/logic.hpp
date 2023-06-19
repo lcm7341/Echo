@@ -48,6 +48,7 @@ struct Frame {
   FIELD(float, m_playerSpeed) \
   FIELD(bool, unk480) \
   FIELD(bool, unk4B0) \
+  FIELD(cocos2d::CCSprite*, unk4B4) \
   FIELD(bool, unk4D4) \
   FIELD(bool, unk4DC) \
   FIELD(bool, unk538) \
