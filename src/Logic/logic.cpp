@@ -44,7 +44,7 @@ void Logic::play_input(Frame& input) {
     }
 
     if (PLAYLAYER->m_player1->m_xAccel != input.xVelocity) {
-        printf("MISMATCH Y VELOCITY %f:%f\n", PLAYLAYER->m_player1->m_xAccel, input.xVelocity);
+        printf("MISMATCH X VELOCITY %f:%f\n", PLAYLAYER->m_player1->m_xAccel, input.xVelocity);
     }
 
     if (PLAYLAYER) {
