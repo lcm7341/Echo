@@ -75,11 +75,11 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
         }
 
         if (logic.autoclicker_auto_disable) {
+            logic.autoclicker_disable_in--;
             if (logic.autoclicker_disable_in == 0) {
                 logic.autoclicker_auto_disable = false;
                 logic.autoclicker = false;
             }
-            logic.autoclicker_disable_in--;
         }
     }
 
