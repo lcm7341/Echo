@@ -3,6 +3,7 @@
 #include <chrono>
 #include "../Hack/audiopitchHack.hpp"
 #include "../Logic/autoclicker.hpp"
+#include "../GUI/gui.hpp"
 
 #define FRAME_LABEL_ID 82369 + 1 //random value :P
 #define CPS_LABEL_ID 82369 + 2 //random value :P
@@ -57,6 +58,8 @@ bool __fastcall Hooks::PlayLayer::death_h(void* self, void*, void* go, void* thi
 void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
     auto& logic = Logic::get();
     auto play_layer = gd::GameManager::sharedState()->getPlayLayer();
+
+    CCDirector::sharedDirector()->setAnimationInterval(1.f / logic.fps);
 
     auto end = std::chrono::steady_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - logic.start);
@@ -161,6 +164,9 @@ void __fastcall Hooks::CCKeyboardDispatcher_dispatchKeyboardMSG_h(CCKeyboardDisp
         }
         else if (key == 'B') {
             logic.autoclicker = !logic.autoclicker;
+        }
+        else if (key == GUI::get().keybind && !gd::GameManager::sharedState()->getEditorLayer()) {
+            GUI::get().show_window = !GUI::get().show_window;
         }
     }
     else {

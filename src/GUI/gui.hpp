@@ -29,6 +29,8 @@ public:
 
 	bool show_reset_popup = false;
 
+	int keybind = VK_MENU;
+
 	float input_fps = 60.f;
 
 	int offset_frames = 0;

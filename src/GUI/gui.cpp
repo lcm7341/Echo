@@ -697,6 +697,7 @@ void GUI::conversion() {
 			catch (std::runtime_error& e) {
 				logic.conversion_message = "Error! Could not import " + fileDialog.GetSelected().filename().string();
 			}
+			CCDirector::sharedDirector()->setAnimationInterval(1.f / GUI::get().input_fps);
 		}
 
 		ImGui::Separator();
@@ -910,6 +911,8 @@ void GUI::main() {
 			else {
 				fileDialog.Open();
 			}
+			input_fps = logic.fps;
+			CCDirector::sharedDirector()->setAnimationInterval(1.f / GUI::get().input_fps);
 			logic.sort_inputs();
 		}
 
@@ -925,6 +928,9 @@ void GUI::main() {
 				logic.read_file(fileDialog.GetSelected().string(), true);
 			else
 				logic.read_file_json(fileDialog.GetSelected().string(), true);
+
+			input_fps = logic.fps;
+			CCDirector::sharedDirector()->setAnimationInterval(1.f / GUI::get().input_fps);
 
 			strcpy(logic.macro_name, nameWithoutExtension.c_str());
 			fileDialog.ClearSelected();

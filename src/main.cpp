@@ -160,12 +160,12 @@ DWORD WINAPI my_thread(void* hModule) {
 	srand(GetTickCount());
 
 	ImGuiHook::setRenderFunction(renderFuncWrapper);
-	ImGuiHook::setToggleCallback(callback);
+	//ImGuiHook::setToggleCallback(callback);
 	ImGuiHook::setInitFunction(initFuncWrapper);
 	ImGuiHook::setupHooks([](void* target, void* hook, void** trampoline) {
 		MH_CreateHook(target, hook, trampoline);
 	});
-	ImGuiHook::setKeybind(VK_SHIFT);
+	//ImGuiHook::setKeybind(VK_SHIFT);
 	Hooks::init_hooks();
 	MH_EnableHook(MH_ALL_HOOKS);
 

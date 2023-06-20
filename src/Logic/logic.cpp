@@ -315,6 +315,7 @@ void Logic::read_file_json(const std::string& filename, bool is_path = false) {
 
     // Extract the state data from the JSON object
     fps = state["fps"].get<double>();
+    
     end_portal_position = state["end_xpos"].get<double>();
 
     inputs.clear();
