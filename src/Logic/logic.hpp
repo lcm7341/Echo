@@ -35,46 +35,68 @@ struct Frame {
 };
 
 #define PLAYER_FIELDS \
-  FIELD(double, m_xAccel) \
-  FIELD(double, m_yAccel) \
-  FIELD(double, m_jumpAccel) \
-  FIELD(bool, m_blackOrb) \
-  FIELD(bool, m_isDashing) \
-  FIELD(bool, m_isUpsideDown) \
-  FIELD(bool, m_isOnGround) \
-  FIELD(bool, m_isSliding) \
-  FIELD(bool, m_isRising) \
-  FIELD(float, m_vehicleSize) \
-  FIELD(float, m_playerSpeed) \
-  FIELD(bool, unk480) \
-  FIELD(bool, unk4B0) \
-  FIELD(cocos2d::CCSprite*, unk4B4) \
-  FIELD(bool, unk4D4) \
-  FIELD(bool, unk4DC) \
-  FIELD(bool, unk538) \
-  FIELD(bool, unk539) \
-  FIELD(bool, unk53A) \
-  FIELD(bool, unk53B) \
-  FIELD(bool, m_canRobotJump) \
-  FIELD(float, m_groundHeight) \
+	FIELD(double, m_xAccel) \
+	FIELD(double, m_yAccel) \
+	FIELD(double, m_jumpAccel) \
+	FIELD(bool, m_blackOrb) \
+	FIELD(bool, m_isDashing) \
+	FIELD(bool, m_isUpsideDown) \
+	FIELD(bool, m_isOnGround) \
+	FIELD(bool, m_isSliding) \
+	FIELD(bool, m_isRising) \
+	FIELD(float, m_vehicleSize) \
+	FIELD(float, m_playerSpeed) \
+	FIELD(bool, unk480) \
+	FIELD(bool, unk4B0) \
+	FIELD(cocos2d::CCSprite*, unk4B4) \
+	FIELD(bool, unk4D4) \
+	FIELD(bool, unk4DC) \
+	FIELD(bool, unk538) \
+	FIELD(bool, unk539) \
+	FIELD(bool, unk53A) \
+	FIELD(bool, unk53B) \
+	FIELD(bool, m_canRobotJump) \
+	FIELD(float, m_groundHeight) \
+	FIELD(cocos2d::CCSprite*, unk4E8) \
+	FIELD(cocos2d::CCSprite*, unk4EC) \
+	FIELD(cocos2d::CCSprite*, unk4F0) \
+	FIELD(cocos2d::CCSprite*, unk4F4) \
+	FIELD(cocos2d::CCSprite*, unk4F8) \
+	FIELD(cocos2d::CCSprite*, unk4FC) \
+	FIELD(cocos2d::CCSprite*, unk500) \
+	FIELD(cocos2d::CCSprite*, unk504) \
+	FIELD(cocos2d::CCSprite*, unk508) \
+	FIELD(cocos2d::CCSprite*, unk50C) \
+	FIELD(bool, unk630) \
+	FIELD(bool, unk631) \
+	FIELD(float, unk634) \
+	FIELD(bool, m_isShip) \
+	FIELD(bool, m_isBird) \
+	FIELD(bool, m_isBall) \
+	FIELD(bool, m_isDart) \
+	FIELD(bool, m_isRobot) \
+	FIELD(bool, m_isSpider) \
 
 struct CheckpointData {
 	#define FIELD(type, name) type name;
-		PLAYER_FIELDS
-	#undef FIELD
+	PLAYER_FIELDS
+#undef FIELD
+		float m_rotation;
 
 	static CheckpointData create(gd::PlayerObject* player) {
 		CheckpointData data;
 		#define FIELD(type, name) data.name = player->name;
-			PLAYER_FIELDS
-		#undef FIELD
+		PLAYER_FIELDS
+#undef FIELD
+			data.m_rotation = player->getRotation();
 		return data;
 	}
 
 	void apply(gd::PlayerObject* player) {
 		#define FIELD(type, name) player->name = name;
-			PLAYER_FIELDS
-		#undef FIELD
+		PLAYER_FIELDS
+#undef FIELD
+			player->setRotation(m_rotation);
 	}
 };
 

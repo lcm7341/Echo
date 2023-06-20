@@ -204,6 +204,7 @@ bool __fastcall Hooks::PauseLayer::init_h(gd::PauseLayer* self) {
     return Hooks::PauseLayer::init(self);
 }
 
+
 std::string formatTime(float timeInSeconds) {
     int minutes = static_cast<int>(timeInSeconds / 60);
     int seconds = static_cast<int>(timeInSeconds) % 60;
@@ -220,6 +221,7 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
     auto& logic = Logic::get();
 
     static int offset = rand();
+
 
     if (logic.is_playing() && !logic.get_inputs().empty()) {
         if (logic.sequence_enabled) {
@@ -249,7 +251,7 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
         if (logic.show_frame) {
             // Update the frame counter label with the current frame number
             char out[24];
-            sprintf_s(out, "Frame: %i", logic.get_frame());
+            sprintf_s(out, "Frame: %i", logic.get_frame() + 1);
             frame_counter->setPosition(logic.frame_counter_x, logic.frame_counter_y);
             frame_counter->setString(out);
         }
