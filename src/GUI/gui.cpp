@@ -805,6 +805,22 @@ void GUI::main() {
 			}
 		}
 
+		static std::string keyName = "[None]";
+		if (ImGui::Button(keyName.c_str())) {
+			keyName = "Press a key...";
+		}
+
+		if (ImGui::IsItemHovered())
+		{
+			for (int i = 0; i < ImGuiKey_COUNT; i++)
+			{
+				if (ImGui::IsKeyPressed(i))
+				{
+					keyName = ImGui::GetKeyName(i);
+				}
+			}
+		}
+
 		ImGui::Checkbox("Real Time Mode", &logic.real_time_mode);
 
 		ImGui::Checkbox("No Input Overwrite", &logic.no_overwrite);
