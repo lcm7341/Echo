@@ -166,6 +166,8 @@ public:
 	bool autoclicker_player_2 = false;
 	int autoclicker_disable_in = 1;
 
+	bool respawn_time_modified = true;
+
 	std::vector<Replay> replays;
 	size_t replay_index;
 	bool sequence_enabled = false;
