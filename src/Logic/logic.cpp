@@ -105,13 +105,15 @@ std::string Logic::highest_cps() {
             }
         }
 
+        float current_percent = std::round(((frames.number / end_portal_position) * 100.f) * 100) / 100;
+        float cps = press_count * fps / (float)(frames.number - frame_limit + 1);
+        bool should_push = true;
         // Check if press_count > max_cps after incrementing press_count in the loop
-        if (press_count > max_cps) {
-            float current_percent = std::round(((frames.number / end_portal_position) * 100.f) * 100) / 100;
-            bool should_push = true;
+        if (cps > max_cps || (cps > 18 && press_count >= fps / 3 && press_count <= fps) || (cps > 20 && press_count > 3 && press_count < fps / 3)) {
             for (const auto& percent : cps_percents) {
                 if (std::abs(percent - current_percent) <= 1) {
                     should_push = false;
+                    break;
                 }
             }
             if (should_push) {
