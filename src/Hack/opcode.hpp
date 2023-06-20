@@ -17,7 +17,8 @@ struct OpcodeDetails {
 enum class Cheat {
     AntiCheatBypass,
     NoClip,
-    PracticeMusic
+    PracticeMusic,
+    NoESC
 };
 
 const std::map<Cheat, std::vector<OpcodeDetails>> cheatOpcodes = {
@@ -43,6 +44,9 @@ const std::map<Cheat, std::vector<OpcodeDetails>> cheatOpcodes = {
         {0x20D143, {0x90, 0x90}, {0x75, 0x41}},
         {0x20A563, {0x90, 0x90}, {0x75, 0x3E}},
         {0x20A563, {0x90, 0x90}, {0x75, 0x0C}},
+    }},
+    {Cheat::NoESC, {
+        {0x1E644C, {0x90, 0x90, 0x90, 0x90, 0x90}, {0xE8, 0xBF, 0x73, 0x02, 0x00}}
     }}
 };
 
@@ -64,6 +68,48 @@ public:
 
     bool isActivated() const {
         return activated;
+    }
+
+    void ModifyFloatAtOffset(uintptr_t offset, float newValue) {
+        uint32_t address = gd::base + offset;
+
+        HANDLE hProc = OpenProcess(PROCESS_ALL_ACCESS, FALSE, GetCurrentProcessId());
+        if (hProc == NULL) {
+            std::cerr << "Failed to open process.\n";
+            return;
+        }
+
+        // Allocate a new float in the process memory.
+        float* newFloat = (float*)VirtualAllocEx(hProc, NULL, sizeof(float), MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+        if (newFloat == NULL) {
+            std::cerr << "Failed to allocate memory.\n";
+            return;
+        }
+
+        // Write the new value to the allocated float.
+        if (!WriteProcessMemory(hProc, newFloat, &newValue, sizeof(float), nullptr)) {
+            std::cerr << "Failed to write to allocated memory.\n";
+            return;
+        }
+
+        DWORD oldProtect;
+        // Overwrite the original float's address with the address of the allocated float.
+        if (!VirtualProtectEx(hProc, reinterpret_cast<LPVOID>(address), sizeof(newFloat), PAGE_READWRITE, &oldProtect)) {
+            std::cerr << "Failed to change memory protection.\n";
+            return;
+        }
+
+        if (!WriteProcessMemory(hProc, reinterpret_cast<LPVOID>(address), &newFloat, sizeof(newFloat), nullptr)) {
+            std::cerr << "Failed to write to memory.\n";
+            return;
+        }
+
+        if (!VirtualProtectEx(hProc, reinterpret_cast<LPVOID>(address), sizeof(newFloat), oldProtect, NULL)) {
+            std::cerr << "Failed to restore memory protection.\n";
+            return;
+        }
+
+        CloseHandle(hProc);
     }
 
 private:
@@ -106,4 +152,5 @@ private:
 
         CloseHandle(hProc);
     }
+
 };

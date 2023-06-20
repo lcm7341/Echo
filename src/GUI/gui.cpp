@@ -60,6 +60,7 @@ static ImFont* g_font = nullptr;
 static Opcode anticheatBypass(Cheat::AntiCheatBypass);
 static Opcode noclip(Cheat::NoClip);
 static Opcode practiceMusic(Cheat::PracticeMusic);
+static Opcode noEscape(Cheat::NoESC);
 static ImGui::FileBrowser fileDialog;
 
 void delay(int milliseconds) {
@@ -545,6 +546,27 @@ void GUI::tools() {
 			}
 		}
 
+		bool noEscActivated = noEscape.isActivated();
+		if (ImGui::Checkbox("Ignore Escape", &noEscActivated)) {
+			if (noEscActivated) {
+				noEscape.activate();
+			}
+			else {
+				noEscape.deactivate();
+			}
+		}
+
+		if (ImGui::Checkbox("Modify Respawn Time", &logic.respawn_time_modified)) {
+			if (logic.respawn_time_modified) {
+				Opcode opcode(Cheat::AntiCheatBypass);
+				opcode.ModifyFloatAtOffset(0x20A677, logic.speedhack);
+			}
+			else {
+				Opcode opcode(Cheat::AntiCheatBypass);
+				opcode.ModifyFloatAtOffset(0x20A677, 1.0f);
+			}
+		}
+
 		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Autoclicker");
 		ImGui::Separator();
 
@@ -792,7 +814,12 @@ void GUI::main() {
 
 		if (logic.is_playing() || logic.is_recording()) ImGui::EndDisabled();
 
-		ImGui::DragFloat("Speed", &logic.speedhack, 0.01, 0.01f, 100.f, "%.2f");
+		if (ImGui::DragFloat("Speed", &logic.speedhack, 0.01, 0.01f, 100.f, "%.2f")) {
+			if (logic.respawn_time_modified) {
+				Opcode opcode(Cheat::AntiCheatBypass);
+				opcode.ModifyFloatAtOffset(0x20A677, logic.speedhack);
+			}
+		}
 
 		auto& audiospeedhack = AudiopitchHack::getInstance();
 		bool isEnabled = audiospeedhack.isEnabled();
@@ -893,6 +920,13 @@ void GUI::main() {
 			ImGui::EndPopup();
 		}
 
+
+		ImGui::Checkbox("Use JSON", &logic.use_json_for_files);
+
+		ImGui::SameLine();
+
+		ImGui::Checkbox("Use File Dialog", &logic.file_dialog);
+
 		ImGui::PushItemFlag(ImGuiItemFlags_NoTabStop, true);
 		ImGui::SetNextItemWidth(get_width(75.f));
 		ImGui::InputText("Macro Name", logic.macro_name, MAX_PATH);
@@ -951,13 +985,6 @@ void GUI::main() {
 			strcpy(logic.macro_name, nameWithoutExtension.c_str());
 			fileDialog.ClearSelected();
 		}
-
-
-		ImGui::Checkbox("Use JSON", &logic.use_json_for_files);
-
-		ImGui::SameLine();
-
-		ImGui::Checkbox("Use File Dialog", &logic.file_dialog);
 
 		/*
 		bool useBinary = !logic.use_json_for_files;
