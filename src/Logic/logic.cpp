@@ -44,7 +44,7 @@ void Logic::play_input(Frame& input) {
     }
 
     if (PLAYLAYER->m_player1->m_xAccel != input.xVelocity) {
-        printf("MISMATCH Y VELOCITY %f:%f\n", PLAYLAYER->m_player1->m_xAccel, input.xVelocity);
+        printf("MISMATCH X VELOCITY %f:%f\n", PLAYLAYER->m_player1->m_xAccel, input.xVelocity);
     }
 
     if (PLAYLAYER) {
@@ -258,7 +258,7 @@ void Logic::remove_inputs(unsigned frame) {
 
 void Logic::write_file_json(const std::string& filename) {
     std::string dir = ".echo\\";
-    std::string ext = ".json";
+    std::string ext = ".echo";
 
     std::string full_filename = dir + filename + ext;
 
@@ -298,7 +298,7 @@ void Logic::write_file_json(const std::string& filename) {
 
 void Logic::read_file_json(const std::string& filename, bool is_path = false) {
     std::string dir = ".echo\\";
-    std::string ext = ".json";
+    std::string ext = ".echo";
 
     std::string full_filename = is_path ? filename : dir + filename + ext;
 
@@ -315,6 +315,7 @@ void Logic::read_file_json(const std::string& filename, bool is_path = false) {
 
     // Extract the state data from the JSON object
     fps = state["fps"].get<double>();
+    
     end_portal_position = state["end_xpos"].get<double>();
 
     inputs.clear();
@@ -331,7 +332,7 @@ void Logic::read_file_json(const std::string& filename, bool is_path = false) {
 }
 
 void Logic::sort_inputs() {
-    std::map<unsigned, std::vector<Frame>> frameMap;
+    std::unordered_map<unsigned, std::vector<Frame>> frameMap;
 
     for (const auto& frame : inputs) {
         frameMap[frame.number].push_back(frame);
@@ -339,8 +340,8 @@ void Logic::sort_inputs() {
 
     inputs.clear();
 
-    std::map<bool, std::deque<Frame>> pressQueues;
-    std::map<bool, std::deque<Frame>> releaseQueues;
+    std::unordered_map<bool, std::deque<Frame>> pressQueues;
+    std::unordered_map<bool, std::deque<Frame>> releaseQueues;
 
     for (const auto& [frameNumber, frames] : frameMap) {
         std::vector<Frame> mergedFrames;

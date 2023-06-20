@@ -3,26 +3,17 @@
 #include <chrono>
 #include "../Hack/audiopitchHack.hpp"
 #include "../Logic/autoclicker.hpp"
+#include "../GUI/gui.hpp"
 
 #define FRAME_LABEL_ID 82369 + 1 //random value :P
 #define CPS_LABEL_ID 82369 + 2 //random value :P
 #define CPS_BREAKS_LABEL_ID 82369 + 3 //random value :P
+#define RECORDING_LABEL_ID 82369 + 4 //random value :P
 
 #define HOOK(o, f) MH_CreateHook(reinterpret_cast<void*>(gd::base + o), f##_h, reinterpret_cast<void**>(&f));
 // gracias matcool :]
 
 #define HOOK_COCOS(o, f) MH_CreateHook(GetProcAddress(GetModuleHandleA("libcocos2d.dll"), o), f##_h, reinterpret_cast<void**>(&f));
-
-void nopInstruction(void* address) {
-    DWORD oldProtect;
-    // Change the memory protection to PAGE_EXECUTE_READWRITE
-    if (VirtualProtect(address, 1, PAGE_EXECUTE_READWRITE, &oldProtect)) {
-        // Write the NOP instruction (0x90) to the address
-        *(BYTE*)address = 0x90;
-        // Restore the original memory protection
-        VirtualProtect(address, 1, oldProtect, &oldProtect);
-    }
-}
 
 void Hooks::init_hooks() {
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x1fb780), PlayLayer::init_h, reinterpret_cast<void**>(&PlayLayer::init));
@@ -37,8 +28,10 @@ void Hooks::init_hooks() {
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x1E4570), PauseLayer::init_h, reinterpret_cast<void**>(&PauseLayer::init));
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x20D810), PlayLayer::exitLevel_h, reinterpret_cast<void**>(&PlayLayer::exitLevel));
 
-    MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x1f4ff0), PlayerObject_ringJump_h, reinterpret_cast<void**>(&PlayerObject_ringJump));;
-    MH_CreateHook(reinterpret_cast<void*>(gd::base + 0xef0e0), GameObject_activateObject_h, reinterpret_cast<void**>(&GameObject_activateObject));;
+    MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x1f4ff0), PlayerObject_ringJump_h, reinterpret_cast<void**>(&PlayerObject_ringJump));
+    MH_CreateHook(reinterpret_cast<void*>(gd::base + 0xef0e0), GameObject_activateObject_h, reinterpret_cast<void**>(&GameObject_activateObject));
+
+    MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x20A1A0), PlayLayer::death_h, reinterpret_cast<void**>(&PlayLayer::death));
 
     MH_CreateHook(GetProcAddress(GetModuleHandleA("libcocos2d.dll"), "?dispatchKeyboardMSG@CCKeyboardDispatcher@cocos2d@@QAE_NW4enumKeyCodes@2@_N@Z"), CCKeyboardDispatcher_dispatchKeyboardMSG_h, reinterpret_cast<void**>(&CCKeyboardDispatcher_dispatchKeyboardMSG));;
 
@@ -47,30 +40,48 @@ void Hooks::init_hooks() {
     MH_CreateHook(GetProcAddress(GetModuleHandleA("libcocos2d.dll"), "?update@CCScheduler@cocos2d@@UAEXM@Z"), CCScheduler_update_h, reinterpret_cast<void**>(&CCScheduler_update));
 
     MH_EnableHook(MH_ALL_HOOKS);
-
-    nopInstruction((void*)(gd::base + 0x1E9A07));
-    nopInstruction((void*)(gd::base + 0x1E99F6));
 }
 
 bool g_disable_render = false;
 float g_left_over = 0.f;
 
-void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
+bool __fastcall Hooks::PlayLayer::death_h(void* self, void*, void* go, void* thingy) {
     auto& logic = Logic::get();
 
-    if (logic.autoclicker && logic.is_recording()) {
+    if (gd::GameManager::sharedState()->m_pPlayLayer->m_player1 == go && logic.noclip_player1 == true) { return 0; }
+    if (gd::GameManager::sharedState()->m_pPlayLayer->m_player2 == go && logic.noclip_player2 == true) { return 0; }
+
+    return Hooks::PlayLayer::death(self, go, thingy);
+
+}
+
+void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
+    auto& logic = Logic::get();
+    auto play_layer = gd::GameManager::sharedState()->getPlayLayer();
+
+    CCDirector::sharedDirector()->setAnimationInterval(1.f / logic.fps);
+
+    auto end = std::chrono::steady_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - logic.start);
+
+    if (logic.recorder.m_recording) {
+        dt = 1.f / logic.fps;
+        return CCScheduler_update(self, dt);
+    }
+
+    if (logic.autoclicker && play_layer && !play_layer->m_isPaused) {
         Autoclicker::get().update(logic.get_frame());
 
         if (Autoclicker::get().shouldPress()) {
             if (logic.autoclicker_player_1)
                 gd::GameManager::sharedState()->getPlayLayer()->pushButton(0, false);
-            if (logic.autoclicker_player_2)
+            if (logic.autoclicker_player_2 && play_layer->m_level->twoPlayerMode)
                 gd::GameManager::sharedState()->getPlayLayer()->pushButton(0, true);
         }
         if (Autoclicker::get().shouldRelease()) {
             if (logic.autoclicker_player_1)
                 gd::GameManager::sharedState()->getPlayLayer()->releaseButton(0, false);
-            if (logic.autoclicker_player_2)
+            if (logic.autoclicker_player_2 && play_layer->m_level->twoPlayerMode)
                 gd::GameManager::sharedState()->getPlayLayer()->releaseButton(0, true);
         }
 
@@ -142,8 +153,10 @@ void __fastcall Hooks::CCKeyboardDispatcher_dispatchKeyboardMSG_h(CCKeyboardDisp
         auto scheduler = gd::GameManager::sharedState()->getScheduler();
 
         if (key == 'C') {
+            if (logic.start == std::chrono::steady_clock::time_point())
+                logic.start = std::chrono::steady_clock::now();
             logic.frame_advance = false;
-            CCScheduler_update_h(scheduler, 0, 1.f / logic.fps);
+            CCScheduler_update_h(scheduler, 0, 1.f / logic.fps / logic.speedhack);
             logic.frame_advance = true;
         }
         else if (key == 'V') {
@@ -152,8 +165,13 @@ void __fastcall Hooks::CCKeyboardDispatcher_dispatchKeyboardMSG_h(CCKeyboardDisp
         else if (key == 'B') {
             logic.autoclicker = !logic.autoclicker;
         }
+        else if (key == GUI::get().keybind && !gd::GameManager::sharedState()->getEditorLayer()) {
+            GUI::get().show_window = !GUI::get().show_window;
+        }
     }
-
+    else {
+        logic.start = std::chrono::steady_clock::time_point();
+    }
 
     CCKeyboardDispatcher_dispatchKeyboardMSG(self, key, down);
 }
@@ -176,7 +194,6 @@ void __fastcall Hooks::PlayLayer::updateVisibility_h(gd::PlayLayer* self) {
 bool __fastcall Hooks::PauseLayer::init_h(gd::PauseLayer* self) {
     auto& logic = Logic::get();
 
-    logic.autoclicker = false;
     if (logic.is_recording()) {
         if (!logic.get_inputs().empty()) {
             if (logic.get_inputs().back().pressingDown && (!logic.get_latest_checkpoint().player_1_data.m_isDashing || !logic.get_latest_checkpoint().player_2_data.m_isDashing))
@@ -186,6 +203,7 @@ bool __fastcall Hooks::PauseLayer::init_h(gd::PauseLayer* self) {
 
     return Hooks::PauseLayer::init(self);
 }
+
 
 std::string formatTime(float timeInSeconds) {
     int minutes = static_cast<int>(timeInSeconds / 60);
@@ -203,6 +221,7 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
     auto& logic = Logic::get();
 
     static int offset = rand();
+
 
     if (logic.is_playing() && !logic.get_inputs().empty()) {
         if (logic.sequence_enabled) {
@@ -232,7 +251,8 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
         if (logic.show_frame) {
             // Update the frame counter label with the current frame number
             char out[24];
-            sprintf_s(out, "Frame: %i", logic.get_frame());
+            sprintf_s(out, "Frame: %i", logic.get_frame() + 1);
+            frame_counter->setPosition(logic.frame_counter_x, logic.frame_counter_y);
             frame_counter->setString(out);
         }
         else {
@@ -243,10 +263,33 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
     }
     else if (logic.show_frame) {
         auto frame_counter2 = cocos2d::CCLabelBMFont::create("Frame: ", "chatFont.fnt"); //probably leaks memory :p
-        frame_counter2->setPosition(cocos2d::CCDirector::sharedDirector()->getWinSize().width / 2.0, cocos2d::CCDirector::sharedDirector()->getWinSize().height / 2.0);
+        frame_counter2->setPosition(logic.frame_counter_x, logic.frame_counter_y);
         frame_counter2->setOpacity(70);
 
         self->addChild(frame_counter2, 999, FRAME_LABEL_ID);
+    }
+
+    auto recording_label = (cocos2d::CCLabelBMFont*)self->getChildByTag(RECORDING_LABEL_ID);
+    if (recording_label) {
+        if (logic.is_recording()) {
+            // Update the frame counter label with the current frame number
+            char out[24];
+            sprintf_s(out, "Recording: %i", logic.inputs.size());
+            recording_label->setPosition(cocos2d::CCDirector::sharedDirector()->getWinSize().width / 2.f, 20);
+            recording_label->setString(out);
+        }
+        else {
+            // Remove and release the frame counter label if show_frame is false
+            recording_label->removeFromParent();
+            recording_label->release();
+        }
+    }
+    else if (logic.is_recording()) {
+        auto recording_label2 = cocos2d::CCLabelBMFont::create("Recording: %i", "chatFont.fnt"); //probably leaks memory :p
+        recording_label2->setPosition(cocos2d::CCDirector::sharedDirector()->getWinSize().width / 2.f, 20);
+        recording_label2->setOpacity(70);
+
+        self->addChild(recording_label2, 999, RECORDING_LABEL_ID);
     }
 
 
@@ -263,6 +306,7 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
             else if (logic.over_max_cps) {
                 cps_counter->setColor({ 255, 72, 0 });
             }
+            cps_counter->setPosition(logic.cps_counter_x, logic.cps_counter_y);
         }
 
         else {
@@ -272,7 +316,7 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
     }
     else if (logic.show_cps) {
         auto cps_counter2 = cocos2d::CCLabelBMFont::create("CPS: ", "chatFont.fnt");
-        cps_counter2->setPosition(30, 20);
+        cps_counter2->setPosition(logic.cps_counter_x, logic.cps_counter_y);
         cps_counter2->setOpacity(70);
 
         self->addChild(cps_counter2, 999, CPS_LABEL_ID);

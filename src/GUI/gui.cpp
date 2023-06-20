@@ -27,6 +27,7 @@
 #include "../Logic/Conversions/mhr.h"
 #include "../Logic/Conversions/osu.h"
 #include "../Logic/Conversions/plaintext.h"
+#include "../Hooks/hooks.hpp"
 
 int getRandomInt(int N) {
 	// Seed the random number generator with current time
@@ -61,6 +62,15 @@ static Opcode noclip(Cheat::NoClip);
 static Opcode practiceMusic(Cheat::PracticeMusic);
 static ImGui::FileBrowser fileDialog;
 
+void delay(int milliseconds) {
+	auto start = std::chrono::steady_clock::now();
+	auto end = start + std::chrono::milliseconds(milliseconds);
+
+	while (std::chrono::steady_clock::now() < end) {
+		// Do nothing, just wait
+	}
+}
+
 void GUI::draw() {
 	if (g_font) ImGui::PushFont(g_font);
 
@@ -69,7 +79,7 @@ void GUI::draw() {
 
 		full_title << "Echo [" << ECHO_VERSION << "b]";
 
-		ImGui::Begin(full_title.str().c_str(), nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize);
+		ImGui::Begin(full_title.str().c_str(), nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize);
 		ImGuiIO& io = ImGui::GetIO();
 		io.ConfigFlags |= ImGuiConfigFlags_NavNoCaptureKeyboard;
 
@@ -89,7 +99,15 @@ void GUI::draw() {
 		fileDialog.Display();
 	}
 
+	auto end = std::chrono::steady_clock::now();
+	auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - Logic::get().start);
 
+	if (duration.count() >= Logic::get().frame_advance_hold_duration && Logic::get().start != std::chrono::steady_clock::time_point()) {
+		Logic::get().frame_advance = false;
+		Hooks::CCScheduler_update_h(gd::GameManager::sharedState()->getScheduler(), 0, 1.f / Logic::get().fps);
+		Logic::get().frame_advance = true;
+		delay(Logic::get().frame_advance_delay);
+	}
 	if (g_font) ImGui::PopFont();
 }
 
@@ -122,18 +140,30 @@ void GUI::editor() {
 			isOffsetSet = true;
 		}
 
+		ImGuiStyle& style = ImGui::GetStyle();
+		ImVec4 tempColor = style.Colors[ImGuiCol_Header];
+
 		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Inputs");
 		ImGui::BeginChild("##List", ImVec2(0, firstChildHeight - ImGui::GetFrameHeightWithSpacing() + 1), true);
 		if (!inputs.empty()) {
 			for (unsigned i = 0; i < inputs.size(); i++) {
-				ImGui::PushID(i);
+
+
+				if (inputs[i].isPlayer2)
+					style.Colors[ImGuiCol_Header] = ImVec4(0.f, 1.f, 0.4f, 0.2f);
+				else {
+					style.Colors[ImGuiCol_Header] = ImVec4(0.f, 0.73f, 1.f, 0.2f);
+				}
+
 				if (ImGui::Selectable("##Input", selectedInput == i, ImGuiSelectableFlags_AllowDoubleClick)) {
 					selectedInput = i;
 					newInput = inputs[i];
 				}
+
 				ImGui::SameLine();
 				ImGui::Text("%s at %d", inputs[i].pressingDown ? "Click" : "Release", inputs[i].number);
 				ImGui::PopID();
+				style.Colors[ImGuiCol_Header] = tempColor;
 			}
 		}
 		else {
@@ -209,7 +239,7 @@ void GUI::editor() {
 
 		ImGui::PushItemFlag(ImGuiItemFlags_NoTabStop, true);
 		ImGui::SetNextItemWidth((ImGui::GetWindowContentRegionWidth() - ImGui::GetStyle().ItemSpacing.x) * 0.3f);
-		ImGui::InputFloat("###frames", &offset_frames, 0, 0, "%.0f"); ImGui::SameLine();
+		ImGui::InputInt("###frames", &offset_frames, 0, 0); ImGui::SameLine();
 		ImGui::PopItemFlag();
 
 		ImGui::NewLine();
@@ -307,6 +337,8 @@ void GUI::renderer() {
 
 		ImGui::InputText("Extra Args", &logic.recorder.m_extra_args);
 
+		ImGui::InputText("VF Args", &logic.recorder.m_vf_args);
+
 		ImGui::InputText("Extra Audio Args", &logic.recorder.m_extra_audio_args);
 
 		ImGui::InputFloat("Extra Time", &logic.recorder.m_after_end_duration);
@@ -316,14 +348,20 @@ void GUI::renderer() {
 		ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "(?)");
 
 		if (ImGui::IsItemHovered()) {
-			ImGui::SetTooltip("Extra Time is the time in seconds after you finish a level that the recorder automatically records for..");
+			ImGui::SetTooltip("Extra Time is the time in seconds after you finish a level that the recorder automatically records for.");
 		}
 
 		ImGui::Separator();
 
 		ImGui::InputText("Video Name", &logic.recorder.video_name);
 
-		ImGui::Checkbox("Color Fix", &logic.recorder.color_fix);
+		ImGui::Checkbox("Color Fix", &logic.recorder.color_fix); ImGui::SameLine();
+
+		ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "(?)");
+
+		if (ImGui::IsItemHovered()) {
+			ImGui::SetTooltip("The color fix vf args are: colorspace=all=bt709:iall=bt470bg:fast=1");
+		}
 
 		if (PLAYLAYER) {
 			if (!logic.recorder.m_recording) {
@@ -469,7 +507,14 @@ void GUI::tools() {
 		if (fileDialog.HasSelected())
 		{
 			std::vector<Frame> before_inputs = logic.get_inputs();
-			logic.read_file(fileDialog.GetSelected().string(), true);
+
+			if (fileDialog.GetSelected().extension() == ".bin")
+				logic.read_file(fileDialog.GetSelected().string(), true);
+			else
+				logic.read_file_json(fileDialog.GetSelected().string(), true);
+
+			logic.inputs.insert(logic.inputs.end(), before_inputs.begin(), before_inputs.end());
+
 			logic.sort_inputs();
 			fileDialog.ClearSelected();
 		}
@@ -486,15 +531,9 @@ void GUI::tools() {
 			antiCheatBypass ? anticheatBypass.activate() : anticheatBypass.deactivate();
 		}
 
-		bool noclipActivated = noclip.isActivated();
-		if (ImGui::Checkbox("Toggle Noclip", &noclipActivated)) {
-			if (noclipActivated) {
-				noclip.activate();
-			}
-			else {
-				noclip.deactivate();
-			}
-		}
+		ImGui::Checkbox("Noclip Player 1", &logic.noclip_player1);
+		ImGui::SameLine();
+		ImGui::Checkbox("Noclip Player 2", &logic.noclip_player2);
 
 		bool practiceActivated = practiceMusic.isActivated();
 		if (ImGui::Checkbox("Overwrite Practice Music", &practiceActivated)) {
@@ -509,7 +548,7 @@ void GUI::tools() {
 		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Autoclicker");
 		ImGui::Separator();
 
-		if (ImGui::Checkbox("Enabled", &logic.autoclicker));
+		ImGui::Checkbox("Enabled", &logic.autoclicker);
 
 		ImGui::SameLine();
 
@@ -519,23 +558,34 @@ void GUI::tools() {
 			ImGui::SetTooltip("Keybind for this setting is 'B'");
 		}
 
-		ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 0.8f), "Frames Between Presses");
+		ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 0.8f), "Intervals Between Actions");
+
+		ImGui::PushItemWidth(ImGui::GetWindowContentRegionWidth() * 0.33f);
+
 		int framesBetweenPresses = Autoclicker::get().getFramesBetweenPresses();
-		if (ImGui::DragInt("P", &framesBetweenPresses, 1.0f, 0, 10000)) {
+		if (ImGui::DragInt("Presses", &framesBetweenPresses, 1.0f, 0, 10000)) {
 			Autoclicker::get().setFramesBetweenPresses(framesBetweenPresses);
 		}
 
-		ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 0.8f), "Frames Between Releases");
+		ImGui::PopItemWidth();
+
+		ImGui::SameLine();
+
+		ImGui::PushItemWidth(ImGui::GetWindowContentRegionWidth() * 0.33f);
+
+		//ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 0.8f), "Frames Between Releases");
 		int framesBetweenReleases = Autoclicker::get().getFramesBetweenReleases();
-		if (ImGui::DragInt("R", &framesBetweenReleases, 1.0f, 0, 10000)) {
+		if (ImGui::DragInt("Releases", &framesBetweenReleases, 1.0f, 0, 10000)) {
 			Autoclicker::get().setFramesBetweenReleases(framesBetweenReleases);
 		}
 
-		if (ImGui::Checkbox("Click for Player 1", &logic.autoclicker_player_1));
-		ImGui::SameLine();
-		if (ImGui::Checkbox("Click for Player 2", &logic.autoclicker_player_2));
+		ImGui::PopItemWidth();
 
-		if (ImGui::Checkbox("Auto Disable", &logic.autoclicker_auto_disable));
+		ImGui::Checkbox("Click for Player 1", &logic.autoclicker_player_1);
+		ImGui::SameLine();
+		ImGui::Checkbox("Click for Player 2", &logic.autoclicker_player_2);
+
+		ImGui::Checkbox("Auto Disable", &logic.autoclicker_auto_disable);
 
 		ImGui::SameLine();
 
@@ -553,6 +603,12 @@ void GUI::tools() {
 		else {
 			ImGui::DragInt("Frames", &logic.autoclicker_disable_in, 1.0f, 1, 10000);
 		}
+
+		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Frame Advance");
+		ImGui::Separator();
+
+		ImGui::DragInt("Hold Time (ms)", (int*)&logic.frame_advance_hold_duration, 1, 0);
+		ImGui::DragInt("Delay Time (ms)", (int*)&logic.frame_advance_delay, 1, 0);
 
 		ImGui::Separator();
 
@@ -641,6 +697,7 @@ void GUI::conversion() {
 			catch (std::runtime_error& e) {
 				logic.conversion_message = "Error! Could not import " + fileDialog.GetSelected().filename().string();
 			}
+			CCDirector::sharedDirector()->setAnimationInterval(1.f / GUI::get().input_fps);
 		}
 
 		ImGui::Separator();
@@ -666,9 +723,6 @@ void GUI::main() {
 		ImVec4 tempColor3 = style.Colors[ImGuiCol_ButtonActive];
 
 		if (logic.is_recording()) {
-			ImVec4 tempColor = style.Colors[ImGuiCol_Button];
-			ImVec4 tempColor2 = style.Colors[ImGuiCol_ButtonHovered];
-			ImVec4 tempColor3 = style.Colors[ImGuiCol_ButtonActive];
 			style.Colors[ImGuiCol_Button] = ImVec4(0.6f, 0.6f, 0.6f, 0.2f);
 			style.Colors[ImGuiCol_ButtonHovered] = ImVec4(0.6f, 0.6f, 0.6f, 0.3f);
 			style.Colors[ImGuiCol_ButtonActive] = ImVec4(0.6f, 0.6f, 0.6f, 0.4f);
@@ -751,9 +805,25 @@ void GUI::main() {
 			}
 		}
 
+		static std::string keyName = "[None]";
+		if (ImGui::Button(keyName.c_str())) {
+			keyName = "Press a key...";
+		}
+		
+		if (ImGui::IsItemHovered())
+		{
+			for (int i = 0; i < ImGuiKey_COUNT; i++)
+			{
+				if (ImGui::IsKeyPressed(i))
+				{
+					keyName = ImGui::GetKeyName(i);
+				}
+			}
+		}
+
 		ImGui::Checkbox("Real Time Mode", &logic.real_time_mode);
 
-		ImGui::Checkbox("No Macro Overwrite", &logic.no_overwrite);
+		ImGui::Checkbox("No Input Overwrite", &logic.no_overwrite);
 
 		ImGui::Checkbox("Ignore actions during playback", &logic.ignore_actions_at_playback);
 
@@ -762,8 +832,31 @@ void GUI::main() {
 		ImGui::Separator();
 
 		ImGui::Checkbox("Show frame", &logic.show_frame);
-		ImGui::SameLine();
+
+		if (logic.show_frame) {
+			ImGui::SameLine();
+			ImGui::PushItemWidth(75);
+			ImGui::DragFloat("X###frame_x", &logic.frame_counter_x, 1);
+			ImGui::PopItemWidth();
+			ImGui::SameLine();
+			ImGui::PushItemWidth(75);
+			ImGui::DragFloat("Y###frame_y", &logic.frame_counter_y, 1);
+			ImGui::PopItemWidth();
+		}
+
 		ImGui::Checkbox("Show CPS", &logic.show_cps);
+
+		if (logic.show_cps) {
+			ImGui::SameLine();
+			ImGui::PushItemWidth(75);
+			ImGui::DragFloat("X###cps_x", &logic.cps_counter_x, 1);
+			ImGui::PopItemWidth();
+			ImGui::SameLine();
+			ImGui::PushItemWidth(75);
+			ImGui::DragFloat("Y###cps_y", &logic.cps_counter_y, 1);
+			ImGui::PopItemWidth();
+		}
+
 		ImGui::DragFloat("Max CPS", &logic.max_cps, 0.01, 1, 100, "%.2f");
 
 		ImGui::Separator();
@@ -774,11 +867,13 @@ void GUI::main() {
 
 		bool open_modal = true;
 
+		if (logic.inputs.empty()) ImGui::BeginDisabled();
 		if (ImGui::Button("Reset Macro")) {
 			logic.get_inputs().clear();
 			//ImGui::OpenPopup("Confirm Reset");
 			//ImGui::SetNextWindowPos({ ImGui::GetWindowWidth() / 2.f, ImGui::GetWindowHeight() / 2.f });
 		}
+		if (logic.inputs.empty()) ImGui::EndDisabled();
 
 		if (ImGui::BeginPopupModal("Confirm Reset", &open_modal, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize)) {
 			ImGui::Text("Are you sure you want to reset your macro?");
@@ -804,7 +899,7 @@ void GUI::main() {
 		ImGui::PopItemFlag();
 
 		ImGui::SetNextItemWidth((ImGui::GetWindowContentRegionWidth() - ImGui::GetStyle().ItemSpacing.x) * (50.f / 100.f));
-		if (ImGui::Button("Save File")) {
+		if (ImGui::Button("Save File", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.5f, 0))) {
 			if (logic.use_json_for_files) {
 				logic.write_file_json(logic.macro_name);
 			}
@@ -816,25 +911,59 @@ void GUI::main() {
 		ImGui::SameLine();
 
 		ImGui::SetNextItemWidth(get_width(50.f));
-		if (ImGui::Button("Load File")) {
-			if (logic.use_json_for_files) {
-				logic.read_file_json(logic.macro_name, false);
+
+		fileDialog.SetTitle("Replays");
+		fileDialog.SetTypeFilters({ ".echo", ".bin" });
+
+		if (ImGui::Button("Load File", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.48f, 0))) {
+			if (!logic.file_dialog) {
+				if (logic.use_json_for_files) {
+					logic.read_file_json(logic.macro_name, false);
+				}
+				else {
+					logic.read_file(logic.macro_name, false);
+				}
 			}
 			else {
-				logic.read_file(logic.macro_name, false);
+				fileDialog.Open();
 			}
+			input_fps = logic.fps;
+			CCDirector::sharedDirector()->setAnimationInterval(1.f / GUI::get().input_fps);
 			logic.sort_inputs();
 		}
 
-		ImGui::SameLine();
+		if (fileDialog.HasSelected())
+		{
+			// Find the position of the last dot in the filename
+			size_t dotPosition = fileDialog.GetSelected().filename().string().find_last_of(".");
+
+			// Extract the substring from the beginning of the filename till the dot
+			std::string nameWithoutExtension = fileDialog.GetSelected().filename().string().substr(0, dotPosition);
+
+			if (fileDialog.GetSelected().extension() == ".bin")
+				logic.read_file(fileDialog.GetSelected().string(), true);
+			else
+				logic.read_file_json(fileDialog.GetSelected().string(), true);
+
+			input_fps = logic.fps;
+			CCDirector::sharedDirector()->setAnimationInterval(1.f / GUI::get().input_fps);
+
+			strcpy(logic.macro_name, nameWithoutExtension.c_str());
+			fileDialog.ClearSelected();
+		}
+
 
 		ImGui::Checkbox("Use JSON", &logic.use_json_for_files);
 
 		ImGui::SameLine();
+
+		ImGui::Checkbox("Use File Dialog", &logic.file_dialog);
+
+		/*
 		bool useBinary = !logic.use_json_for_files;
 		if (ImGui::Checkbox("Use Binary", &useBinary)) {
 			logic.use_json_for_files = !useBinary;
-		}
+		}*/
 
 		if (logic.error != "") {
 			ImGui::Separator();
