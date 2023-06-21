@@ -222,7 +222,6 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
 
     static int offset = rand();
 
-
     if (logic.is_playing() && !logic.get_inputs().empty()) {
         if (logic.sequence_enabled) {
             if (logic.replay_index - 1 < logic.replays.size()) {
@@ -374,6 +373,11 @@ int __fastcall Hooks::PlayLayer::releaseButton_h(gd::PlayLayer* self, int, int i
 int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
     int ret = resetLevel(self); // calling the original function
     auto& logic = Logic::get();
+
+    if (logic.is_playing()) {
+        releaseButton(self, 0, true);
+        releaseButton(self, 0, false);
+    }
 
     logic.live_inputs.clear();
     logic.cps_over_percents.clear();
