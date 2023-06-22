@@ -814,11 +814,13 @@ void GUI::main() {
 
 		if (logic.is_playing() || logic.is_recording()) ImGui::EndDisabled();
 
-		if (ImGui::DragFloat("Speed", &logic.speedhack, 0.01, 0.01f, 100.f, "%.2f")) {
-			if (logic.respawn_time_modified) {
+		float speed = logic.speedhack;
+		if (ImGui::DragFloat("Speed", &speed, 0.01, 0.01f, 100.f, "%.2f")) {
+			if (speed > 0) logic.speedhack = speed;
+			/*if (logic.respawn_time_modified) {
 				Opcode opcode(Cheat::AntiCheatBypass);
 				opcode.ModifyFloatAtOffset(0x20A677, logic.speedhack);
-			}
+			}*/
 		}
 
 		auto& audiospeedhack = AudiopitchHack::getInstance();
@@ -832,7 +834,15 @@ void GUI::main() {
 			}
 		}
 
-		static std::string keyName = "[None]";
+		if (PLAYLAYER) {
+			int difference = logic.get_frame() - logic.calculated_frame;
+			ImGui::Text("FRAME: %i", logic.get_frame());
+			ImGui::Text("MY F: %i", logic.calculated_frame);
+			ImGui::Text("DIF: %i", difference);
+			//ImGui::Text("TFX: %f", round(logic.fps * (logic.calculated_xpos / (60.f * logic.player_acceleration * logic.player_speed))));
+		}
+
+		/*static std::string keyName = "[None]";
 		if (ImGui::Button(keyName.c_str())) {
 			keyName = "Press a key...";
 		}
@@ -846,7 +856,7 @@ void GUI::main() {
 					keyName = ImGui::GetKeyName(i);
 				}
 			}
-		}
+		}*/
 
 		ImGui::Checkbox("Real Time Mode", &logic.real_time_mode);
 

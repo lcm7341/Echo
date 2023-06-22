@@ -222,6 +222,19 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
 
     static int offset = rand();
 
+    logic.player_acceleration = self->m_player1->m_xAccel;
+    logic.player_speed = self->m_player1->m_playerSpeed;
+
+    if (!logic.player_x_positions.empty()) {
+        if (!self->m_isDead && self->m_player1->m_position.x != logic.player_x_positions.back()) {
+            logic.calculated_xpos = logic.xpos_calculation();
+            logic.calculated_frame = round(logic.fps * (logic.calculated_xpos / (60.f * logic.player_acceleration * logic.player_speed))); // doesnt work when changing speeds, fucjk
+
+            logic.previous_xpos = logic.xpos_calculation();
+        }
+    }
+    logic.player_x_positions.push_back(self->m_player1->m_position.x);
+
     if (logic.is_playing() && !logic.get_inputs().empty()) {
         if (logic.sequence_enabled) {
             if (logic.replay_index - 1 < logic.replays.size()) {
@@ -374,6 +387,15 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
     int ret = resetLevel(self); // calling the original function
     auto& logic = Logic::get();
 
+    logic.calculated_xpos = self->m_player1->getPositionX();
+    logic.previous_xpos = self->m_player1->getPositionX();
+    logic.player_x_positions.clear();
+
+    logic.player_x_positions.push_back(self->m_player1->getPositionX());
+
+    logic.calculated_xpos = logic.xpos_calculation();
+    logic.previous_xpos = logic.xpos_calculation();
+
     if (logic.is_playing()) {
         releaseButton(self, 0, true);
         releaseButton(self, 0, false);
@@ -424,6 +446,7 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
 
     // Section 3: Update Time and Activated Objects
     if (self->m_checkpoints->count() > 0) {
+        logic.calculated_xpos = logic.checkpoints.back().calculated_xpos;
         self->m_time = logic.get_latest_offset();
         constexpr auto delete_from = [&](auto& vec, size_t index) {
             vec.erase(vec.begin() + index, vec.end());
@@ -535,7 +558,7 @@ int __fastcall Hooks::createCheckpoint_h(gd::PlayLayer* self) {
     CheckpointData checkpointData1 = CheckpointData::create(self->m_player1);
     CheckpointData checkpointData2 = CheckpointData::create(self->m_player2);
 
-    logic.save_checkpoint({ logic.get_frame(), checkpointData1, checkpointData2, logic.activated_objects.size(), logic.activated_objects_p2.size() });
+    logic.save_checkpoint({ logic.get_frame(), checkpointData1, checkpointData2, logic.activated_objects.size(), logic.activated_objects_p2.size(), logic.calculated_xpos });
 
     return createCheckpoint(self);
 }
