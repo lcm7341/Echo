@@ -95,66 +95,80 @@ unsigned Logic::count_presses_in_last_second() {
 }
 
 std::string Logic::highest_cps() {
-    int highest_cps = 0;
-    std::string to_return = "0";
-    std::vector<float> cps_percents;
-    std::deque<Frame> recent_frames;
+    std::vector<std::pair<float, std::string>> cps_percents;
+    std::string highest_cps = "0";
+    int highest_cps_real = 0;
 
-    for (Frame frames : inputs) {
-        if (frames.pressingDown) {
-            recent_frames.push_back(frames);
-
-            // Remove clicks older than one second
-            while (frames.number - recent_frames.front().number > get_fps()) {
-                recent_frames.pop_front();
-            }
-
-            // Calculate cps for the current and recent clicks
-            float cps = recent_frames.size();
-
-            // Violation checks
-            bool should_push = false;
-            if (cps > max_cps) {
-                should_push = true; // Violation of max CPS rule
-            }
-            else {
-                float current_percent = std::round(((frames.number / end_portal_position) * 100.f) * 100) / 100;
-                for (unsigned i = 3; i <= recent_frames.size(); ++i) {
-                    // Calculate cps for the last i clicks
-                    float short_stint_cps = i / ((frames.number - recent_frames[recent_frames.size() - i].number) / (float)get_fps());
-                    if ((i <= get_fps() / 3 && short_stint_cps > 20) || (i <= get_fps() && short_stint_cps > 18)) {
-                        should_push = true; // Violation of rules for shorter stints
-                        break;
-                    }
-                }
-            }
-
-            if (should_push) {
-                // Add current percent to cps_percents
-                float current_percent = std::round(((frames.number / end_portal_position) * 100.f) * 100) / 100;
-                bool should_push_percent = true;
-                for (const auto& percent : cps_percents) {
-                    if (std::abs(percent - current_percent) <= 1) {
-                        should_push_percent = false;
-                        break;
-                    }
-                }
-                if (should_push_percent) {
-                    cps_percents.push_back(current_percent + 0.5f);
-                }
-            }
+    for (Frame& frame : inputs) {
+        if (!frame.pressingDown) {
+            continue;
         }
 
-        if (recent_frames.size() > highest_cps) {
-            highest_cps = recent_frames.size();
-            to_return = std::to_string(highest_cps) + " (" + std::to_string(recent_frames.front().number) + " to " + std::to_string(frames.number) + ")";
+        std::vector<Frame> inputFramesWithinASecond;
+        int firstClickFrame = frame.number;
+        int frameOneSecondLater = firstClickFrame + get_fps();
+
+        int second_cps = 0;
+        for (Frame& checkFrame : inputs) {
+            if (checkFrame.number >= firstClickFrame && checkFrame.number <= frameOneSecondLater && checkFrame.pressingDown) {
+                second_cps++;
+                inputFramesWithinASecond.push_back(checkFrame);
+            }
+        }
+        if (second_cps > highest_cps_real) {
+            highest_cps_real = second_cps;
+            highest_cps = std::to_string(highest_cps_real) + " (" + std::to_string(firstClickFrame) + " to " + std::to_string(frameOneSecondLater) + ")";
+        }
+
+        if (inputFramesWithinASecond.size() < 4) {
+            continue;
+        }
+
+        for (size_t j = 0; j < inputFramesWithinASecond.size(); ++j) {
+            int numClicks = j;
+            int framesBetweenClicks = inputFramesWithinASecond[j].number - firstClickFrame;
+            float timeBetweenClicks = static_cast<float>(framesBetweenClicks) / get_fps();
+            float cps = numClicks / timeBetweenClicks;
+
+            float current_percent = std::round(((inputFramesWithinASecond[j].number / end_portal_position) * 100.f) * 100) / 100;
+
+            if (cps != 0 && numClicks + 1 > 3) {
+                // Rule 3: CPS must not exceed 20 clicks per second rate in any stint of more than 3 clicks and shorter than 1/3rd of a second.
+                if (cps > 20 && timeBetweenClicks < 1.0f / 3.0f) {
+                    // cps_percents.push_back({ current_percent, "Rule 3 violation: " + std::to_string(cps) + " cps rate for the " + std::to_string(numClicks + 1) + " click stint from frame " + std::to_string(firstClickFrame) + " to " + std::to_string(inputFramesWithinASecond[j].number) + " (" + std::to_string(timeBetweenClicks) + "s)" });
+                    cps_percents.push_back({ current_percent, "Rule 3" });
+                }
+
+                // Rule 2: CPS must not exceed 18 clicks per second rate in any 1/3rd of a second to 1 second.
+                if (cps > 18 && timeBetweenClicks >= 1.0f / 3.0f) {
+                    // cps_percents.push_back({ current_percent, "Rule 2 violation: " + std::to_string(cps) + " cps rate for the " + std::to_string(numClicks + 1) + " click stint from frame " + std::to_string(firstClickFrame) + " to " + std::to_string(inputFramesWithinASecond[j].number) + " (" + std::to_string(timeBetweenClicks) + "s)" });
+                    cps_percents.push_back({ current_percent, "Rule 2" });
+                }
+            }
         }
     }
 
-    cps_over_percents = cps_percents;
+    // Remove cps_percents within 1 of each other.
+    std::vector<std::pair<float, std::string>> unique_cps_percents;
+    for (auto& percent : cps_percents) {
+        bool should_push = true;
+        for (auto& unique_percent : unique_cps_percents) {
+            if (std::abs(percent.first - unique_percent.first) <= 0.4) {
+                should_push = false;
+            }
+        }
+        if (should_push) {
+            unique_cps_percents.push_back(percent);
+        }
+    }
 
-    return to_return;
+    cps_over_percents = unique_cps_percents;
+
+    // The maximum CPS as a string
+    return highest_cps;
+
 }
+
 
 int Logic::find_closest_input() {
     if (inputs.empty()) {

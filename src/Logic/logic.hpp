@@ -135,7 +135,7 @@ public:
 	std::vector<Checkpoint> checkpoints;
 	std::vector<gd::GameObject*> activated_objects;
 	std::vector<gd::GameObject*> activated_objects_p2;
-	std::vector<float> cps_over_percents;
+	std::vector<std::pair<float, std::string>> cps_over_percents;
 
 	float fps = 60.f;
 	char macro_name[1000] = "output";
@@ -154,9 +154,6 @@ public:
 	double player_acceleration = 1;
 	std::vector<float> player_x_positions; // because fuck attempt 1, also this isnt my calculated one
 	int calculated_frame = 0;
-
-
-	double xpos_calculation();
 
 	bool ignore_actions_at_playback = true;
 	bool show_frame = false;
@@ -251,6 +248,8 @@ public:
 	int get_removed() {
 		return removed_time;
 	}
+
+	double xpos_calculation();
 
 	void add_offset(double time) {
 		offsets.push_back(time);
