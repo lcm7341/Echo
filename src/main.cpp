@@ -149,8 +149,28 @@ void readConfig() {
 	file.close();
 }
 
+void UnfullscreenGame()
+{
+	HWND gameWindow = FindWindowA("Geometry Dash", NULL);
+	if (gameWindow == NULL) return;
+
+	// Get the current window style.
+	LONG style = GetWindowLong(gameWindow, GWL_STYLE);
+
+	// Check if the game is in fullscreen mode.
+	if (style & WS_POPUP) // Fullscreen mode is typically WS_POPUP.
+	{
+		// Remove the WS_POPUP style and add the WS_OVERLAPPEDWINDOW style.
+		style &= ~WS_POPUP;
+		style |= WS_OVERLAPPEDWINDOW;
+
+		// Change the window style.
+		SetWindowLong(gameWindow, GWL_STYLE, style);
+	}
+}
 
 DWORD WINAPI my_thread(void* hModule) {
+	// UnfullscreenGame();
 	MH_Initialize();
 	auto& instance = GUI::get();
 	AudiopitchHack::getInstance().initialize();

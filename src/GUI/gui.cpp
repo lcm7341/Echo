@@ -190,7 +190,8 @@ void GUI::editor() {
 
 		if (!logic.cps_over_percents.empty()) {
 			for (unsigned i = 0; i < logic.cps_over_percents.size(); i++) {
-				float val = logic.cps_over_percents[i];
+				float val = logic.cps_over_percents[i].first;
+				std::string rule = logic.cps_over_percents[i].second;
 				std::string percent = std::to_string(val);
 
 				// Truncate the string to have only 2 decimal places
@@ -199,7 +200,11 @@ void GUI::editor() {
 					percent = percent.substr(0, dot_pos + 3);
 				}
 
+				printf("%s\n", rule.c_str());
+
 				ImGui::Text("%s percent", percent.c_str());
+				ImGui::SameLine();
+				ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "#%s", rule.c_str());
 			}
 		}
 		else {
