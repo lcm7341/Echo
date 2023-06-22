@@ -50,6 +50,7 @@ public:
     std::string video_name = "output";
     std::string m_ffmpeg_path = "ffmpeg";
     bool color_fix = true;
+    bool ssb_fix = true;
 
     void start(const std::string& path);
     void stop();

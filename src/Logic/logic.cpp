@@ -24,6 +24,10 @@ double Logic::get_time() {
     return 0.f;
 }
 
+double Logic::xpos_calculation() {
+    return previous_xpos + ((60.f * player_speed * player_acceleration) / fps);
+}
+
 void Logic::record_input(bool down, bool player1) {
     if (is_recording() || is_both()) {
         auto twoplayer = PLAYLAYER->m_levelSettings->m_twoPlayerMode;
@@ -368,30 +372,33 @@ void Logic::sort_inputs() {
     for (const auto& [frameNumber, frames] : frameMap) {
         std::vector<Frame> mergedFrames;
 
-        for (bool isPlayer2 : {false, true}) {
+        for (bool isPlayer2 : { false, true }) {
+            std::deque<Frame>& pressQueue = pressQueues[isPlayer2];
+            std::deque<Frame>& releaseQueue = releaseQueues[isPlayer2];
+
             for (const auto& frame : frames) {
                 if (frame.isPlayer2 != isPlayer2) continue;
 
                 if (frame.pressingDown) {
-                    pressQueues[isPlayer2].push_back(frame);
+                    pressQueue.push_back(frame);
                 }
                 else {
-                    if (!pressQueues[isPlayer2].empty()) {
-                        mergedFrames.push_back(pressQueues[isPlayer2].front());
-                        pressQueues[isPlayer2].pop_front();
+                    if (!pressQueue.empty()) {
+                        mergedFrames.push_back(pressQueue.front());
+                        pressQueue.pop_front();
                         mergedFrames.push_back(frame);
                     }
                     else {
-                        releaseQueues[isPlayer2].push_back(frame);
+                        releaseQueue.push_back(frame);
                     }
                 }
             }
 
-            while (!pressQueues[isPlayer2].empty() && !releaseQueues[isPlayer2].empty()) {
-                mergedFrames.push_back(pressQueues[isPlayer2].front());
-                pressQueues[isPlayer2].pop_front();
-                mergedFrames.push_back(releaseQueues[isPlayer2].front());
-                releaseQueues[isPlayer2].pop_front();
+            while (!pressQueue.empty() && !releaseQueue.empty()) {
+                mergedFrames.push_back(pressQueue.front());
+                pressQueue.pop_front();
+                mergedFrames.push_back(releaseQueue.front());
+                releaseQueue.pop_front();
             }
 
             inputs.insert(inputs.end(), mergedFrames.begin(), mergedFrames.end());
@@ -400,18 +407,18 @@ void Logic::sort_inputs() {
     }
 
     // If there are any unpaired 'click' frames, append them to the inputs
-    for (bool isPlayer2 : {false, true}) {
-        while (!pressQueues[isPlayer2].empty()) {
-            inputs.push_back(pressQueues[isPlayer2].front());
-            pressQueues[isPlayer2].pop_front();
-        }
+    for (bool isPlayer2 : { false, true }) {
+        std::deque<Frame>& pressQueue = pressQueues[isPlayer2];
+        inputs.insert(inputs.end(), pressQueue.begin(), pressQueue.end());
+        pressQueue.clear();
     }
 
     // Sort the inputs by frames unless they have the same frame number
-    std::sort(inputs.begin(), inputs.end(), [](const Frame& a, const Frame& b) {
-        return (a.number != b.number) && (a.number < b.number);
+    std::stable_sort(inputs.begin(), inputs.end(), [](const Frame& a, const Frame& b) {
+        return a.number != b.number ? a.number < b.number : !a.pressingDown && b.pressingDown;
         });
 }
+
 
 void Logic::handle_checkpoint_data() {
     if (PLAYLAYER) {

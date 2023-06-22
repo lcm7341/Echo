@@ -106,6 +106,7 @@ struct Checkpoint {
 	CheckpointData player_2_data;
 	size_t activated_objects_size;
 	size_t activated_objects_p2_size;
+	double calculated_xpos;
 };
 
 struct Replay {
@@ -146,6 +147,16 @@ public:
 
 	bool real_time_mode = true;
 	float speedhack = 1.f;
+
+	double calculated_xpos = 0;
+	double previous_xpos = 0;
+	float player_speed = 1;
+	double player_acceleration = 1;
+	std::vector<float> player_x_positions; // because fuck attempt 1, also this isnt my calculated one
+	int calculated_frame = 0;
+
+
+	double xpos_calculation();
 
 	bool ignore_actions_at_playback = true;
 	bool show_frame = false;
