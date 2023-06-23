@@ -123,11 +123,22 @@ class Logic {
 
 	std::vector<double> offsets;
 
+	
 public:
 	static auto& get() {
 		static Logic logic;
 		return logic;
 	}
+
+	enum FORMATS {
+		SIMPLE, // saves like 3 shits
+		DEBUG, // saves all debug info
+	};
+
+
+	FORMATS format = SIMPLE;
+
+	bool save_debug_info = false;
 
 	Recorder recorder;
 	std::vector<Frame> inputs;

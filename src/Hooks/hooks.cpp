@@ -402,7 +402,6 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
     }
 
     logic.live_inputs.clear();
-    logic.cps_over_percents.clear();
     logic.over_max_cps = false;
 
     logic.end_portal_position = self->m_endPortal->getPositionX();
@@ -472,6 +471,7 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
     // Section 4: Handle Recording
     if (logic.is_recording()) {
 
+        logic.cps_over_percents.clear();
         if (logic.get_inputs().empty()) return ret;
 
         if (!logic.checkpoints.empty()) {

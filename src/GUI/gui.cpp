@@ -640,11 +640,25 @@ void GUI::tools() {
 		ImGui::Separator();
 
 		ImGui::SetNextItemWidth(get_width(50.f));
+
+		if (logic.format == logic.SIMPLE) ImGui::BeginDisabled();
+
 		if (ImGui::Button("Open Debug Console")) {
 			// Allows for debugging, can be removed later
 			AllocConsole();
 			freopen("CONOUT$", "w", stdout);  // Redirects stdout to the new console
 			std::printf("Opened Debugging Console");
+		}
+
+		if (logic.format == logic.SIMPLE) ImGui::EndDisabled();
+
+		if (ImGui::Checkbox("Save Debug Info", &logic.save_debug_info)) {
+			if (logic.save_debug_info) {
+				logic.format = logic.DEBUG;
+			}
+			else {
+				logic.format = logic.SIMPLE;
+			}
 		}
 
 		ImGui::EndTabItem();
@@ -839,13 +853,13 @@ void GUI::main() {
 			}
 		}
 
-		if (PLAYLAYER) {
-			int difference = logic.get_frame() - logic.calculated_frame;
-			ImGui::Text("FRAME: %i", logic.get_frame());
-			ImGui::Text("MY F: %i", logic.calculated_frame);
-			ImGui::Text("DIF: %i", difference);
-			//ImGui::Text("TFX: %f", round(logic.fps * (logic.calculated_xpos / (60.f * logic.player_acceleration * logic.player_speed))));
-		}
+		//if (PLAYLAYER) {
+		//	int difference = logic.get_frame() - logic.calculated_frame;
+		//	ImGui::Text("FRAME: %i", logic.get_frame());
+		//	ImGui::Text("MY F: %i", logic.calculated_frame);
+		//	ImGui::Text("DIF: %i", difference);
+		//	//ImGui::Text("TFX: %f", round(logic.fps * (logic.calculated_xpos / (60.f * logic.player_acceleration * logic.player_speed))));
+		//}
 
 		/*static std::string keyName = "[None]";
 		if (ImGui::Button(keyName.c_str())) {
