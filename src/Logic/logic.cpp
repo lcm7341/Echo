@@ -51,6 +51,11 @@ void Logic::play_input(Frame& input) {
         printf("MISMATCH X VELOCITY %f:%f\n", PLAYLAYER->m_player1->m_xAccel, input.xVelocity);
     }
 
+    if (PLAYLAYER->m_player1->getRotation() != input.rotation) {
+        PLAYLAYER->m_player1->setRotation(input.rotation);
+        printf("MISMATCH ROTATION %f:%f\n", PLAYLAYER->m_player1->getRotation(), input.rotation);
+    }
+
     if (PLAYLAYER) {
         live_inputs.push_back(input);
         if (input.pressingDown) {
