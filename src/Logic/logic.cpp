@@ -25,7 +25,7 @@ double Logic::get_time() {
 }
 
 double Logic::xpos_calculation() {
-    return previous_xpos + ((60.f * player_speed * player_acceleration) / fps);
+    return previous_xpos + ((60.f * player_speed * player_acceleration) * (1.f / fps));
 }
 
 void Logic::record_input(bool down, bool player1) {

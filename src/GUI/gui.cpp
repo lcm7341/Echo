@@ -853,13 +853,17 @@ void GUI::main() {
 			}
 		}
 
-		//if (PLAYLAYER) {
-		//	int difference = logic.get_frame() - logic.calculated_frame;
-		//	ImGui::Text("FRAME: %i", logic.get_frame());
-		//	ImGui::Text("MY F: %i", logic.calculated_frame);
-		//	ImGui::Text("DIF: %i", difference);
-		//	//ImGui::Text("TFX: %f", round(logic.fps * (logic.calculated_xpos / (60.f * logic.player_acceleration * logic.player_speed))));
-		//}
+		if (PLAYLAYER) {
+			int difference = logic.get_frame() - logic.calculated_frame;
+			ImGui::Text("FRAME: %i", logic.get_frame());
+			ImGui::Text("MY F: %i", logic.calculated_frame);
+			ImGui::Text("DIF: %i", difference);
+
+			ImGui::Text("XPOS: %f", PLAYLAYER->m_player1->getPositionX());
+			ImGui::Text("MY X: %f", logic.calculated_xpos);
+			ImGui::Text("DIF: %f", PLAYLAYER->m_player1->getPositionX() - logic.calculated_xpos);
+			//ImGui::Text("TFX: %f", round(logic.fps * (logic.calculated_xpos / (60.f * logic.player_acceleration * logic.player_speed))));
+		}
 
 		/*static std::string keyName = "[None]";
 		if (ImGui::Button(keyName.c_str())) {

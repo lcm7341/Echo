@@ -228,9 +228,9 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
     if (!logic.player_x_positions.empty()) {
         if (!self->m_isDead && self->m_player1->m_position.x != logic.player_x_positions.back()) {
             logic.calculated_xpos = logic.xpos_calculation();
-            logic.calculated_frame = round(logic.fps * (logic.calculated_xpos / (60.f * logic.player_acceleration * logic.player_speed))); // doesnt work when changing speeds, fucjk
+            logic.calculated_frame = round(logic.get_frame() + (self->m_player1->getPositionX() - logic.calculated_xpos));//round((logic.calculated_xpos / (logic.player_speed * logic.player_acceleration) * (1.f / logic.fps)) * logic.fps); // doesnt work when changing speeds, fucjk
 
-            logic.previous_xpos = logic.xpos_calculation();
+            logic.previous_xpos = logic.calculated_xpos;
         }
     }
     logic.player_x_positions.push_back(self->m_player1->m_position.x);
