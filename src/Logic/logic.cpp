@@ -25,7 +25,7 @@ double Logic::get_time() {
 }
 
 double Logic::xpos_calculation() {
-    return previous_xpos + ((60.f * player_speed * player_acceleration) / fps);
+    return previous_xpos + ((60.f * player_speed * player_acceleration) * (1.f / fps));
 }
 
 void Logic::record_input(bool down, bool player1) {
@@ -135,19 +135,38 @@ std::string Logic::highest_cps() {
             float timeBetweenClicks = static_cast<float>(framesBetweenClicks) / get_fps();
             float cps = numClicks / timeBetweenClicks;
 
-            float current_percent = std::round(((inputFramesWithinASecond[j].number / end_portal_position) * 100.f) * 100) / 100;
+            float current_percent = 0.f;
 
-            if (cps != 0 && numClicks + 1 > 3) {
-                // Rule 3: CPS must not exceed 20 clicks per second rate in any stint of more than 3 clicks and shorter than 1/3rd of a second.
-                if (cps > 20 && timeBetweenClicks < 1.0f / 3.0f) {
-                    // cps_percents.push_back({ current_percent, "Rule 3 violation: " + std::to_string(cps) + " cps rate for the " + std::to_string(numClicks + 1) + " click stint from frame " + std::to_string(firstClickFrame) + " to " + std::to_string(inputFramesWithinASecond[j].number) + " (" + std::to_string(timeBetweenClicks) + "s)" });
-                    cps_percents.push_back({ current_percent, "Rule 3" });
+            if (inputFramesWithinASecond[j].xPosition != 0) {
+                current_percent = std::round(((inputFramesWithinASecond[j].xPosition / end_portal_position) * 100.f) * 100) / 100;
+
+                if (cps != 0 && numClicks + 1 > 3) {
+                    // Rule 3: CPS must not exceed 20 clicks per second rate in any stint of more than 3 clicks and shorter than 1/3rd of a second.
+                    if (cps > 20 && timeBetweenClicks < 1.0f / 3.0f) {
+                        // cps_percents.push_back({ current_percent, "Rule 3 violation: " + std::to_string(cps) + " cps rate for the " + std::to_string(numClicks + 1) + " click stint from frame " + std::to_string(firstClickFrame) + " to " + std::to_string(inputFramesWithinASecond[j].number) + " (" + std::to_string(timeBetweenClicks) + "s)" });
+                        cps_percents.push_back({ current_percent, "Rule 3" });
+                    }
+
+                    // Rule 2: CPS must not exceed 18 clicks per second rate in any 1/3rd of a second to 1 second.
+                    if (cps > 18 && timeBetweenClicks >= 1.0f / 3.0f) {
+                        // cps_percents.push_back({ current_percent, "Rule 2 violation: " + std::to_string(cps) + " cps rate for the " + std::to_string(numClicks + 1) + " click stint from frame " + std::to_string(firstClickFrame) + " to " + std::to_string(inputFramesWithinASecond[j].number) + " (" + std::to_string(timeBetweenClicks) + "s)" });
+                        cps_percents.push_back({ current_percent, "Rule 2" });
+                    }
                 }
+            }
+            else {
+                if (cps != 0 && numClicks + 1 > 3) {
+                    // Rule 3: CPS must not exceed 20 clicks per second rate in any stint of more than 3 clicks and shorter than 1/3rd of a second.
+                    if (cps > 20 && timeBetweenClicks < 1.0f / 3.0f) {
+                        // cps_percents.push_back({ current_percent, "Rule 3 violation: " + std::to_string(cps) + " cps rate for the " + std::to_string(numClicks + 1) + " click stint from frame " + std::to_string(firstClickFrame) + " to " + std::to_string(inputFramesWithinASecond[j].number) + " (" + std::to_string(timeBetweenClicks) + "s)" });
+                        cps_percents.push_back({ inputFramesWithinASecond[j].number, "Rule 3"});
+                    }
 
-                // Rule 2: CPS must not exceed 18 clicks per second rate in any 1/3rd of a second to 1 second.
-                if (cps > 18 && timeBetweenClicks >= 1.0f / 3.0f) {
-                    // cps_percents.push_back({ current_percent, "Rule 2 violation: " + std::to_string(cps) + " cps rate for the " + std::to_string(numClicks + 1) + " click stint from frame " + std::to_string(firstClickFrame) + " to " + std::to_string(inputFramesWithinASecond[j].number) + " (" + std::to_string(timeBetweenClicks) + "s)" });
-                    cps_percents.push_back({ current_percent, "Rule 2" });
+                    // Rule 2: CPS must not exceed 18 clicks per second rate in any 1/3rd of a second to 1 second.
+                    if (cps > 18 && timeBetweenClicks >= 1.0f / 3.0f) {
+                        // cps_percents.push_back({ current_percent, "Rule 2 violation: " + std::to_string(cps) + " cps rate for the " + std::to_string(numClicks + 1) + " click stint from frame " + std::to_string(firstClickFrame) + " to " + std::to_string(inputFramesWithinASecond[j].number) + " (" + std::to_string(timeBetweenClicks) + "s)" });
+                        cps_percents.push_back({ inputFramesWithinASecond[j].number, "Rule 2" });
+                    }
                 }
             }
         }
@@ -234,6 +253,10 @@ void Logic::write_file(const std::string& filename) {
     }
     error = "";
 
+    std::string file_format = format == SIMPLE ? "SIMPLE" : "DEBUG";
+
+    w_b(file_format);
+
     w_b(fps);
     w_b(end_portal_position);
 
@@ -242,11 +265,13 @@ void Logic::write_file(const std::string& filename) {
         w_b(input.pressingDown);
         w_b(input.isPlayer2);
 
-        /*w_b(input.yPosition);
-        w_b(input.xPosition);
-        w_b(input.rotation);
-        w_b(input.yVelocity);
-        w_b(input.xVelocity);*/
+        if (format == DEBUG) {
+            w_b(input.xPosition);
+            w_b(input.yVelocity);
+            w_b(input.xVelocity);
+            w_b(input.yPosition);
+            w_b(input.rotation);
+        }
     }
 
     file.close();
@@ -255,8 +280,19 @@ void Logic::write_file(const std::string& filename) {
 void Logic::read_file(const std::string& filename, bool is_path = false) {
     std::string dir = ".echo\\";
     std::string ext = ".bin";
-
+    
     std::string full_filename = is_path ? filename : dir + filename + ext;
+
+    std::ifstream temp_file(full_filename, std::ios::binary);
+    if (!temp_file.is_open()) {
+        error = "Error reading file '" + filename + "'!";
+        return;
+    }
+
+    std::string file_format = "SIMPLE";
+
+    temp_file.read(reinterpret_cast<char*>(&file_format), file_format.size());
+    temp_file.close();
 
     std::ifstream file(full_filename, std::ios::binary);
     if (!file.is_open()) {
@@ -268,6 +304,12 @@ void Logic::read_file(const std::string& filename, bool is_path = false) {
     if (!is_path)
         inputs.clear();
 
+
+    if (file_format == "DEBUG") {
+        r_b(file_format);
+        format = DEBUG;
+    }
+
     r_b(fps);
     r_b(end_portal_position);
 
@@ -277,11 +319,13 @@ void Logic::read_file(const std::string& filename, bool is_path = false) {
         r_b(input.pressingDown);
         r_b(input.isPlayer2);
 
-        /*r_b(input.yPosition);
-        r_b(input.xPosition);
-        r_b(input.rotation);
-        r_b(input.yVelocity);
-        r_b(input.xVelocity);*/
+        if (format == DEBUG) {
+            r_b(input.xPosition);
+            r_b(input.yVelocity);
+            r_b(input.xVelocity);
+            r_b(input.yPosition);
+            r_b(input.rotation);
+        }
 
         if (file.eof()) {
             break;
@@ -317,6 +361,8 @@ void Logic::write_file_json(const std::string& filename) {
     // Create a JSON object to store the state data
     json state;
 
+    state["version"] = format == SIMPLE ? "SIMPLE" : "DEBUG";
+
     state["fps"] = fps;
     state["end_xpos"] = end_portal_position;
 
@@ -328,6 +374,10 @@ void Logic::write_file_json(const std::string& filename) {
         json_input["frame"] = input.number;
         json_input["holding"] = input.pressingDown;
         json_input["player_2"] = input.isPlayer2;
+        json_input["x_position"] = input.xPosition;
+        json_input["y_vel"] = input.yVelocity;
+        json_input["x_vel"] = input.xVelocity;
+        json_input["rotation"] = input.rotation;
         // Add the input object to the array
         json_inputs.push_back(json_input);
     }
@@ -358,6 +408,15 @@ void Logic::read_file_json(const std::string& filename, bool is_path = false) {
     json state;
     file >> state;
 
+    if (state.contains("version") && !state["version"].is_null()) {
+        std::string version = state["version"];
+        if (version == "ECHO_V1") format = SIMPLE;
+        if (version == "DEBUG") format = DEBUG;
+    }
+    else {
+        format = SIMPLE;
+    }
+
     // Extract the state data from the JSON object
     fps = state["fps"].get<double>();
     
@@ -370,6 +429,13 @@ void Logic::read_file_json(const std::string& filename, bool is_path = false) {
         input.number = json_input["frame"].get<unsigned>();
         input.pressingDown = json_input["holding"].get<bool>();
         input.isPlayer2 = json_input["player_2"].get<bool>();
+
+        if (format == FORMATS::DEBUG) {
+            input.xPosition = json_input["x_position"].get<float>();
+            input.yVelocity = json_input["y_vel"].get<double>();
+            input.xVelocity = json_input["x_vel"].get<double>();
+            input.rotation = json_input["rotation"].get<float>();
+        }
         inputs.push_back(input);
     }
 
@@ -377,7 +443,7 @@ void Logic::read_file_json(const std::string& filename, bool is_path = false) {
 }
 
 void Logic::sort_inputs() {
-    std::unordered_map<unsigned, std::vector<Frame>> frameMap;
+    std::map<unsigned, std::vector<Frame>> frameMap;
 
     for (const auto& frame : inputs) {
         frameMap[frame.number].push_back(frame);
@@ -385,8 +451,8 @@ void Logic::sort_inputs() {
 
     inputs.clear();
 
-    std::unordered_map<bool, std::deque<Frame>> pressQueues;
-    std::unordered_map<bool, std::deque<Frame>> releaseQueues;
+    std::map<bool, std::deque<Frame>> pressQueues;
+    std::map<bool, std::deque<Frame>> releaseQueues;
 
     for (const auto& [frameNumber, frames] : frameMap) {
         std::vector<Frame> mergedFrames;
@@ -432,10 +498,14 @@ void Logic::sort_inputs() {
         pressQueue.clear();
     }
 
-    // Sort the inputs by frames unless they have the same frame number
+    // Sort the inputs by frames, skipping inputs with the same frame number
     std::stable_sort(inputs.begin(), inputs.end(), [](const Frame& a, const Frame& b) {
-        return a.number != b.number ? a.number < b.number : !a.pressingDown && b.pressingDown;
+        if (a.number == b.number) {
+            return false;  // Skip inputs with the same frame number
+        }
+        return a.number < b.number;
         });
+
 }
 
 
