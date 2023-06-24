@@ -680,6 +680,9 @@ void GUI::conversion() {
 	auto& logic = Logic::get();
 
 	if (ImGui::BeginTabItem("Conversion")) {
+		if (ImGuiFileDialog::Instance()->IsOpened("ConversionImport"))
+			ImGui::BeginDisabled();
+
 		static std::string current_option = "Plain Text";
 		if (ImGui::BeginCombo("Options", current_option.c_str())) {
 			for (auto& option : options) {
@@ -694,6 +697,9 @@ void GUI::conversion() {
 			}
 			ImGui::EndCombo();
 		}
+
+		if (ImGuiFileDialog::Instance()->IsOpened("ConversionImport"))
+			ImGui::EndDisabled();
 
 		ImGui::SameLine();
 
@@ -989,7 +995,7 @@ void GUI::main() {
 			logic.sort_inputs();
 		}
 
-		if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey"))
+		if (ImGuiFileDialog::Instance()->Display("ImportNormal"))
 		{
 			// action if OK
 			if (ImGuiFileDialog::Instance()->IsOk())
