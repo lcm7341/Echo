@@ -266,7 +266,6 @@ void GUI::editor() {
 
 		if (ImGui::Button("Offset Frames")) {
 			logic.offset_frames(offset_frames);
-			offset_frames = 0;
 		}
 
 		ImGui::SameLine();
@@ -823,11 +822,11 @@ void GUI::main() {
 		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Playback Settings");
 		ImGui::Separator();
 
+		ImGui::Text("Replay FPS: %f", logic.get_fps());
 		ImGui::Text("Frame: %i", logic.get_frame());
 		ImGui::Text("Highest CPS: %s", logic.highest_cps_cached().c_str());
 
 
-		if (logic.is_playing() || logic.is_recording()) ImGui::BeginDisabled();
 		ImGui::PushItemFlag(ImGuiItemFlags_NoTabStop, true);
 		ImGui::SetNextItemWidth(get_width(30));
 		ImGui::InputFloat("###fps", &input_fps, 0, 0, "%.0f");
@@ -838,11 +837,13 @@ void GUI::main() {
 		if (ImGui::Button("Set FPS")) {
 			if (!logic.is_recording() && !logic.is_playing()) {
 				logic.fps = input_fps;
+				CCDirector::sharedDirector()->setAnimationInterval(1.f / logic.fps);
 			}
-			CCDirector::sharedDirector()->setAnimationInterval(1.f / logic.fps);
+			else {
+				CCDirector::sharedDirector()->setAnimationInterval(1.f / input_fps);
+			}
 		}
 
-		if (logic.is_playing() || logic.is_recording()) ImGui::EndDisabled();
 
 		float speed = logic.speedhack;
 		if (ImGui::DragFloat("Speed", &speed, 0.01, 0.01f, 100.f, "%.2f")) {

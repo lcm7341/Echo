@@ -59,15 +59,15 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
     auto& logic = Logic::get();
     auto play_layer = gd::GameManager::sharedState()->getPlayLayer();
 
-    CCDirector::sharedDirector()->setAnimationInterval(1.f / logic.fps);
+    //CCDirector::sharedDirector()->setAnimationInterval(1.f / logic.fps);
 
     auto end = std::chrono::steady_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - logic.start);
 
-    if (logic.recorder.m_recording) {
+    /*if (logic.recorder.m_recording) {
         dt = 1.f / logic.fps;
         return CCScheduler_update(self, dt);
-    }
+    }*/
 
     if (logic.autoclicker && play_layer && !play_layer->m_isPaused) {
         Autoclicker::get().update(logic.get_frame());
@@ -110,8 +110,12 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
     }
 
     if (logic.is_recording() || logic.is_playing()) {
-        CCDirector::sharedDirector()->setAnimationInterval(1.f / logic.fps);
-        if (logic.real_time_mode && !logic.recorder.m_recording) {
+        if (logic.recorder.m_recording && (logic.get_frame() / logic.fps) < 3.f) { // prevent screen tearing from lag in the first bits of lvl
+            dt = 1.f / logic.fps;
+            return CCScheduler_update(self, dt);
+        }
+
+        if (logic.real_time_mode) {
 
             const float target_dt = 1.f / logic.fps / logic.speedhack;
 
@@ -119,19 +123,20 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
 
             g_disable_render = true;
 
-            const unsigned int times = min(static_cast<int>((dt + g_left_over) / target_dt), 150);
+            const unsigned int times = min(g_left_over / target_dt, 100); //min(static_cast<int>((dt + g_left_over) / target_dt), 150);
 
             for (unsigned i = 0; i < times; i++) {
-                if (i == times - 1)
+                if (i == times - 1) {
                     g_disable_render = false;
+                }
                 CCScheduler_update(self, target_dt);
             }
             g_left_over += dt - target_dt * times;
         }
-        else if (logic.recorder.m_recording) {
+        /*else if (logic.recorder.m_recording) {
             dt = 1.f / logic.fps;
             return CCScheduler_update(self, dt);
-        }
+        }*/
         else {
             dt = 1.f / logic.fps;
         }
