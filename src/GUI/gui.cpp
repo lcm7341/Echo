@@ -508,7 +508,7 @@ void GUI::tools() {
 			ImGuiFileDialog::Instance()->OpenDialog("MergeReplay", "Choose File", ".echo,.bin", ".echo/");
 		}
 
-		if (ImGuiFileDialog::Instance()->Display("MergeReplay"))
+		if (ImGuiFileDialog::Instance()->Display("MergeReplay", ImGuiWindowFlags_NoCollapse, ImVec2(500, 200)))
 		{
 			if (ImGuiFileDialog::Instance()->IsOk())
 			{
@@ -680,6 +680,9 @@ void GUI::conversion() {
 	auto& logic = Logic::get();
 
 	if (ImGui::BeginTabItem("Conversion")) {
+		if (ImGuiFileDialog::Instance()->IsOpened("ConversionImport"))
+			ImGui::BeginDisabled();
+
 		static std::string current_option = "Plain Text";
 		if (ImGui::BeginCombo("Options", current_option.c_str())) {
 			for (auto& option : options) {
@@ -695,11 +698,14 @@ void GUI::conversion() {
 			ImGui::EndCombo();
 		}
 
+		if (ImGuiFileDialog::Instance()->IsOpened("ConversionImport"))
+			ImGui::EndDisabled();
+
 		ImGui::SameLine();
 
 		auto& style = ImGui::GetStyle();
 
-		if (current_option == "Osu") { // I fucking hate the way imgui does disabling
+		if (current_option == "Osu") {
 			ImGui::BeginDisabled();
 
 			if (ImGui::Button("Import"))
@@ -725,7 +731,7 @@ void GUI::conversion() {
 			}
 		}
 
-		if (ImGuiFileDialog::Instance()->Display("ConversionImport"))
+		if (ImGuiFileDialog::Instance()->Display("ConversionImport", ImGuiWindowFlags_NoCollapse, ImVec2(500, 200)))
 		{
 			// action if OK
 			if (ImGuiFileDialog::Instance()->IsOk())
@@ -989,7 +995,7 @@ void GUI::main() {
 			logic.sort_inputs();
 		}
 
-		if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey"))
+		if (ImGuiFileDialog::Instance()->Display("ImportNormal", ImGuiWindowFlags_NoCollapse, ImVec2(500, 200)))
 		{
 			// action if OK
 			if (ImGuiFileDialog::Instance()->IsOk())
