@@ -110,7 +110,7 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
     }
 
     if (logic.is_recording() || logic.is_playing()) {
-        if (logic.recorder.m_recording && (logic.get_frame() / logic.fps) < 3.f) { // prevent screen tearing from lag in the first bits of lvl
+        if (logic.recorder.m_recording && (logic.get_frame() / logic.fps) < 0.5f) { // prevent screen tearing from lag in the first bits of lvl
             dt = 1.f / logic.fps;
             return CCScheduler_update(self, dt);
         }
@@ -123,7 +123,7 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
 
             g_disable_render = true;
 
-            const unsigned int times = min(g_left_over / target_dt, 100); //min(static_cast<int>((dt + g_left_over) / target_dt), 150);
+            const unsigned int times = min(g_left_over / target_dt, 50); //min(static_cast<int>((dt + g_left_over) / target_dt), 150);
 
             for (unsigned i = 0; i < times; i++) {
                 if (i == times - 1) {

@@ -304,6 +304,10 @@ void Logic::read_file(const std::string& filename, bool is_path = false) {
         r_b(file_format);
         format = DEBUG;
     }
+    else if (file_format == "SIMPLE") {
+        r_b(file_format);
+        format = SIMPLE;
+    }
 
     r_b(fps);
     r_b(end_portal_position);
