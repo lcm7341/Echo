@@ -344,7 +344,15 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
 int __fastcall Hooks::PlayLayer::pushButton_h(gd::PlayLayer* self, int, int idk, bool button) {
     auto& logic = Logic::get();
 
-    if (logic.is_playing() && logic.ignore_actions_at_playback) return 0;
+    if (logic.is_playing()) {
+        if (button) {
+            self->m_player1->runNormalRotation();
+        }
+        else {
+            self->m_player2->runNormalRotation();
+        }
+        if (logic.ignore_actions_at_playback) return 0;
+    }
 
     if (button && self->m_player1->m_isDashing) {
         return 0;
