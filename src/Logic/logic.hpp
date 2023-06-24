@@ -334,6 +334,8 @@ public:
 
 	void write_file_json(const std::string& filename);
 
+	void handle_checkpoint_data();
+
 	void read_file_json(const std::string& filename, bool is_path);
 
 	void save_checkpoint(Checkpoint data) {
@@ -361,6 +363,4 @@ public:
 		}
 		return Checkpoint{ 0, 0, 0 };
 	}
-
-	void handle_checkpoint_data();
 };

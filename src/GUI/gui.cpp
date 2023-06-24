@@ -7,6 +7,7 @@
 #include <cmath>
 #include <sstream>
 #include <imgui-hook.hpp>
+#include <../imguifiledialog/ImGuiFileDialog.h>
 #include <string_view>
 #include <imgui/misc/cpp/imgui_stdlib.h>
 #include <filesystem>
@@ -20,7 +21,6 @@
 #include <sstream>
 #include <optional>
 #include <random>
-#include "../imfilebrowser.h"
 #include "../Hack/audiopitchHack.hpp"
 #include "../Logic/convertible.h"
 #include "../Logic/Conversions/tasbot.h"
@@ -61,7 +61,6 @@ static Opcode anticheatBypass(Cheat::AntiCheatBypass);
 static Opcode noclip(Cheat::NoClip);
 static Opcode practiceMusic(Cheat::PracticeMusic);
 static Opcode noEscape(Cheat::NoESC);
-static ImGui::FileBrowser fileDialog;
 
 void delay(int milliseconds) {
 	auto start = std::chrono::steady_clock::now();
@@ -97,7 +96,6 @@ void GUI::draw() {
 		}
 
 		ImGui::End();
-		fileDialog.Display();
 	}
 
 	auto end = std::chrono::steady_clock::now();
@@ -148,8 +146,6 @@ void GUI::editor() {
 		ImGui::BeginChild("##List", ImVec2(0, firstChildHeight - ImGui::GetFrameHeightWithSpacing() + 1), true);
 		if (!inputs.empty()) {
 			for (unsigned i = 0; i < inputs.size(); i++) {
-
-
 				if (inputs[i].isPlayer2)
 					style.Colors[ImGuiCol_Header] = ImVec4(0.f, 1.f, 0.4f, 0.2f);
 				else {
@@ -189,22 +185,27 @@ void GUI::editor() {
 		ImGui::BeginChild("##List2", ImVec2(0, firstChildHeight), true);
 
 		if (!logic.cps_over_percents.empty()) {
-			for (unsigned i = 0; i < logic.cps_over_percents.size(); i++) {
-				float val = logic.cps_over_percents[i].first;
-				std::string rule = logic.cps_over_percents[i].second;
-				std::string percent = std::to_string(val);
+			if (logic.end_portal_position == 0) {
+				ImGui::TextColored(ImVec4(1, 1, 1, 1), "Only Echo Replays support this");
+			}
+			else {
+				for (unsigned i = 0; i < logic.cps_over_percents.size(); i++) {
+					float val = logic.cps_over_percents[i].first;
+					std::string rule = logic.cps_over_percents[i].second;
+					std::string percent = std::to_string(val);
 
-				// Truncate the string to have only 2 decimal places
-				size_t dot_pos = percent.find(".");
-				if (dot_pos != std::string::npos && dot_pos + 3 < percent.length()) {
-					percent = percent.substr(0, dot_pos + 3);
+					// Truncate the string to have only 2 decimal places
+					size_t dot_pos = percent.find(".");
+					if (dot_pos != std::string::npos && dot_pos + 3 < percent.length()) {
+						percent = percent.substr(0, dot_pos + 3);
+					}
+
+					printf("%s\n", rule.c_str());
+
+					ImGui::Text("%s percent", percent.c_str());
+					ImGui::SameLine();
+					ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "#%s", rule.c_str());
 				}
-
-				printf("%s\n", rule.c_str());
-
-				ImGui::Text("%s percent", percent.c_str());
-				ImGui::SameLine();
-				ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "#%s", rule.c_str());
 			}
 		}
 		else {
@@ -503,26 +504,29 @@ void GUI::tools() {
 		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Macro Tools");
 		ImGui::Separator();
 
-		fileDialog.SetTitle("Replays");
-		fileDialog.SetTypeFilters({ ".echo", ".bin" });
-
 		if (ImGui::Button("Merge With Replay")) {
-			fileDialog.Open();
+			ImGuiFileDialog::Instance()->OpenDialog("MergeReplay", "Choose File", ".echo,.bin", ".echo/");
 		}
 
-		if (fileDialog.HasSelected())
+		if (ImGuiFileDialog::Instance()->Display("MergeReplay"))
 		{
-			std::vector<Frame> before_inputs = logic.get_inputs();
+			if (ImGuiFileDialog::Instance()->IsOk())
+			{
+				std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
+				std::string filePath = ImGuiFileDialog::Instance()->GetCurrentPath();
+				std::vector<Frame> before_inputs = logic.get_inputs();
 
-			if (fileDialog.GetSelected().extension() == ".bin")
-				logic.read_file(fileDialog.GetSelected().string(), true);
-			else
-				logic.read_file_json(fileDialog.GetSelected().string(), true);
+				std::string suffix = ".bin";
+				if (filePathName.size() >= suffix.size() && filePathName.rfind(suffix) == (filePathName.size() - suffix.size()))
+					logic.read_file(filePathName, true);
+				else
+					logic.read_file_json(filePathName, true);
 
-			logic.inputs.insert(logic.inputs.end(), before_inputs.begin(), before_inputs.end());
+				logic.inputs.insert(logic.inputs.end(), before_inputs.begin(), before_inputs.end());
 
-			logic.sort_inputs();
-			fileDialog.ClearSelected();
+				logic.sort_inputs();
+			}
+			ImGuiFileDialog::Instance()->Close();
 		}
 
 		ImGui::Checkbox("Click Both Players", &logic.click_both_players);
@@ -686,8 +690,6 @@ void GUI::conversion() {
 
 				if (is_selected) {
 					ImGui::SetItemDefaultFocus();
-
-					fileDialog.ClearSelected();
 				}
 			}
 			ImGui::EndCombo();
@@ -701,13 +703,13 @@ void GUI::conversion() {
 			ImGui::BeginDisabled();
 
 			if (ImGui::Button("Import"))
-				fileDialog.Open();
+				ImGuiFileDialog::Instance()->OpenDialog("ConversionImport", "Choose File", options[current_option]->get_type_filter().c_str(), ".echo/");
 
 			ImGui::EndDisabled();
 		}
 		else {
 			if (ImGui::Button("Import"))
-				fileDialog.Open();
+				ImGuiFileDialog::Instance()->OpenDialog("ConversionImport", "Choose File", options[current_option]->get_type_filter().c_str(), ".echo/");
 		}
 
 		ImGui::SameLine();
@@ -723,22 +725,25 @@ void GUI::conversion() {
 			}
 		}
 
-		// Setup and use the FileBrowser dialog
-		fileDialog.SetTitle("Import");
-		fileDialog.SetTypeFilters({ options[current_option]->get_type_filter() });
+		if (ImGuiFileDialog::Instance()->Display("ConversionImport"))
+		{
+			// action if OK
+			if (ImGuiFileDialog::Instance()->IsOk())
+			{
+				logic.conversion_message = "";
+				try {
+					options[current_option]->import(ImGuiFileDialog::Instance()->GetFilePathName());
+					logic.sort_inputs();
+					if (logic.conversion_message == "")
+						logic.conversion_message = "Success! Imported replay as a " + current_option + " file";
+				}
+				catch (std::runtime_error& e) {
+					logic.conversion_message = "Error! Could not import " + ImGuiFileDialog::Instance()->GetFilePathName();
+				}
+				CCDirector::sharedDirector()->setAnimationInterval(1.f / GUI::get().input_fps);
+			}
 
-		if (fileDialog.HasSelected()) {
-			logic.conversion_message = "";
-			try {
-				options[current_option]->import(fileDialog.GetSelected().string());
-				logic.sort_inputs();
-				if (logic.conversion_message == "")
-					logic.conversion_message = "Success! Imported replay as a " + current_option + " file";
-			}
-			catch (std::runtime_error& e) {
-				logic.conversion_message = "Error! Could not import " + fileDialog.GetSelected().filename().string();
-			}
-			CCDirector::sharedDirector()->setAnimationInterval(1.f / GUI::get().input_fps);
+			ImGuiFileDialog::Instance()->Close();
 		}
 
 		ImGui::Separator();
@@ -851,18 +856,6 @@ void GUI::main() {
 			else {
 				audiospeedhack.setEnabled(false);
 			}
-		}
-
-		if (PLAYLAYER) {
-			int difference = logic.get_frame() - logic.calculated_frame;
-			ImGui::Text("FRAME: %i", logic.get_frame());
-			ImGui::Text("MY F: %i", logic.calculated_frame);
-			ImGui::Text("DIF: %i", difference);
-
-			ImGui::Text("XPOS: %f", PLAYLAYER->m_player1->getPositionX());
-			ImGui::Text("MY X: %f", logic.calculated_xpos);
-			ImGui::Text("DIF: %f", PLAYLAYER->m_player1->getPositionX() - logic.calculated_xpos);
-			//ImGui::Text("TFX: %f", round(logic.fps * (logic.calculated_xpos / (60.f * logic.player_acceleration * logic.player_speed))));
 		}
 
 		/*static std::string keyName = "[None]";
@@ -979,9 +972,6 @@ void GUI::main() {
 
 		ImGui::SetNextItemWidth(get_width(50.f));
 
-		fileDialog.SetTitle("Replays");
-		fileDialog.SetTypeFilters({ ".echo", ".bin" });
-
 		if (ImGui::Button("Load File", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.48f, 0))) {
 			if (!logic.file_dialog) {
 				if (logic.use_json_for_files) {
@@ -992,31 +982,37 @@ void GUI::main() {
 				}
 			}
 			else {
-				fileDialog.Open();
+				ImGuiFileDialog::Instance()->OpenDialog("ImportNormal", "Choose File", ".echo,.bin", ".echo/");
 			}
 			input_fps = logic.fps;
 			CCDirector::sharedDirector()->setAnimationInterval(1.f / GUI::get().input_fps);
 			logic.sort_inputs();
 		}
 
-		if (fileDialog.HasSelected())
+		if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey"))
 		{
-			// Find the position of the last dot in the filename
-			size_t dotPosition = fileDialog.GetSelected().filename().string().find_last_of(".");
+			// action if OK
+			if (ImGuiFileDialog::Instance()->IsOk())
+			{
+				// Find the position of the last dot in the filename
+				size_t dotPosition = ImGuiFileDialog::Instance()->GetFilePathName().find_last_of(".");
 
-			// Extract the substring from the beginning of the filename till the dot
-			std::string nameWithoutExtension = fileDialog.GetSelected().filename().string().substr(0, dotPosition);
+				// Extract the substring from the beginning of the filename till the dot
+				std::string nameWithoutExtension = ImGuiFileDialog::Instance()->GetFilePathName().substr(0, dotPosition);
 
-			if (fileDialog.GetSelected().extension() == ".bin")
-				logic.read_file(fileDialog.GetSelected().string(), true);
-			else
-				logic.read_file_json(fileDialog.GetSelected().string(), true);
+				std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
+				std::string suffix = ".bin";
+				if (filePathName.size() >= suffix.size() && filePathName.rfind(suffix) == (filePathName.size() - suffix.size()))
+					logic.read_file(filePathName, true);
+				else
+					logic.read_file_json(filePathName, true);
 
-			input_fps = logic.fps;
-			CCDirector::sharedDirector()->setAnimationInterval(1.f / GUI::get().input_fps);
+				input_fps = logic.fps;
+				CCDirector::sharedDirector()->setAnimationInterval(1.f / GUI::get().input_fps);
 
-			strcpy(logic.macro_name, nameWithoutExtension.c_str());
-			fileDialog.ClearSelected();
+				strcpy(logic.macro_name, nameWithoutExtension.c_str());
+			}
+			ImGuiFileDialog::Instance()->Close();
 		}
 
 		/*
@@ -1035,8 +1031,6 @@ void GUI::main() {
 }
 
 void GUI::init() {
-	fileDialog.SetPwd(std::filesystem::path(".echo"));
-
 	auto& style = ImGui::GetStyle();
 	style.WindowTitleAlign = ImVec2(0.5f, 0.5f);
 	style.WindowBorderSize = 0;

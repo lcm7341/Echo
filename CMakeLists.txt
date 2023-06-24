@@ -16,7 +16,7 @@ file(
   src/*.hpp
 )
 
-add_library(Echo SHARED ${SOURCE_FILES} "src/Logic/Conversions/plaintext.h")
+add_library(Echo SHARED ${SOURCE_FILES})
 
 add_dependencies(Echo
     increment_version_number
@@ -34,15 +34,19 @@ CPMAddPackage("gh:matcool/gd.h#3b7e906c3ee32f3d718af67c11b9ddff9cf14896")
 target_include_directories(Echo PRIVATE
   libraries/imgui-hook
   libraries/imgui-hook/imgui
+  libraries/imguifiledialog
   "${gd.h_SOURCE_DIR}"
   "${gd.h_SOURCE_DIR}/include"
 )
 
 add_subdirectory(libraries/imgui-hook)
+add_subdirectory(libraries/imguifiledialog)
+
 target_link_libraries(Echo 
   cocos2d
   imgui-hook
   minhook
+  ImGuiFileDialog
   opengl32
   nlohmann_json::nlohmann_json
   ${CMAKE_SOURCE_DIR}/libraries/glew32.lib
