@@ -396,12 +396,13 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
     auto& logic = Logic::get();
 
     logic.calculated_xpos = self->m_player1->getPositionX();
+    logic.calculated_frame = round(logic.get_frame() + (self->m_player1->getPositionX() - logic.calculated_xpos));
     logic.previous_xpos = self->m_player1->getPositionX();
     logic.player_x_positions.clear();
 
     logic.player_x_positions.push_back(self->m_player1->getPositionX());
 
-    logic.calculated_xpos = logic.xpos_calculation();
+    //logic.calculated_xpos = logic.xpos_calculation();
     logic.previous_xpos = logic.xpos_calculation();
 
     if (logic.is_playing()) {
