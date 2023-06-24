@@ -27,6 +27,8 @@ public:
 
 	void sequential_replay();
 
+	void ui_editor();
+
 	bool show_reset_popup = false;
 
 	int keybind = VK_MENU;
@@ -34,4 +36,6 @@ public:
 	float input_fps = 60.f;
 
 	int offset_frames = 0;
+
+	float scheduler_dt = 60.f;
 };

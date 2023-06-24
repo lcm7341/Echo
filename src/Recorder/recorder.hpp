@@ -51,6 +51,7 @@ public:
     std::string m_ffmpeg_path = "ffmpeg";
     bool color_fix = true;
     bool ssb_fix = true;
+    bool real_time_rendering = true;
 
     void start(const std::string& path);
     void stop();

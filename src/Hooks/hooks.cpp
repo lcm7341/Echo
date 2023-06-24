@@ -59,14 +59,14 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
     auto& logic = Logic::get();
     auto play_layer = gd::GameManager::sharedState()->getPlayLayer();
 
-    //CCDirector::sharedDirector()->setAnimationInterval(1.f / logic.fps);
+    CCDirector::sharedDirector()->setAnimationInterval(1.f / logic.fps);
 
     auto end = std::chrono::steady_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - logic.start);
 
     /*if (logic.recorder.m_recording) {
         dt = 1.f / logic.fps;
-        return CCScheduler_update(self, dt);
+        return CCScheduler_update(self, 1.f / logic.fps);
     }*/
 
     if (logic.autoclicker && play_layer && !play_layer->m_isPaused) {
@@ -110,9 +110,13 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
     }
 
     if (logic.is_recording() || logic.is_playing()) {
-        if (logic.recorder.m_recording && (logic.get_frame() / logic.fps) < 0.5f) { // prevent screen tearing from lag in the first bits of lvl
-            dt = 1.f / logic.fps;
-            return CCScheduler_update(self, dt);
+
+
+        if (logic.recorder.m_recording) { // prevent screen tearing from lag in the first bits of lvl
+            if ((logic.get_frame() / logic.fps) < 1.f || (1.f / dt) < logic.recorder.m_fps || !logic.recorder.real_time_rendering) {
+                dt = 1.f / logic.fps;
+                return CCScheduler_update(self, dt);
+            }
         }
 
         if (logic.real_time_mode) {
@@ -123,7 +127,9 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
 
             g_disable_render = true;
 
-            const unsigned int times = min(g_left_over / target_dt, 50); //min(static_cast<int>((dt + g_left_over) / target_dt), 150);
+            const unsigned int times = !logic.recorder.m_recording ? min(static_cast<int>(g_left_over / target_dt), 50) : min(round((g_left_over) / target_dt), 100);
+
+            GUI::get().scheduler_dt = times;
 
             for (unsigned i = 0; i < times; i++) {
                 if (i == times - 1) {

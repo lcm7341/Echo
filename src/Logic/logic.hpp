@@ -123,7 +123,7 @@ class Logic {
 
 	std::vector<double> offsets;
 
-	
+
 public:
 	static auto& get() {
 		static Logic logic;
@@ -347,12 +347,10 @@ public:
 	}
 
 	void offset_frames(int offset) {
-		for (auto& replay : replays) {
-			for (auto& frame : replay.actions) {
-				// Ensure that the offset does not result in a negative frame number
-				if (static_cast<int>(frame.number) + offset >= 0) {
-					frame.number += offset;
-				}
+		for (auto& frame : inputs) {
+			// Ensure that the offset does not result in a negative frame number
+			if (static_cast<int>(frame.number) + offset >= 0) {
+				frame.number += offset;
 			}
 		}
 	}
