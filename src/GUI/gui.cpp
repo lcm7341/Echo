@@ -74,6 +74,7 @@ void delay(int milliseconds) {
 }
 
 int g_has_imported = false; // ffs
+int g_has_placed_positions = false; // ffs
 
 void GUI::draw() {
 	if (!g_has_imported)
@@ -85,26 +86,66 @@ void GUI::draw() {
 	if (show_window) {
 		std::stringstream full_title;
 
-		full_title << "Echo [" << ECHO_VERSION << "b]";
+		//full_title << "Echo [" << ECHO_VERSION << "b]";
 
-		ImGui::Begin(full_title.str().c_str(), nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize);
+		full_title << "Echo v1.0";
+
+		
 		ImGuiIO& io = ImGui::GetIO();
+
 		io.ConfigFlags |= ImGuiConfigFlags_NavNoCaptureKeyboard;
 
 		if (io.KeysDown[ImGui::GetKeyIndex(ImGuiKey_Escape)])
 			ImGui::SetKeyboardFocusHere();
 
-		if (ImGui::BeginTabBar("TabBar")) {
-			main();
-			tools();
-			editor();
-			renderer();
-			sequential_replay();
-			conversion();
-			ui_editor();
+		bool open_modal = true;
+		if (Logic::get().error != "") {
+			ImGui::OpenPopup("Error");
+
+			if (ImGui::BeginPopupModal("Error", &open_modal, ImGuiWindowFlags_NoResize)) {
+
+				ImGui::Text("Error: %s", Logic::get().error);
+
+				if (ImGui::Button("Okay", ImVec2(ImGui::GetWindowContentRegionWidth(), 0))) {
+					Logic::get().error = "";
+				}
+
+				ImGui::EndPopup();
+			}
 		}
 
-		ImGui::End();
+		if (docked) {
+			ImGui::Begin(full_title.str().c_str());
+			if (ImGui::BeginTabBar("TabBar")) {
+				main();
+				tools();
+				editor();
+				renderer();
+				sequential_replay();
+				conversion();
+				ui_editor();
+			}
+			ImGui::End();
+		}
+		else { // ?? profit
+			if (!g_has_placed_positions) {
+				ImGui::SetNextWindowPos({ 35, 25 });
+				main();
+				ImGui::SetNextWindowPos({ 500, 25 });
+				tools();
+				ImGui::SetNextWindowPos({ 1100, 25 });
+				editor();
+				ImGui::SetNextWindowPos({ 1290, 25 });
+				conversion();
+				g_has_placed_positions = true;
+			}
+			else {
+				main();
+				tools();
+				editor();
+				conversion();
+			}
+		}
 	}
 
 	auto end = std::chrono::steady_clock::now();
@@ -366,8 +407,8 @@ void GUI::ui_editor() {
 			if (ImGui::BeginTabItem("Sizes"))
 			{
 
-				ImGui::SetNextWindowSizeConstraints(ImVec2(500, 500), ImVec2(500, 500));
-				ImGui::BeginChild("###sizesChild", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar | ImGuiWindowFlags_NavFlattened);
+				ImGui::SetNextWindowSizeConstraints(ImVec2(-1, 500), ImVec2(-1, 500));
+				ImGui::BeginChild("###sizesChild", ImVec2(0, 0), false);
 				ImGui::Text("Main");
 				ImGui::SliderFloat2("WindowPadding", (float*)&style.WindowPadding, 0.0f, 20.0f, "%.0f");
 				ImGui::SliderFloat2("FramePadding", (float*)&style.FramePadding, 0.0f, 20.0f, "%.0f");
@@ -396,16 +437,16 @@ void GUI::ui_editor() {
 				ImGui::Text("Alignment");
 				ImGui::SliderFloat2("WindowTitleAlign", (float*)&style.WindowTitleAlign, 0.0f, 1.0f, "%.2f");
 				int window_menu_button_position = style.WindowMenuButtonPosition + 1;
-				if (ImGui::Combo("WindowMenuButtonPosition", (int*)&window_menu_button_position, "None\0Left\0Right\0"))
+				if (ImGui::Combo("WindowMenuBtnPos", (int*)&window_menu_button_position, "None\0Left\0Right\0"))
 					style.WindowMenuButtonPosition = window_menu_button_position - 1;
 				ImGui::Combo("ColorButtonPosition", (int*)&style.ColorButtonPosition, "Left\0Right\0");
 				ImGui::SliderFloat2("ButtonTextAlign", (float*)&style.ButtonTextAlign, 0.0f, 1.0f, "%.2f");
 				ImGui::SameLine(); HelpMarker("Alignment applies when a button is larger than its text content.");
-				ImGui::SliderFloat2("SelectableTextAlign", (float*)&style.SelectableTextAlign, 0.0f, 1.0f, "%.2f");
+				ImGui::SliderFloat2("SelectTextAlign", (float*)&style.SelectableTextAlign, 0.0f, 1.0f, "%.2f");
 				ImGui::SameLine(); HelpMarker("Alignment applies when a selectable is larger than its text content.");
 				ImGui::Text("Safe Area Padding");
 				ImGui::SameLine(); HelpMarker("Adjust if you cannot see the edges of your screen (e.g. on a TV where scaling has not been configured).");
-				ImGui::SliderFloat2("DisplaySafeAreaPadding", (float*)&style.DisplaySafeAreaPadding, 0.0f, 30.0f, "%.0f");
+				ImGui::SliderFloat2("SafePadding", (float*)&style.DisplaySafeAreaPadding, 0.0f, 30.0f, "%.0f");
 
 				ImGui::EndChild();
 				ImGui::EndTabItem();
@@ -426,7 +467,7 @@ void GUI::ui_editor() {
 					"Right-click to open edit options menu.");
 				
 				ImGui::SetNextWindowSizeConstraints(ImVec2(500, 500), ImVec2(500, 500));
-				ImGui::BeginChild("##colors", ImVec2(-1, 0), true, ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar | ImGuiWindowFlags_NavFlattened);
+				ImGui::BeginChild("##colors", ImVec2(-1, 0), true);
 				ImGui::PushItemWidth(250);
 				if (filter.PassFilter("Player 1 In Editor")) {
 					ImGui::PushID(998);
@@ -538,10 +579,18 @@ void GUI::editor() {
 
 	const float editAreaHeight = 150.0f;
 
-	ImGui::SetNextWindowSizeConstraints(ImVec2(255, 300), ImVec2(245 * ImGui::GetIO().FontGlobalScale, 300));
+	//ImGui::SetNextWindowSizeConstraints(ImVec2(255, 300), ImVec2(245 * ImGui::GetIO().FontGlobalScale, 300));
 
-	if (ImGui::BeginTabItem("Editor")) {
+	if (ImGui::BeginTabItem("Editor") || !docked) {
+
+		if (!docked) {
+			ImGui::Begin("Editor");
+		}
 		float firstChildHeight = 300;
+
+
+		ImGui::Text("X: %f", ImGui::GetWindowPos().x);
+		ImGui::Text("Y: %f", ImGui::GetWindowPos().y);
 
 		ImGui::Columns(2, "##Columns", false);
 
@@ -570,6 +619,8 @@ void GUI::editor() {
 				}
 			}
 
+			int previousSelectedInput = -1; // New variable to store the index of the previously selected input
+
 			for (unsigned i = 0; i < inputs.size(); i++) {
 				ImVec4 color;
 				if (inputs[i].isPlayer2) {
@@ -581,51 +632,64 @@ void GUI::editor() {
 
 				if (i == closestInputIndex) {
 					// Make the closest input's button brighter
-					color.x = max(color.x - 0.5f, 0);
-					color.y = max(color.y - 0.5f, 0);
-					color.z = max(color.z - 0.5f, 0);
+					color.x = max(color.x - 0.3f, 0);
+					color.y = max(color.y - 0.3f, 0);
+					color.z = max(color.z - 0.3f, 0);
 				}
-
-				ImGui::PushStyleColor(ImGuiCol_Button, color);
 
 				char buffer[100];
 				std::sprintf(buffer, "%s at %d##Input", inputs[i].pressingDown ? "Click" : "Release", inputs[i].number);
 				std::string text = buffer;
 
 				if (ImGui::Button(text.c_str())) {
-					selectedInput = i;
-					newInput = inputs[i];
-				}
+					if (selectedInput != i) {
+						previousSelectedInput = selectedInput;
+						selectedInput = i;
+						newInput = inputs[i];
 
-				// Automatically select the closest input to the current frame
-				if (PLAYLAYER && !PLAYLAYER->m_isPaused && (!logic.frame_advance || !logic.holding_frame_advance)) {
-					if (closestInputIndex != -1) {
-						selectedInput = closestInputIndex;
-						newInput = inputs[closestInputIndex];
+						if (previousSelectedInput != -1) {
+							// Restore the color of the previously selected input
+							ImVec4 prevColor;
+							if (inputs[previousSelectedInput].isPlayer2) {
+								prevColor = player_2_button_color;
+							}
+							else {
+								prevColor = player_1_button_color;
+							}
+							ImGui::PushStyleColor(ImGuiCol_Button, prevColor);
+						}
 
-						// Calculate the scroll position to center the selected input
-						int selectedIndex = closestInputIndex;
-						int visibleInputs = ImGui::GetWindowHeight() / ImGui::GetItemRectSize().y;
-						int firstVisibleIndex = max(0, selectedIndex - visibleInputs / 2);
-						int scrollY = firstVisibleIndex * ImGui::GetItemRectSize().y + (ImGui::GetStyle().ItemSpacing.y * closestInputIndex); // DO NOT FUCK WITH THIS MATH DAWG IT TOOK ME 2 HOURS
-
-						ImGui::SetScrollY(scrollY);
+						// Make the newly selected input's button brighter
+						color.x = max(color.x - 0.3f, 0);
+						color.y = max(color.y - 0.3f, 0);
+						color.z = max(color.z - 0.3f, 0);
 					}
 				}
 
+				ImGui::PushStyleColor(ImGuiCol_Button, color);
 				ImGui::PopStyleColor();
+			}
+
+			// Restore the color of the previously selected input (if any)
+			if (previousSelectedInput != -1) {
+				ImVec4 prevColor;
+				if (inputs[previousSelectedInput].isPlayer2) {
+					prevColor = player_2_button_color;
+				}
+				else {
+					prevColor = player_1_button_color;
+				}
+				ImGui::PushStyleColor(ImGuiCol_Button, prevColor);
 			}
 		}
 		else {
 			ImGui::TextColored(ImVec4(1, 1, 1, 1), "No Inputs");
 		}
 
-
-
 		ImGui::EndChild();
 
 
-		if (ImGui::Button("Add Input")) {
+		if (ImGui::Button("Add Input", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.5, 0))) {
 			if (selectedInput == -1) {
 				inputs.push_back(Frame());
 				selectedInput = inputs.size() - 1;
@@ -643,7 +707,7 @@ void GUI::editor() {
 
 		if (!logic.cps_over_percents.empty()) {
 			if (logic.end_portal_position == 0) {
-				ImGui::TextColored(ImVec4(1, 1, 1, 1), "Only Echo Replays support this");
+				ImGui::TextColored(ImVec4(1, 1, 1, 1), "Only Echo Replays support this! Not converted ones.");
 			}
 			else {
 				for (unsigned i = 0; i < logic.cps_over_percents.size(); i++) {
@@ -733,7 +797,8 @@ void GUI::editor() {
 			ImGui::SetTooltip("Randomly offsets all frames in replay from -input to +input");
 		}
 
-		ImGui::EndTabItem();
+		if (docked)
+			ImGui::EndTabItem();
 	}
 }
 
@@ -813,6 +878,15 @@ void GUI::renderer() {
 		if (ImGui::IsItemHovered()) {
 			ImGui::SetTooltip("Extra Time is the time in seconds after you finish a level that the recorder automatically records for.");
 		}
+
+		ImGui::Separator();
+
+		ImGui::InputFloat("Fade In Duration", &logic.recorder.fade_in_time, 0.01, 0.1, "%.2f");
+
+		ImGui::InputFloat("Fade Out Duration", &logic.recorder.fade_out_time, 0.01, 0.1, "%.2f");
+
+		ImGui::Checkbox("Fade Audio", &logic.recorder.fade_audio); ImGui::SameLine();
+		ImGui::Checkbox("Fade Video", &logic.recorder.fade_audio);
 
 		ImGui::Separator();
 
@@ -961,8 +1035,13 @@ void GUI::sequential_replay() {
 void GUI::tools() {
 	auto& logic = Logic::get();
 
-	if (ImGui::BeginTabItem("Tools")) {
+	if (ImGui::BeginTabItem("Tools") || !docked) {
 
+		if (!docked) {
+			
+			ImGui::Begin("Tools");
+			
+		}
 		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Macro Tools");
 		ImGui::Separator();
 
@@ -1129,7 +1208,8 @@ void GUI::tools() {
 
 		if (logic.format == logic.SIMPLE) ImGui::EndDisabled();
 
-		ImGui::EndTabItem();
+		if (docked)
+			ImGui::EndTabItem();
 	}
 }
 
@@ -1143,7 +1223,12 @@ std::map<std::string, std::shared_ptr<Convertible>> options = {
 void GUI::conversion() {
 	auto& logic = Logic::get();
 
-	if (ImGui::BeginTabItem("Conversion")) {
+	if (ImGui::BeginTabItem("Conversion") || !docked) {
+
+		if (!docked) {
+			ImGui::Begin("Conversion");
+		}
+
 		if (ImGuiFileDialog::Instance()->IsOpened("ConversionImport"))
 			ImGui::BeginDisabled();
 
@@ -1219,7 +1304,8 @@ void GUI::conversion() {
 		ImGui::Separator();
 		ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 1.0f), "%s", logic.conversion_message);
 
-		ImGui::EndTabItem();
+		if (docked)
+			ImGui::EndTabItem();
 	}
 }
 
@@ -1228,9 +1314,10 @@ void GUI::main() {
 	const ImVec2 buttonSize = { get_width(48), 0 };
 	const ImVec2 fullWidth = { get_width(100), 0 };
 
-	if (ImGui::BeginTabItem("Main")) {
-		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Recording Controls");
-		ImGui::Separator();
+	if (ImGui::BeginTabItem("Main") || !docked) {
+		if (!docked) {
+			ImGui::Begin("Echo v1.0");
+		}
 
 		ImGuiStyle& style = ImGui::GetStyle();
 
@@ -1238,10 +1325,12 @@ void GUI::main() {
 		ImVec4 tempColor2 = style.Colors[ImGuiCol_ButtonHovered];
 		ImVec4 tempColor3 = style.Colors[ImGuiCol_ButtonActive];
 
+		ImGui::Checkbox("Docked Menu", &docked);
+
 		if (logic.is_recording()) {
-			style.Colors[ImGuiCol_Button] = ImVec4(0.6f, 0.6f, 0.6f, 0.2f);
-			style.Colors[ImGuiCol_ButtonHovered] = ImVec4(0.6f, 0.6f, 0.6f, 0.3f);
-			style.Colors[ImGuiCol_ButtonActive] = ImVec4(0.6f, 0.6f, 0.6f, 0.4f);
+			style.Colors[ImGuiCol_Button] = style.Colors[ImGuiCol_FrameBg];
+			style.Colors[ImGuiCol_ButtonHovered] = style.Colors[ImGuiCol_FrameBgHovered];
+			style.Colors[ImGuiCol_ButtonActive] = style.Colors[ImGuiCol_FrameBgHovered];
 		}
 
 		if (ImGui::Button(logic.is_recording() ? "Stop Recording" : "Start Recording", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.5f, 0))) {
@@ -1261,9 +1350,9 @@ void GUI::main() {
 			ImVec4 tempColor = style.Colors[ImGuiCol_Button];
 			ImVec4 tempColor2 = style.Colors[ImGuiCol_ButtonHovered];
 			ImVec4 tempColor3 = style.Colors[ImGuiCol_ButtonActive];
-			style.Colors[ImGuiCol_Button] = ImVec4(0.6f, 0.6f, 0.6f, 0.2f);
-			style.Colors[ImGuiCol_ButtonHovered] = ImVec4(0.6f, 0.6f, 0.6f, 0.3f);
-			style.Colors[ImGuiCol_ButtonActive] = ImVec4(0.6f, 0.6f, 0.6f, 0.4f);
+			style.Colors[ImGuiCol_Button] = style.Colors[ImGuiCol_FrameBg];
+			style.Colors[ImGuiCol_ButtonHovered] = style.Colors[ImGuiCol_FrameBgHovered];
+			style.Colors[ImGuiCol_ButtonActive] = style.Colors[ImGuiCol_FrameBgHovered];
 		}
 
 		if (ImGui::Button(logic.is_playing() ? "Stop Playing" : "Start Playing", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.48f, 0))) {
@@ -1284,17 +1373,30 @@ void GUI::main() {
 
 		ImGui::Spacing();
 
-		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Playback Settings");
 		ImGui::Separator();
 
-		ImGui::Text("Replay FPS: %f", logic.get_fps());
-		ImGui::Text("Frame: %i", logic.get_frame());
-		ImGui::Text("Highest CPS: %s", logic.highest_cps_cached().c_str());
+		ImGui::Text("Replay FPS: %.2f", logic.get_fps()); ImGui::SameLine();
+		
+		std::string frame_text = "Frame: " + std::to_string(logic.get_frame());
+		float fps_text_width = ImGui::CalcTextSize(frame_text.c_str()).x;
+		float cursor_pos_x = (ImGui::GetWindowContentRegionWidth() - fps_text_width) * 0.5;
+
+		ImGui::SetCursorPosX(cursor_pos_x);
+		ImGui::Text("Frame: %i", logic.get_frame()); ImGui::SameLine();
+
+
+		std::string macro_size_text = "Macro Size: " + std::to_string(logic.inputs.size());
+		float macro_size_text_width = ImGui::CalcTextSize(macro_size_text.c_str()).x;
+		cursor_pos_x = ImGui::GetWindowContentRegionWidth() - macro_size_text_width; // .45 so it doesnt seem unaligned later
+
+		ImGui::SetCursorPosX(cursor_pos_x);
+
+		ImGui::Text("Macro Size: %i", logic.get_inputs().size());
 
 
 		ImGui::PushItemFlag(ImGuiItemFlags_NoTabStop, true);
-		ImGui::SetNextItemWidth(get_width(30));
-		ImGui::InputFloat("###fps", &input_fps, 0, 0, "%.0f");
+		ImGui::SetNextItemWidth(100);
+		ImGui::DragFloat("###fps", &input_fps, 0.01, 1.f);
 		ImGui::PopItemFlag();
 
 		ImGui::SameLine();
@@ -1309,8 +1411,14 @@ void GUI::main() {
 			}
 		}
 
+		ImGui::SameLine();
 
 		float speed = logic.speedhack;
+
+		ImGui::PushItemWidth(100);
+
+		ImGui::SameLine();
+
 		if (ImGui::DragFloat("Speed", &speed, 0.01, 0.01f, 100.f, "%.2f")) {
 			if (speed > 0) logic.speedhack = speed;
 			/*if (logic.respawn_time_modified) {
@@ -1318,6 +1426,7 @@ void GUI::main() {
 				opcode.ModifyFloatAtOffset(0x20A677, logic.speedhack);
 			}*/
 		}
+		ImGui::PopItemWidth();
 
 		auto& audiospeedhack = AudiopitchHack::getInstance();
 		bool isEnabled = audiospeedhack.isEnabled();
@@ -1328,7 +1437,7 @@ void GUI::main() {
 			else {
 				audiospeedhack.setEnabled(false);
 			}
-		}
+		} ImGui::SameLine();
 
 		/*static std::string keyName = "[None]";
 		if (ImGui::Button(keyName.c_str())) {
@@ -1348,18 +1457,39 @@ void GUI::main() {
 
 		ImGui::Checkbox("Real Time Mode", &logic.real_time_mode);
 
-		ImGui::Checkbox("No Input Overwrite", &logic.no_overwrite);
+		ImGui::Checkbox("No Input Overwrite", &logic.no_overwrite); ImGui::SameLine();
 
 		ImGui::Checkbox("Ignore actions during playback", &logic.ignore_actions_at_playback);
 
-		ImGui::Spacing();
-		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Macro Options");
 		ImGui::Separator();
 
-		ImGui::Checkbox("Show Frame", &logic.show_frame);
+		ImGui::Checkbox("Show Frame", &logic.show_frame); ImGui::SameLine();
 
-		if (logic.show_frame) {
+		ImGui::Checkbox("Show CPS", &logic.show_cps); ImGui::SameLine();
+
+		bool open_label_modal = true;
+
+		if (ImGui::Button("Label Settings")) {
+			ImGui::OpenPopup("Label Settings");
+		}
+
+		if (logic.inputs.empty()) ImGui::EndDisabled();
+
+		if (ImGui::BeginPopupModal("Label Settings", &open_label_modal, ImGuiWindowFlags_NoResize)) {
+			
+			ImGui::Text("CPS Label");
+
+			ImGui::PushItemWidth(75);
+			ImGui::DragFloat("X###cps_x", &logic.cps_counter_x, 1);
+			ImGui::PopItemWidth();
 			ImGui::SameLine();
+			ImGui::PushItemWidth(75);
+			ImGui::DragFloat("Y###cps_y", &logic.cps_counter_y, 1);
+
+			ImGui::Separator();
+
+			ImGui::Text("Frame Label");
+
 			ImGui::PushItemWidth(75);
 			ImGui::DragFloat("X###frame_x", &logic.frame_counter_x, 1);
 			ImGui::PopItemWidth();
@@ -1367,40 +1497,41 @@ void GUI::main() {
 			ImGui::PushItemWidth(75);
 			ImGui::DragFloat("Y###frame_y", &logic.frame_counter_y, 1);
 			ImGui::PopItemWidth();
+
+			ImGui::EndPopup();
 		}
 
-		ImGui::Checkbox("Show CPS", &logic.show_cps);
+		ImGui::PushItemWidth(150);
+		ImGui::DragFloat("Max CPS", &logic.max_cps, 0.01, 1, 100, "%.2f"); ImGui::SameLine();
+		ImGui::PopItemWidth();
 
-		if (logic.show_cps) {
-			ImGui::SameLine();
-			ImGui::PushItemWidth(75);
-			ImGui::DragFloat("X###cps_x", &logic.cps_counter_x, 1);
-			ImGui::PopItemWidth();
-			ImGui::SameLine();
-			ImGui::PushItemWidth(75);
-			ImGui::DragFloat("Y###cps_y", &logic.cps_counter_y, 1);
-			ImGui::PopItemWidth();
-		}
+		std::string highest_cps_text = "Highest CPS: " + logic.highest_cps_cached();
+		float highest_cps_text_width = ImGui::CalcTextSize(highest_cps_text.c_str()).x;
+		cursor_pos_x = (ImGui::GetWindowContentRegionWidth() - highest_cps_text_width);
 
-		ImGui::DragFloat("Max CPS", &logic.max_cps, 0.01, 1, 100, "%.2f");
+		ImGui::SetCursorPosX(cursor_pos_x);
+
+		ImGui::Text("Highest CPS: %s", logic.highest_cps_cached().c_str());
 
 		ImGui::Separator();
-
-		ImGui::Text("Macro Size: %i", logic.get_inputs().size());
-
-		ImGui::SameLine();
 
 		bool open_modal = true;
 
 		if (logic.inputs.empty()) ImGui::BeginDisabled();
 		if (ImGui::Button("Reset Macro")) {
-			logic.get_inputs().clear();
-			//ImGui::OpenPopup("Confirm Reset");
-			//ImGui::SetNextWindowPos({ ImGui::GetWindowWidth() / 2.f, ImGui::GetWindowHeight() / 2.f });
+			ImGui::OpenPopup("Confirm Reset");
+
+			ImVec2 popupSize(200, 100);
+			ImVec2 popupPos(
+				(ImGui::GetIO().DisplaySize.x - popupSize.x) / 2.f,
+				(ImGui::GetIO().DisplaySize.y - popupSize.y) / 2.f
+			);
+
+			ImGui::SetNextWindowPos(popupPos);
 		}
 		if (logic.inputs.empty()) ImGui::EndDisabled();
 
-		if (ImGui::BeginPopupModal("Confirm Reset", &open_modal, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize)) {
+		if (ImGui::BeginPopupModal("Confirm Reset", &open_modal, ImGuiWindowFlags_NoResize)) {
 			ImGui::Text("Are you sure you want to reset your macro?");
 
 			const ImVec2 buttonSize((ImGui::GetWindowContentRegionWidth() - ImGui::GetStyle().ItemSpacing.x) * 0.5f, 0);
@@ -1418,6 +1549,7 @@ void GUI::main() {
 			ImGui::EndPopup();
 		}
 
+		ImGui::SameLine();
 
 		ImGui::Checkbox("Use JSON", &logic.use_json_for_files);
 
@@ -1492,13 +1624,11 @@ void GUI::main() {
 		if (ImGui::Checkbox("Use Binary", &useBinary)) {
 			logic.use_json_for_files = !useBinary;
 		}*/
-
-		if (logic.error != "") {
-			ImGui::Separator();
-			ImGui::Text("%s", logic.error);
-		}
-
-		ImGui::EndTabItem();
+		
+		if (docked)
+			ImGui::EndTabItem();
+		else
+			ImGui::End();
 	}
 }
 

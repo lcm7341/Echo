@@ -1,6 +1,7 @@
 #pragma once
 #include "../Hack/opcode.hpp"
 #include <imgui.h>
+#include "IconsFontAwesome5.h"
 
 class GUI {
 public:
@@ -45,6 +46,8 @@ public:
 	float scheduler_dt = 60.f;
 
 	char theme_name[1000] = "My Theme";
+
+	bool docked = false;
 
 	ImVec4 player_1_button_color = { 0.18, 0.89, 0.7, 0.54 };
 	ImVec4 player_2_button_color = { 0.18, 0.89, 0.46, 0.54 };

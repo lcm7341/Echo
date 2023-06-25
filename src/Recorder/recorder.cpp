@@ -72,9 +72,20 @@ void Recorder::start(const std::string& path) {
             stream << m_extra_args << " ";
         else
             stream << "-pix_fmt yuv420p ";
-        if (color_fix) {
-            stream << "-cq 0 -vf colorspace=all=bt709:iall=bt470bg:fast=1," << m_vf_args << "\"vflip\"" << " -an \"" << path << "\" ";
-        } else stream << "-cq 0 -vf " << m_vf_args << "\"vflip\"" << " -an \"" << path << "\" ";
+        if (fade_video) {
+            auto playlayer = gd::GameManager::sharedState()->getPlayLayer();
+            int end_frame = playlayer->timeForXPos2(playlayer->m_endPortal->getPositionX(), true) * logic.fps;
+            if (color_fix) {
+                stream << "-cq 0 -vf \"fade=in:0:d=" << fade_in_time << "\",\"fade=out:st=" << end_frame << ":d=" << fade_out_time << "\",colorspace=all=bt709:iall=bt470bg:fast=1," << m_vf_args << "\"vflip\"" << " -an \"" << path << "\" ";
+            }
+            else stream << "-cq 0 -vf \"fade=in:0:d=" << fade_in_time << "\",\"fade=out:st=" << end_frame << ":d=" << fade_out_time << "\," << m_vf_args << "\"vflip\"" << " -an \"" << path << "\" ";
+        }
+        else {
+            if (color_fix) {
+                stream << "-cq 0 -vf colorspace=all=bt709:iall=bt470bg:fast=1," << m_vf_args << "\"vflip\"" << " -an \"" << path << "\" ";
+            }
+            else stream << "-cq 0 -vf " << m_vf_args << "\"vflip\"" << " -an \"" << path << "\" ";
+        }
         //m_vf_args = "";
 
         auto process = subprocess::Popen(stream.str());
@@ -109,10 +120,12 @@ void Recorder::start(const std::string& path) {
             if (!m_extra_audio_args.empty())
                 stream << m_extra_audio_args << " ";
             stream << "-filter:a \"volume=1[0:a]";
-            if (fade_in && !is_testmode)
-                stream << ";[0:a]afade=t=in:d=2[0:a]";
-            if (fade_out && m_finished_level)
-                stream << ";[0:a]afade=t=out:d=2:st=" << (total_time - m_after_end_duration - 3.5f) << "[0:a]";
+            if (fade_audio) {
+                if (!is_testmode)
+                    stream << ";[0:a]afade=t=in:d=" << fade_in_time << "[0:a]";
+                if (fade_out && fade_out_time > 0 && m_finished_level)
+                    stream << ";[0:a]afade=t=out:d=" << fade_out_time << ":st = " << (total_time - m_after_end_duration - 3.5f) << "[0:a]";
+            }
             std::cout << "in " << fade_in << " out " << fade_out << std::endl;
             stream << "\" \"" << temp_path << "\" ";
             auto process = subprocess::Popen(stream.str());

@@ -49,6 +49,10 @@ public:
     std::string extension = ".mp4";
     std::string video_name = "output";
     std::string m_ffmpeg_path = "ffmpeg";
+    float fade_in_time = 2;
+    float fade_out_time = 2;
+    bool fade_audio = true;
+    bool fade_video = true;
     bool color_fix = true;
     bool ssb_fix = true;
     bool real_time_rendering = true;
