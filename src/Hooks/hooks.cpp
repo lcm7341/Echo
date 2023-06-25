@@ -127,7 +127,8 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
 
             g_disable_render = true;
 
-            const unsigned int times = !logic.recorder.m_recording ? min(static_cast<int>(g_left_over / target_dt), 50) : min(round((g_left_over) / target_dt), 100);
+            // min(static_cast<int>(g_left_over / target_dt), 50) <- super fast but i think its inaccurate
+            const unsigned int times = min(round((dt + g_left_over) / target_dt), 100);
 
             GUI::get().scheduler_dt = times;
 
@@ -233,23 +234,22 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
 
     static int offset = rand();
 
-    printf("{%f, %f}\n", self->m_cameraPos.x, self->m_cameraPos.y);
-
-    /*for (int i = 0; i < self->m_objects->count(); i++) {
-        gd::GameObject* obj = (gd::GameObject*)self->m_objects->objectAtIndex(i);
-        printf("Object Type: %i\n", obj->getObjType());
-        obj->setVisible(false);
-    }*/
-
     logic.player_acceleration = self->m_player1->m_xAccel;
     logic.player_speed = self->m_player1->m_playerSpeed;
 
     if (!logic.player_x_positions.empty()) {
-        if (!self->m_isDead && self->m_player1->m_position.x != logic.player_x_positions.back()) {
-            logic.calculated_xpos = logic.xpos_calculation();
-            logic.calculated_frame = round(logic.get_frame() + (self->m_player1->getPositionX() - logic.calculated_xpos));//round((logic.calculated_xpos / (logic.player_speed * logic.player_acceleration) * (1.f / logic.fps)) * logic.fps); // doesnt work when changing speeds, fucjk
+        if (!self->m_isDead && (self->m_player1->m_position.x != logic.player_x_positions.back() || self->m_hasCompletedLevel)) {
+            if (self->m_hasCompletedLevel) {
+                logic.calculated_xpos = self->m_player1->getPositionX();
+                logic.calculated_frame = logic.get_frame();
+            }
+            else {
 
-            logic.previous_xpos = logic.calculated_xpos;
+                logic.calculated_xpos = logic.xpos_calculation();
+                logic.calculated_frame = round(logic.get_frame() + (self->m_player1->getPositionX() - logic.calculated_xpos));//round((logic.calculated_xpos / (logic.player_speed * logic.player_acceleration) * (1.f / logic.fps)) * logic.fps); // doesnt work when changing speeds, fucjk
+
+                logic.previous_xpos = logic.calculated_xpos;
+            }
         }
     }
     logic.player_x_positions.push_back(self->m_player1->m_position.x);
@@ -282,8 +282,9 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
         if (logic.show_frame) {
             // Update the frame counter label with the current frame number
             char out[24];
-            sprintf_s(out, "Frame: %i", logic.get_frame() + 1);
-            frame_counter->setPosition(logic.frame_counter_x, logic.frame_counter_y);
+            const char* text = "Frame: " + logic.get_frame() + 1;
+            sprintf_s(out, "Frame: %i", text);
+            frame_counter->setPosition(logic.frame_counter_x + strlen(text), logic.frame_counter_y);
             frame_counter->setString(out);
         }
         else {
@@ -364,12 +365,6 @@ int __fastcall Hooks::PlayLayer::pushButton_h(gd::PlayLayer* self, int, int idk,
     auto& logic = Logic::get();
 
     if (logic.is_playing()) {
-        if (button) {
-            self->m_player1->runNormalRotation();
-        }
-        else {
-            self->m_player2->runNormalRotation();
-        }
         if (logic.ignore_actions_at_playback) return 0;
     }
 
