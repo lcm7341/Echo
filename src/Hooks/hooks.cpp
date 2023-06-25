@@ -233,6 +233,14 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
 
     static int offset = rand();
 
+    printf("{%f, %f}\n", self->m_cameraPos.x, self->m_cameraPos.y);
+
+    /*for (int i = 0; i < self->m_objects->count(); i++) {
+        gd::GameObject* obj = (gd::GameObject*)self->m_objects->objectAtIndex(i);
+        printf("Object Type: %i\n", obj->getObjType());
+        obj->setVisible(false);
+    }*/
+
     logic.player_acceleration = self->m_player1->m_xAccel;
     logic.player_speed = self->m_player1->m_playerSpeed;
 
@@ -406,6 +414,8 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
     int ret = resetLevel(self); // calling the original function
     auto& logic = Logic::get();
 
+    printf("\n");
+
     logic.calculated_xpos = self->m_player1->getPositionX();
     logic.calculated_frame = round(logic.get_frame() + (self->m_player1->getPositionX() - logic.calculated_xpos));
     logic.previous_xpos = self->m_player1->getPositionX();
@@ -466,6 +476,7 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
     // Section 3: Update Time and Activated Objects
     if (self->m_checkpoints->count() > 0) {
         logic.calculated_xpos = logic.checkpoints.back().calculated_xpos;
+
         self->m_time = logic.get_latest_offset();
         constexpr auto delete_from = [&](auto& vec, size_t index) {
             vec.erase(vec.begin() + index, vec.end());

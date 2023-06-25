@@ -98,6 +98,10 @@ public:
     std::string get_type_filter() const override {
         return ".json";
     }
+
+    std::string get_directory() const override {
+        return ".tasbot/macro/";
+    }
 };
 
 #endif

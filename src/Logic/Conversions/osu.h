@@ -73,6 +73,11 @@ public:
     std::string get_type_filter() const override {
         return ".ocr";
     }
+
+    std::string get_directory() const override {
+        return ".echo/osu/";
+    }
+
 };
 
 #endif

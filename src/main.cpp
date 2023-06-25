@@ -147,6 +147,8 @@ void readConfig() {
 	CCDirector::sharedDirector()->setAnimationInterval(1.f / GUI::get().input_fps);
 
 	file.close();
+
+	float window_scale = 1.f;
 }
 
 void UnfullscreenGame()

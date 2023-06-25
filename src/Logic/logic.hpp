@@ -81,7 +81,7 @@ struct CheckpointData {
 	#define FIELD(type, name) type name;
 	PLAYER_FIELDS
 #undef FIELD
-		float m_rotation;
+	float m_rotation;
 
 	static CheckpointData create(gd::PlayerObject* player) {
 		CheckpointData data;
@@ -174,6 +174,7 @@ public:
 	float current_cps = 0;
 	bool over_max_cps = false;
 	bool frame_advance = false;
+	bool holding_frame_advance = false;
 	bool no_overwrite = false;
 	bool use_json_for_files = false;
 	bool audio_speedhack = false;

@@ -1,5 +1,6 @@
 #pragma once
 #include "../Hack/opcode.hpp"
+#include <imgui.h>
 
 class GUI {
 public:
@@ -29,6 +30,8 @@ public:
 
 	void ui_editor();
 
+	void import_theme(std::string path, float window_scale);
+
 	bool show_reset_popup = false;
 
 	int keybind = VK_MENU;
@@ -38,4 +41,9 @@ public:
 	int offset_frames = 0;
 
 	float scheduler_dt = 60.f;
+
+	char theme_name[1000] = "theme";
+
+	ImVec4 player_1_button_color = { 0.18, 0.89, 0.7, 0.54 };
+	ImVec4 player_2_button_color = { 0.18, 0.89, 0.46, 0.54 };
 };

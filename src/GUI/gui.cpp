@@ -29,6 +29,7 @@
 #include "../Logic/Conversions/plaintext.h"
 #include "../Hooks/hooks.hpp"
 #include <imgui_demo.cpp>
+#include <format>
 
 int getRandomInt(int N) {
 	// Seed the random number generator with current time
@@ -108,6 +109,10 @@ void GUI::draw() {
 		Hooks::CCScheduler_update_h(gd::GameManager::sharedState()->getScheduler(), 0, 1.f / Logic::get().fps);
 		Logic::get().frame_advance = true;
 		delay(Logic::get().frame_advance_delay);
+		Logic::get().holding_frame_advance = true;
+	}
+	else {
+		Logic::get().holding_frame_advance = false;
 	}
 	if (g_font) ImGui::PopFont();
 }
@@ -116,101 +121,113 @@ float get_width(float percent) {
 	return (ImGui::GetWindowContentRegionWidth() - ImGui::GetStyle().ItemSpacing.x) * (percent / 100.f);
 }
 
+void GUI::import_theme(std::string path, float window_scale) {
+	std::ifstream file(path);
+
+	ImGuiStyle& style = ImGui::GetStyle();
+
+	if (!file.is_open())
+	{
+		std::cerr << "Failed to open theme.json for reading" << std::endl;
+		return;
+	}
+
+	// Parse the JSON content
+	nlohmann::json json;
+	try
+	{
+		file >> json;
+	}
+	catch (const std::exception& e)
+	{
+		std::cerr << "Failed to parse theme.json: " << e.what() << std::endl;
+		file.close();
+		return;
+	}
+
+	file.close();
+
+	// Import ImGui style variables
+	ImGui::SetWindowFontScale(json["WindowScale"]);
+	window_scale = json["WindowScale"];
+	ImGui::GetIO().FontGlobalScale = json["GlobalScale"];
+	style.WindowPadding.x = json["WindowPaddingX"];
+	style.WindowPadding.y = json["WindowPaddingY"];
+	style.FramePadding.x = json["FramePaddingX"];
+	style.FramePadding.y = json["FramePaddingY"];
+	style.CellPadding.x = json["CellPaddingX"];
+	style.CellPadding.y = json["CellPaddingY"];
+	style.ItemSpacing.x = json["ItemSpacingX"];
+	style.ItemSpacing.y = json["ItemSpacingY"];
+	style.ItemInnerSpacing.x = json["ItemInnerSpacingX"];
+	style.ItemInnerSpacing.y = json["ItemInnerSpacingY"];
+	style.TouchExtraPadding.x = json["TouchExtraPaddingX"];
+	style.TouchExtraPadding.y = json["TouchExtraPaddingY"];
+	style.IndentSpacing = json["IndentSpacing"];
+	style.ScrollbarSize = json["ScrollbarSize"];
+	style.GrabMinSize = json["GrabMinSize"];
+	style.WindowBorderSize = json["WindowBorderSize"];
+	style.ChildBorderSize = json["ChildBorderSize"];
+	style.PopupBorderSize = json["PopupBorderSize"];
+	style.FrameBorderSize = json["FrameBorderSize"];
+	style.TabBorderSize = json["TabBorderSize"];
+	style.WindowRounding = json["WindowRounding"];
+	style.ChildRounding = json["ChildRounding"];
+	style.FrameRounding = json["FrameRounding"];
+	style.PopupRounding = json["PopupRounding"];
+	style.ScrollbarRounding = json["ScrollbarRounding"];
+	style.GrabRounding = json["GrabRounding"];
+	style.LogSliderDeadzone = json["LogSliderDeadzone"];
+	style.TabRounding = json["TabRounding"];
+	style.WindowTitleAlign.x = json["WindowTitleAlignX"];
+	style.WindowTitleAlign.y = json["WindowTitleAlignY"];
+	style.WindowMenuButtonPosition = json["WindowMenuButtonPosition"];
+	style.ColorButtonPosition = json["ColorButtonPosition"];
+	style.ButtonTextAlign.x = json["ButtonTextAlignX"];
+	style.ButtonTextAlign.y = json["ButtonTextAlignY"];
+	style.SelectableTextAlign.x = json["SelectableTextAlignX"];
+	style.SelectableTextAlign.y = json["SelectableTextAlignY"];
+	style.DisplaySafeAreaPadding.x = json["DisplaySafeAreaPaddingX"];
+	style.DisplaySafeAreaPadding.y = json["DisplaySafeAreaPaddingY"];
+	style.AntiAliasedLines = json["AntiAliasedLines"];
+	style.AntiAliasedLinesUseTex = json["AntiAliasedLinesUseTex"];
+	style.AntiAliasedFill = json["AntiAliasedFill"];
+	style.CurveTessellationTol = json["CurveTessellationTol"];
+	style.CircleTessellationMaxError = json["CircleTessellationMaxError"];
+	style.Alpha = json["Alpha"];
+	style.DisabledAlpha = json["DisabledAlpha"];
+
+	if (json.contains("player_1_button_color")) {
+		auto colorArray = json["player_1_button_color"];
+		ImVec4 color(colorArray[0], colorArray[1], colorArray[2], colorArray[3]);
+		player_1_button_color = color;
+	}
+	if (json.contains("player_2_button_color")) {
+		auto colorArray = json["player_2_button_color"];
+		ImVec4 color(colorArray[0], colorArray[1], colorArray[2], colorArray[3]);
+		player_2_button_color = color;
+	}
+
+	for (int i = 0; i < ImGuiCol_COUNT; i++)
+	{
+		std::string colorName = ImGui::GetStyleColorName(i);
+		if (json.contains(colorName))
+		{
+			auto colorArray = json[colorName];
+			ImVec4 color(colorArray[0], colorArray[1], colorArray[2], colorArray[3]);
+			style.Colors[i] = color;
+		}
+	}
+
+	std::cout << "Theme imported from theme.json" << std::endl;
+}
+
 void GUI::ui_editor() {
 	ImGuiStyle& style = ImGui::GetStyle();
 
 	if (ImGui::BeginTabItem("Style")) {
 		static float window_scale = 1.0f;
 
-		if (ImGui::Button("Import Theme")) {
-			// Read the JSON file
-			std::ifstream file(".echo\\settings\\theme.json");
-			if (!file.is_open())
-			{
-				std::cerr << "Failed to open theme.json for reading" << std::endl;
-				return;
-			}
-
-			// Parse the JSON content
-			nlohmann::json json;
-			try
-			{
-				file >> json;
-			}
-			catch (const std::exception& e)
-			{
-				std::cerr << "Failed to parse theme.json: " << e.what() << std::endl;
-				file.close();
-				return;
-			}
-
-			file.close();
-
-			// Import ImGui style variables
-			ImGui::SetWindowFontScale(json["WindowScale"]);
-			window_scale = json["WindowScale"];
-			ImGui::GetIO().FontGlobalScale = json["GlobalScale"];
-			style.WindowPadding.x = json["WindowPaddingX"];
-			style.WindowPadding.y = json["WindowPaddingY"];
-			style.FramePadding.x = json["FramePaddingX"];
-			style.FramePadding.y = json["FramePaddingY"];
-			style.CellPadding.x = json["CellPaddingX"];
-			style.CellPadding.y = json["CellPaddingY"];
-			style.ItemSpacing.x = json["ItemSpacingX"];
-			style.ItemSpacing.y = json["ItemSpacingY"];
-			style.ItemInnerSpacing.x = json["ItemInnerSpacingX"];
-			style.ItemInnerSpacing.y = json["ItemInnerSpacingY"];
-			style.TouchExtraPadding.x = json["TouchExtraPaddingX"];
-			style.TouchExtraPadding.y = json["TouchExtraPaddingY"];
-			style.IndentSpacing = json["IndentSpacing"];
-			style.ScrollbarSize = json["ScrollbarSize"];
-			style.GrabMinSize = json["GrabMinSize"];
-			style.WindowBorderSize = json["WindowBorderSize"];
-			style.ChildBorderSize = json["ChildBorderSize"];
-			style.PopupBorderSize = json["PopupBorderSize"];
-			style.FrameBorderSize = json["FrameBorderSize"];
-			style.TabBorderSize = json["TabBorderSize"];
-			style.WindowRounding = json["WindowRounding"];
-			style.ChildRounding = json["ChildRounding"];
-			style.FrameRounding = json["FrameRounding"];
-			style.PopupRounding = json["PopupRounding"];
-			style.ScrollbarRounding = json["ScrollbarRounding"];
-			style.GrabRounding = json["GrabRounding"];
-			style.LogSliderDeadzone = json["LogSliderDeadzone"];
-			style.TabRounding = json["TabRounding"];
-			style.WindowTitleAlign.x = json["WindowTitleAlignX"];
-			style.WindowTitleAlign.y = json["WindowTitleAlignY"];
-			style.WindowMenuButtonPosition = json["WindowMenuButtonPosition"];
-			style.ColorButtonPosition = json["ColorButtonPosition"];
-			style.ButtonTextAlign.x = json["ButtonTextAlignX"];
-			style.ButtonTextAlign.y = json["ButtonTextAlignY"];
-			style.SelectableTextAlign.x = json["SelectableTextAlignX"];
-			style.SelectableTextAlign.y = json["SelectableTextAlignY"];
-			style.DisplaySafeAreaPadding.x = json["DisplaySafeAreaPaddingX"];
-			style.DisplaySafeAreaPadding.y = json["DisplaySafeAreaPaddingY"];
-			style.AntiAliasedLines = json["AntiAliasedLines"];
-			style.AntiAliasedLinesUseTex = json["AntiAliasedLinesUseTex"];
-			style.AntiAliasedFill = json["AntiAliasedFill"];
-			style.CurveTessellationTol = json["CurveTessellationTol"];
-			style.CircleTessellationMaxError = json["CircleTessellationMaxError"];
-			style.Alpha = json["Alpha"];
-			style.DisabledAlpha = json["DisabledAlpha"];
-
-			for (int i = 0; i < ImGuiCol_COUNT; i++)
-			{
-				std::string colorName = ImGui::GetStyleColorName(i);
-				if (json.contains(colorName))
-				{
-					auto colorArray = json[colorName];
-					ImVec4 color(colorArray[0], colorArray[1], colorArray[2], colorArray[3]);
-					style.Colors[i] = color;
-				}
-			}
-
-			std::cout << "Theme imported from theme.json" << std::endl;
-		}
-
-		ImGui::SameLine();
 
 		if (ImGui::Button("Export Theme")) {
 			nlohmann::json json;
@@ -271,18 +288,51 @@ void GUI::ui_editor() {
 				json[colorName] = { color.x, color.y, color.z, color.w };
 			}
 
+			json["player_1_button_color"] = { player_1_button_color.x, player_1_button_color.y, player_1_button_color.z, player_1_button_color.w };
+			json["player_2_button_color"] = { player_2_button_color.x, player_2_button_color.y, player_2_button_color.z, player_2_button_color.w };
+
 			// Save the json object to a file
-			std::ofstream file(".echo\\settings\\theme.json");
+			std::string path = ".echo\\settings\\";
+			path += theme_name;
+			path += ".ui";
+
+			std::ofstream file(path);
 			if (file.is_open())
 			{
 				file << json.dump(4); // Use 4 spaces for indentation
 				file.close();
-				std::cout << "Theme saved to theme.json" << std::endl;
+				std::cout << "Theme saved to theme.ui" << std::endl;
 			}
 			else
 			{
-				std::cerr << "Failed to open theme.json for writing" << std::endl;
+				std::cerr << "Failed to open theme.ui for writing" << std::endl;
 			}
+		}
+
+		ImGui::SameLine();
+
+		if (ImGui::Button("Import Theme")) {
+			ImGuiFileDialog::Instance()->OpenDialog("ThemeImport", "Choose File", ".ui", ".echo/settings/");
+		}
+
+		ImGui::InputText("Export As", theme_name, MAX_PATH);
+
+		ImGui::Separator();
+
+		if (ImGuiFileDialog::Instance()->Display("ThemeImport", ImGuiWindowFlags_NoCollapse, ImVec2(500, 200)))
+		{
+			// action if OK
+			if (ImGuiFileDialog::Instance()->IsOk())
+			{
+				try {
+					import_theme(ImGuiFileDialog::Instance()->GetFilePathName(), window_scale);
+				}
+				catch (std::runtime_error& e) {
+					printf("%s", e.what());
+				}
+			}
+
+			ImGuiFileDialog::Instance()->Close();
 		}
 
 		ImGuiIO& io = ImGui::GetIO();
@@ -294,16 +344,12 @@ void GUI::ui_editor() {
 		// (we enforce hard clamping manually as by default DragFloat/SliderFloat allows CTRL+Click text to get out of bounds).
 		const float MIN_SCALE = 0.3f;
 		const float MAX_SCALE = 2.0f;
-		/*HelpMarker(
-			"Those are old settings provided for convenience.\n"
-			"However, the _correct_ way of scaling your UI is currently to reload your font at the designed size, "
-			"rebuild the font atlas, and call style.ScaleAllSizes() on a reference ImGuiStyle structure.\n"
-			"Using those settings here will give you poor quality results.");*/
-		ImGui::PushItemWidth(ImGui::GetFontSize() * 8);
-		if (ImGui::DragFloat("Window Scale", &window_scale, 0.005f, MIN_SCALE, MAX_SCALE, "%.2f", ImGuiSliderFlags_AlwaysClamp)) // Scale only this window
-			ImGui::SetWindowFontScale(window_scale);
-		ImGui::DragFloat("Global Scale", &io.FontGlobalScale, 0.005f, MIN_SCALE, MAX_SCALE, "%.2f", ImGuiSliderFlags_AlwaysClamp); // Scale everything
-		ImGui::PopItemWidth();
+
+		//ImGui::PushItemWidth(ImGui::GetFontSize() * 8);
+		//if (ImGui::DragFloat("Window Scale", &window_scale, 0.005f, MIN_SCALE, MAX_SCALE, "%.2f", ImGuiSliderFlags_AlwaysClamp)) // Scale only this window
+		//	ImGui::SetWindowFontScale(window_scale);
+		//ImGui::DragFloat("Global Scale", &io.FontGlobalScale, 0.005f, MIN_SCALE, MAX_SCALE, "%.2f", ImGuiSliderFlags_AlwaysClamp); // Scale everything
+		//ImGui::PopItemWidth();
 
 		if (ImGui::BeginTabBar("##tabs", ImGuiTabBarFlags_None))
 		{
@@ -368,10 +414,24 @@ void GUI::ui_editor() {
 					"In the color list:\n"
 					"Left-click on color square to open color picker,\n"
 					"Right-click to open edit options menu.");
-
+				
 				ImGui::SetNextWindowSizeConstraints(ImVec2(500, 500), ImVec2(500, 500));
 				ImGui::BeginChild("##colors", ImVec2(-1, 0), true, ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar | ImGuiWindowFlags_NavFlattened);
 				ImGui::PushItemWidth(250);
+				if (filter.PassFilter("Player 1 In Editor")) {
+					ImGui::PushID(998);
+					ImGui::ColorEdit4("##color", (float*)&player_1_button_color, ImGuiColorEditFlags_AlphaBar | alpha_flags);
+					ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
+					ImGui::TextUnformatted("Player 1 In Editor");
+					ImGui::PopID();
+				}
+				if (filter.PassFilter("Player 2 In Editor")) {
+					ImGui::PushID(999);
+					ImGui::ColorEdit4("##color", (float*)&player_2_button_color, ImGuiColorEditFlags_AlphaBar | alpha_flags);
+					ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
+					ImGui::TextUnformatted("Player 2 In Editor");
+					ImGui::PopID();
+				}
 				for (int i = 0; i < ImGuiCol_COUNT; i++)
 				{
 					const char* name = ImGui::GetStyleColorName(i);
@@ -468,7 +528,7 @@ void GUI::editor() {
 
 	const float editAreaHeight = 150.0f;
 
-	ImGui::SetNextWindowSizeConstraints(ImVec2(300, 300), ImVec2(300, 300));
+	ImGui::SetNextWindowSizeConstraints(ImVec2(255, 300), ImVec2(245 * ImGui::GetIO().FontGlobalScale, 300));
 
 	if (ImGui::BeginTabItem("Editor")) {
 		float firstChildHeight = 300;
@@ -489,28 +549,71 @@ void GUI::editor() {
 		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Inputs");
 		ImGui::BeginChild("##List", ImVec2(0, firstChildHeight - ImGui::GetFrameHeightWithSpacing() + 1), true);
 		if (!inputs.empty()) {
+			int closestFrameDiff = INT_MAX;
+			int closestInputIndex = -1;
+
 			for (unsigned i = 0; i < inputs.size(); i++) {
-				if (inputs[i].isPlayer2)
-					style.Colors[ImGuiCol_Header] = ImVec4(0.f, 1.f, 0.4f, 0.2f);
+				int frameDiff = std::abs(static_cast<int>(inputs[i].number - logic.get_frame()));
+				if (frameDiff < closestFrameDiff) {
+					closestFrameDiff = frameDiff;
+					closestInputIndex = i;
+				}
+			}
+
+			for (unsigned i = 0; i < inputs.size(); i++) {
+				ImVec4 color;
+				if (inputs[i].isPlayer2) {
+					color = player_2_button_color;
+				}
 				else {
-					style.Colors[ImGuiCol_Header] = ImVec4(0.f, 0.73f, 1.f, 0.2f);
+					color = player_1_button_color;
 				}
 
-				if (ImGui::Selectable("##Input", selectedInput == i, ImGuiSelectableFlags_AllowDoubleClick)) {
+				if (i == closestInputIndex) {
+					// Make the closest input's button brighter
+					color.x = max(color.x - 0.5f, 0);
+					color.y = max(color.y - 0.5f, 0);
+					color.z = max(color.z - 0.5f, 0);
+				}
+
+				ImGui::PushStyleColor(ImGuiCol_Button, color);
+
+				char buffer[100];
+				std::sprintf(buffer, "%s at %d##Input", inputs[i].pressingDown ? "Click" : "Release", inputs[i].number);
+				std::string text = buffer;
+
+				if (ImGui::Button(text.c_str())) {
 					selectedInput = i;
 					newInput = inputs[i];
 				}
 
-				ImGui::SameLine();
-				ImGui::Text("%s at %d", inputs[i].pressingDown ? "Click" : "Release", inputs[i].number);
-				ImGui::PopID();
-				style.Colors[ImGuiCol_Header] = tempColor;
+				// Automatically select the closest input to the current frame
+				if (PLAYLAYER && !PLAYLAYER->m_isPaused && (!logic.frame_advance || !logic.holding_frame_advance)) {
+					if (closestInputIndex != -1) {
+						selectedInput = closestInputIndex;
+						newInput = inputs[closestInputIndex];
+
+						// Calculate the scroll position to center the selected input
+						int selectedIndex = closestInputIndex;
+						int visibleInputs = ImGui::GetWindowHeight() / ImGui::GetItemRectSize().y;
+						int firstVisibleIndex = max(0, selectedIndex - visibleInputs / 2);
+						int scrollY = firstVisibleIndex * ImGui::GetItemRectSize().y + (ImGui::GetStyle().ItemSpacing.y * closestInputIndex); // DO NOT FUCK WITH THIS MATH DAWG IT TOOK ME 2 HOURS
+
+						ImGui::SetScrollY(scrollY);
+					}
+				}
+
+				ImGui::PopStyleColor();
 			}
 		}
 		else {
 			ImGui::TextColored(ImVec4(1, 1, 1, 1), "No Inputs");
 		}
+
+
+
 		ImGui::EndChild();
+
 
 		if (ImGui::Button("Add Input")) {
 			if (selectedInput == -1) {
@@ -707,19 +810,17 @@ void GUI::renderer() {
 
 		ImGui::Checkbox("Color Fix", &logic.recorder.color_fix); ImGui::SameLine();
 
-		ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "(?)"); ImGui::SameLine();
+		HelpMarker("The color fix vf args are: colorspace=all=bt709:iall=bt470bg:fast=1");
 
-		if (ImGui::IsItemHovered()) {
-			ImGui::SetTooltip("The color fix vf args are: colorspace=all=bt709:iall=bt470bg:fast=1");
-		}
+		ImGui::SameLine();
+
+		ImGui::Checkbox("Scroll Speed Bugfix", &logic.recorder.color_fix); ImGui::SameLine();
+
+		HelpMarker("Syncs the video with the song when scroll speed desyncs them.");
 
 		ImGui::Checkbox("Real Time Rendering", &logic.recorder.real_time_rendering); ImGui::SameLine();
 
-		ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "(?)");
-
-		if (ImGui::IsItemHovered()) {
-			ImGui::SetTooltip("Real Time Rendering is a technique used to render videos in real-time or close to real-time.\nThis means that, while rendering, the game does not slow down as much.\nNote: This may add visual bugs to the final video.");
-		}
+		HelpMarker("Real Time Rendering is a technique used to render videos in real-time or close to real-time.\nThis means that, while rendering, the game does not slow down as much.\nNote: This may add visual bugs to the final video.");
 
 		if (PLAYLAYER) {
 			if (!logic.recorder.m_recording) {
@@ -1060,13 +1161,13 @@ void GUI::conversion() {
 			ImGui::BeginDisabled();
 
 			if (ImGui::Button("Import"))
-				ImGuiFileDialog::Instance()->OpenDialog("ConversionImport", "Choose File", options[current_option]->get_type_filter().c_str(), ".echo/");
+				ImGuiFileDialog::Instance()->OpenDialog("ConversionImport", "Choose File", options[current_option]->get_type_filter().c_str(), options[current_option]->get_directory().c_str());
 
 			ImGui::EndDisabled();
 		}
 		else {
 			if (ImGui::Button("Import"))
-				ImGuiFileDialog::Instance()->OpenDialog("ConversionImport", "Choose File", options[current_option]->get_type_filter().c_str(), ".echo/");
+				ImGuiFileDialog::Instance()->OpenDialog("ConversionImport", "Choose File", options[current_option]->get_type_filter().c_str(), options[current_option]->get_directory().c_str());
 		}
 
 		ImGui::SameLine();
