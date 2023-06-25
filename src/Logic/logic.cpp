@@ -304,6 +304,10 @@ void Logic::read_file(const std::string& filename, bool is_path = false) {
         r_b(file_format);
         format = DEBUG;
     }
+    else if (file_format == "SIMPLE") {
+        r_b(file_format);
+        format = SIMPLE;
+    }
 
     r_b(fps);
     r_b(end_portal_position);
@@ -368,11 +372,16 @@ void Logic::write_file_json(const std::string& filename) {
         json json_input;
         json_input["frame"] = input.number;
         json_input["holding"] = input.pressingDown;
-        json_input["player_2"] = input.isPlayer2;
-        json_input["x_position"] = input.xPosition;
-        json_input["y_vel"] = input.yVelocity;
-        json_input["x_vel"] = input.xVelocity;
-        json_input["rotation"] = input.rotation;
+
+        if (input.isPlayer2)
+            json_input["player_2"] = input.isPlayer2;
+
+        if (format == DEBUG) {
+            json_input["x_position"] = input.xPosition;
+            json_input["y_vel"] = input.yVelocity;
+            json_input["x_vel"] = input.xVelocity;
+            json_input["rotation"] = input.rotation;
+        }
         // Add the input object to the array
         json_inputs.push_back(json_input);
     }
@@ -423,7 +432,9 @@ void Logic::read_file_json(const std::string& filename, bool is_path = false) {
         Frame input;
         input.number = json_input["frame"].get<unsigned>();
         input.pressingDown = json_input["holding"].get<bool>();
-        input.isPlayer2 = json_input["player_2"].get<bool>();
+
+        if (json_input.contains("player_2"))
+            input.isPlayer2 = json_input["player_2"].get<bool>();
 
         if (format == FORMATS::DEBUG) {
             input.xPosition = json_input["x_position"].get<float>();

@@ -64,10 +64,10 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
     auto end = std::chrono::steady_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - logic.start);
 
-    if (logic.recorder.m_recording) {
+    /*if (logic.recorder.m_recording) {
         dt = 1.f / logic.fps;
-        return CCScheduler_update(self, dt);
-    }
+        return CCScheduler_update(self, 1.f / logic.fps);
+    }*/
 
     if (logic.autoclicker && play_layer && !play_layer->m_isPaused) {
         Autoclicker::get().update(logic.get_frame());
@@ -110,8 +110,16 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
     }
 
     if (logic.is_recording() || logic.is_playing()) {
-        CCDirector::sharedDirector()->setAnimationInterval(1.f / logic.fps);
-        if (logic.real_time_mode && !logic.recorder.m_recording) {
+
+
+        if (logic.recorder.m_recording) { // prevent screen tearing from lag in the first bits of lvl
+            if ((logic.get_frame() / logic.fps) < 1.f || (1.f / dt) < logic.recorder.m_fps || !logic.recorder.real_time_rendering) {
+                dt = 1.f / logic.fps;
+                return CCScheduler_update(self, dt);
+            }
+        }
+
+        if (logic.real_time_mode) {
 
             const float target_dt = 1.f / logic.fps / logic.speedhack;
 
@@ -119,19 +127,22 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
 
             g_disable_render = true;
 
-            const unsigned int times = min(static_cast<int>((dt + g_left_over) / target_dt), 150);
+            const unsigned int times = !logic.recorder.m_recording ? min(static_cast<int>(g_left_over / target_dt), 50) : min(round((g_left_over) / target_dt), 100);
+
+            GUI::get().scheduler_dt = times;
 
             for (unsigned i = 0; i < times; i++) {
-                if (i == times - 1)
+                if (i == times - 1) {
                     g_disable_render = false;
+                }
                 CCScheduler_update(self, target_dt);
             }
             g_left_over += dt - target_dt * times;
         }
-        else if (logic.recorder.m_recording) {
+        /*else if (logic.recorder.m_recording) {
             dt = 1.f / logic.fps;
             return CCScheduler_update(self, dt);
-        }
+        }*/
         else {
             dt = 1.f / logic.fps;
         }
@@ -221,6 +232,14 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
     auto& logic = Logic::get();
 
     static int offset = rand();
+
+    printf("{%f, %f}\n", self->m_cameraPos.x, self->m_cameraPos.y);
+
+    /*for (int i = 0; i < self->m_objects->count(); i++) {
+        gd::GameObject* obj = (gd::GameObject*)self->m_objects->objectAtIndex(i);
+        printf("Object Type: %i\n", obj->getObjType());
+        obj->setVisible(false);
+    }*/
 
     logic.player_acceleration = self->m_player1->m_xAccel;
     logic.player_speed = self->m_player1->m_playerSpeed;
@@ -395,6 +414,8 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
     int ret = resetLevel(self); // calling the original function
     auto& logic = Logic::get();
 
+    printf("\n");
+
     logic.calculated_xpos = self->m_player1->getPositionX();
     logic.calculated_frame = round(logic.get_frame() + (self->m_player1->getPositionX() - logic.calculated_xpos));
     logic.previous_xpos = self->m_player1->getPositionX();
@@ -455,6 +476,7 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
     // Section 3: Update Time and Activated Objects
     if (self->m_checkpoints->count() > 0) {
         logic.calculated_xpos = logic.checkpoints.back().calculated_xpos;
+
         self->m_time = logic.get_latest_offset();
         constexpr auto delete_from = [&](auto& vec, size_t index) {
             vec.erase(vec.begin() + index, vec.end());

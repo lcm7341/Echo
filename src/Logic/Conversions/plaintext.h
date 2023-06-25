@@ -55,6 +55,10 @@ public:
     std::string get_type_filter() const override {
         return ".txt";
     }
+
+    std::string get_directory() const override {
+        return ".echo/";
+    }
 };
 
 #endif

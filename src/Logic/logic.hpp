@@ -81,7 +81,7 @@ struct CheckpointData {
 	#define FIELD(type, name) type name;
 	PLAYER_FIELDS
 #undef FIELD
-		float m_rotation;
+	float m_rotation;
 
 	static CheckpointData create(gd::PlayerObject* player) {
 		CheckpointData data;
@@ -123,7 +123,7 @@ class Logic {
 
 	std::vector<double> offsets;
 
-	
+
 public:
 	static auto& get() {
 		static Logic logic;
@@ -174,6 +174,7 @@ public:
 	float current_cps = 0;
 	bool over_max_cps = false;
 	bool frame_advance = false;
+	bool holding_frame_advance = false;
 	bool no_overwrite = false;
 	bool use_json_for_files = false;
 	bool audio_speedhack = false;
@@ -347,12 +348,10 @@ public:
 	}
 
 	void offset_frames(int offset) {
-		for (auto& replay : replays) {
-			for (auto& frame : replay.actions) {
-				// Ensure that the offset does not result in a negative frame number
-				if (static_cast<int>(frame.number) + offset >= 0) {
-					frame.number += offset;
-				}
+		for (auto& frame : inputs) {
+			// Ensure that the offset does not result in a negative frame number
+			if (static_cast<int>(frame.number) + offset >= 0) {
+				frame.number += offset;
 			}
 		}
 	}

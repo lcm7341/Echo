@@ -12,7 +12,7 @@ public:
 
         std::ifstream file(filename);
 
-        json state;
+        nlohmann::json state;
         file >> state;
 
         logic.fps = state["fps"].get<double>();
@@ -21,11 +21,38 @@ public:
         for (auto& json_input : state["macro"]) {
             Frame input;
             input.number = json_input["frame"].get<unsigned>();
-            input.pressingDown = json_input["player_1"]["click"].get<int>() == 1;
-            input.isPlayer2 = json_input["player_2"]["click"].get<int>() == 1;
-            input.xPosition = json_input["player_1"]["x_position"].get<float>();
-            logic.inputs.push_back(input);
+            int player1Click = json_input["player_1"]["click"].get<int>();
+            int player2Click = json_input["player_2"]["click"].get<int>();
+            float xPosition = json_input["player_1"]["x_position"].get<float>();
+
+            if (player1Click == 1) {
+                input.pressingDown = true;
+                input.isPlayer2 = false;
+                input.xPosition = xPosition;
+                logic.inputs.push_back(input);
+            }
+            else if (player1Click == 2) {
+                input.pressingDown = false;
+                input.isPlayer2 = false;
+                input.xPosition = xPosition;
+                logic.inputs.push_back(input);
+            }
+
+            if (player2Click == 1) {
+                input.pressingDown = true;
+                input.isPlayer2 = true;
+                input.xPosition = xPosition;
+                logic.inputs.push_back(input);
+            }
+            else if (player2Click == 2) {
+                input.pressingDown = false;
+                input.isPlayer2 = true;
+                input.xPosition = xPosition;
+                logic.inputs.push_back(input);
+            }
         }
+
+        logic.offset_frames(1);
 
         logic.conversion_message = ""; // Clearing
         file.close();
@@ -41,6 +68,9 @@ public:
         std::ofstream file(full_filename);
 
         json state;
+
+
+        logic.offset_frames(-1);
 
         state["fps"] = logic.fps;
 
@@ -59,12 +89,18 @@ public:
 
         file << state.dump(4);
 
+        logic.offset_frames(1); // accounting for the previous -1 offset
+
         logic.conversion_message = ""; // Clearing
         file.close();
     }
 
     std::string get_type_filter() const override {
         return ".json";
+    }
+
+    std::string get_directory() const override {
+        return ".tasbot/macro/";
     }
 };
 

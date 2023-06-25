@@ -29,6 +29,8 @@
 #include "../Logic/Conversions/osu.h"
 #include "../Logic/Conversions/plaintext.h"
 #include "../Hooks/hooks.hpp"
+#include <imgui_demo.cpp>
+#include <format>
 
 int getRandomInt(int N) {
 	// Seed the random number generator with current time
@@ -72,31 +74,79 @@ void delay(int milliseconds) {
 	}
 }
 
+int g_has_imported = false; // ffs
+int g_has_placed_positions = false; // ffs
+
 void GUI::draw() {
+	if (!g_has_imported)
+		import_theme(".echo\\settings\\theme.ui");
+	g_has_imported = true;
+
 	if (g_font) ImGui::PushFont(g_font);
 
 	if (show_window) {
 		std::stringstream full_title;
 
-		full_title << "Echo [" << ECHO_VERSION << "b]";
+		//full_title << "Echo [" << ECHO_VERSION << "b]";
 
-		ImGui::Begin(full_title.str().c_str(), nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize);
+		full_title << "Echo v1.0";
+
+		
 		ImGuiIO& io = ImGui::GetIO();
+
 		io.ConfigFlags |= ImGuiConfigFlags_NavNoCaptureKeyboard;
 
 		if (io.KeysDown[ImGui::GetKeyIndex(ImGuiKey_Escape)])
 			ImGui::SetKeyboardFocusHere();
 
-		if (ImGui::BeginTabBar("TabBar")) {
-			main();
-			tools();
-			editor();
-			renderer();
-			sequential_replay();
-			conversion();
+		bool open_modal = true;
+		if (Logic::get().error != "") {
+			ImGui::OpenPopup("Error");
+
+			if (ImGui::BeginPopupModal("Error", &open_modal, ImGuiWindowFlags_NoResize)) {
+
+				ImGui::Text("Error: %s", Logic::get().error);
+
+				if (ImGui::Button("Okay", ImVec2(ImGui::GetWindowContentRegionWidth(), 0))) {
+					Logic::get().error = "";
+				}
+
+				ImGui::EndPopup();
+			}
 		}
 
-		ImGui::End();
+		if (docked) {
+			ImGui::Begin(full_title.str().c_str());
+			if (ImGui::BeginTabBar("TabBar")) {
+				main();
+				tools();
+				editor();
+				renderer();
+				sequential_replay();
+				conversion();
+				ui_editor();
+			}
+			ImGui::End();
+		}
+		else { // ?? profit
+			if (!g_has_placed_positions) {
+				ImGui::SetNextWindowPos({ 35, 25 });
+				main();
+				ImGui::SetNextWindowPos({ 500, 25 });
+				tools();
+				ImGui::SetNextWindowPos({ 1100, 25 });
+				editor();
+				ImGui::SetNextWindowPos({ 1290, 25 });
+				conversion();
+				g_has_placed_positions = true;
+			}
+			else {
+				main();
+				tools();
+				editor();
+				conversion();
+			}
+		}
 	}
 
 	auto end = std::chrono::steady_clock::now();
@@ -107,12 +157,417 @@ void GUI::draw() {
 		Hooks::CCScheduler_update_h(gd::GameManager::sharedState()->getScheduler(), 0, 1.f / Logic::get().fps);
 		Logic::get().frame_advance = true;
 		delay(Logic::get().frame_advance_delay);
+		Logic::get().holding_frame_advance = true;
+	}
+	else {
+		Logic::get().holding_frame_advance = false;
 	}
 	if (g_font) ImGui::PopFont();
 }
 
 float get_width(float percent) {
 	return (ImGui::GetWindowContentRegionWidth() - ImGui::GetStyle().ItemSpacing.x) * (percent / 100.f);
+}
+
+void GUI::import_theme(std::string path) {
+	std::ifstream file(path);
+
+	ImGuiStyle& style = ImGui::GetStyle();
+
+	if (!file.is_open())
+	{
+		printf("Failed to open theme.ui for reading");
+		return;
+	}
+
+	// Parse the JSON content
+	nlohmann::json json;
+	try
+	{
+		file >> json;
+	}
+	catch (const std::exception& e)
+	{
+		printf("Failed to parse theme.ui: %s", e.what());
+		file.close();
+		return;
+	}
+
+	file.close();
+
+	// Import ImGui style variables
+	ImGui::GetIO().FontGlobalScale = json["GlobalScale"];
+	style.FramePadding.x = json["FramePaddingX"];
+	style.FramePadding.y = json["FramePaddingY"];
+	style.CellPadding.x = json["CellPaddingX"];
+	style.CellPadding.y = json["CellPaddingY"];
+	style.ItemSpacing.x = json["ItemSpacingX"];
+	style.ItemSpacing.y = json["ItemSpacingY"];
+	style.ItemInnerSpacing.x = json["ItemInnerSpacingX"];
+	style.ItemInnerSpacing.y = json["ItemInnerSpacingY"];
+	style.TouchExtraPadding.x = json["TouchExtraPaddingX"];
+	style.TouchExtraPadding.y = json["TouchExtraPaddingY"];
+	style.IndentSpacing = json["IndentSpacing"];
+	style.ScrollbarSize = json["ScrollbarSize"];
+	style.GrabMinSize = json["GrabMinSize"];
+	style.WindowBorderSize = json["WindowBorderSize"];
+	style.ChildBorderSize = json["ChildBorderSize"];
+	style.PopupBorderSize = json["PopupBorderSize"];
+	style.FrameBorderSize = json["FrameBorderSize"];
+	style.TabBorderSize = json["TabBorderSize"];
+	style.WindowRounding = json["WindowRounding"];
+	style.ChildRounding = json["ChildRounding"];
+	style.FrameRounding = json["FrameRounding"];
+	style.PopupRounding = json["PopupRounding"];
+	style.ScrollbarRounding = json["ScrollbarRounding"];
+	style.GrabRounding = json["GrabRounding"];
+	style.LogSliderDeadzone = json["LogSliderDeadzone"];
+	style.TabRounding = json["TabRounding"];
+	style.WindowTitleAlign.x = json["WindowTitleAlignX"];
+	style.WindowTitleAlign.y = json["WindowTitleAlignY"];
+	style.WindowMenuButtonPosition = json["WindowMenuButtonPosition"];
+	style.ColorButtonPosition = json["ColorButtonPosition"];
+	style.ButtonTextAlign.x = json["ButtonTextAlignX"];
+	style.ButtonTextAlign.y = json["ButtonTextAlignY"];
+	style.SelectableTextAlign.x = json["SelectableTextAlignX"];
+	style.SelectableTextAlign.y = json["SelectableTextAlignY"];
+	style.DisplaySafeAreaPadding.x = json["DisplaySafeAreaPaddingX"];
+	style.DisplaySafeAreaPadding.y = json["DisplaySafeAreaPaddingY"];
+	style.AntiAliasedLines = json["AntiAliasedLines"];
+	style.AntiAliasedLinesUseTex = json["AntiAliasedLinesUseTex"];
+	style.AntiAliasedFill = json["AntiAliasedFill"];
+	style.CurveTessellationTol = json["CurveTessellationTol"];
+	style.CircleTessellationMaxError = json["CircleTessellationMaxError"];
+	style.Alpha = json["Alpha"];
+	style.DisabledAlpha = json["DisabledAlpha"];
+
+	if (json.contains("player_1_button_color")) {
+		auto colorArray = json["player_1_button_color"];
+		ImVec4 color(colorArray[0], colorArray[1], colorArray[2], colorArray[3]);
+		player_1_button_color = color;
+	}
+	if (json.contains("player_2_button_color")) {
+		auto colorArray = json["player_2_button_color"];
+		ImVec4 color(colorArray[0], colorArray[1], colorArray[2], colorArray[3]);
+		player_2_button_color = color;
+	}
+
+	for (int i = 0; i < ImGuiCol_COUNT; i++)
+	{
+		std::string colorName = ImGui::GetStyleColorName(i);
+		if (json.contains(colorName))
+		{
+			auto colorArray = json[colorName];
+			ImVec4 color(colorArray[0], colorArray[1], colorArray[2], colorArray[3]);
+			style.Colors[i] = color;
+		}
+	}
+
+	std::cout << "Theme imported from theme.ui" << std::endl;
+}
+
+void GUI::export_theme(std::string path, bool custom_path) {
+	ImGuiStyle& style = ImGui::GetStyle();
+	nlohmann::json json;
+
+	// Fill the json object with the variables
+	json["GlobalScale"] = ImGui::GetIO().FontGlobalScale;
+	json["FramePaddingX"] = style.FramePadding.x;
+	json["FramePaddingY"] = style.FramePadding.y;
+	json["CellPaddingX"] = style.CellPadding.x;
+	json["CellPaddingY"] = style.CellPadding.y;
+	json["ItemSpacingX"] = style.ItemSpacing.x;
+	json["ItemSpacingY"] = style.ItemSpacing.y;
+	json["ItemInnerSpacingX"] = style.ItemInnerSpacing.x;
+	json["ItemInnerSpacingY"] = style.ItemInnerSpacing.y;
+	json["TouchExtraPaddingX"] = style.TouchExtraPadding.x;
+	json["TouchExtraPaddingY"] = style.TouchExtraPadding.y;
+	json["IndentSpacing"] = style.IndentSpacing;
+	json["ScrollbarSize"] = style.ScrollbarSize;
+	json["GrabMinSize"] = style.GrabMinSize;
+	json["WindowBorderSize"] = style.WindowBorderSize;
+	json["ChildBorderSize"] = style.ChildBorderSize;
+	json["PopupBorderSize"] = style.PopupBorderSize;
+	json["FrameBorderSize"] = style.FrameBorderSize;
+	json["TabBorderSize"] = style.TabBorderSize;
+	json["WindowRounding"] = style.WindowRounding;
+	json["ChildRounding"] = style.ChildRounding;
+	json["FrameRounding"] = style.FrameRounding;
+	json["PopupRounding"] = style.PopupRounding;
+	json["ScrollbarRounding"] = style.ScrollbarRounding;
+	json["GrabRounding"] = style.GrabRounding;
+	json["LogSliderDeadzone"] = style.LogSliderDeadzone;
+	json["TabRounding"] = style.TabRounding;
+	json["WindowTitleAlignX"] = style.WindowTitleAlign.x;
+	json["WindowTitleAlignY"] = style.WindowTitleAlign.x;
+	json["WindowMenuButtonPosition"] = style.WindowMenuButtonPosition;
+	json["ColorButtonPosition"] = style.ColorButtonPosition;
+	json["ButtonTextAlignX"] = style.ButtonTextAlign.x;
+	json["ButtonTextAlignY"] = style.ButtonTextAlign.y;
+	json["SelectableTextAlignX"] = style.SelectableTextAlign.x;
+	json["SelectableTextAlignY"] = style.SelectableTextAlign.y;
+	json["DisplaySafeAreaPaddingX"] = style.DisplaySafeAreaPadding.x;
+	json["DisplaySafeAreaPaddingY"] = style.DisplaySafeAreaPadding.y;
+	json["AntiAliasedLines"] = style.AntiAliasedLines;
+	json["AntiAliasedLinesUseTex"] = style.AntiAliasedLinesUseTex;
+	json["AntiAliasedFill"] = style.AntiAliasedFill;
+	json["CurveTessellationTol"] = style.CurveTessellationTol;
+	json["CircleTessellationMaxError"] = style.CircleTessellationMaxError;
+	json["Alpha"] = style.Alpha;
+	json["DisabledAlpha"] = style.DisabledAlpha;
+
+	for (int i = 0; i < ImGuiCol_COUNT; i++)
+	{
+		ImVec4 color = ImGui::GetStyleColorVec4(i);
+		std::string colorName = ImGui::GetStyleColorName(i);
+		json[colorName] = { color.x, color.y, color.z, color.w };
+	}
+
+	json["player_1_button_color"] = { player_1_button_color.x, player_1_button_color.y, player_1_button_color.z, player_1_button_color.w };
+	json["player_2_button_color"] = { player_2_button_color.x, player_2_button_color.y, player_2_button_color.z, player_2_button_color.w };
+
+	// Save the json object to a file
+	std::string name = "";
+	if (!custom_path) {
+		name += ".echo\\themes\\";
+		name += path;
+		name += ".ui";
+	}
+	else {
+		name = path;
+	}
+
+	std::ofstream file(name);
+	if (file.is_open())
+	{
+		file << json.dump(4); // Use 4 spaces for indentation
+		file.close();
+		std::cout << "Theme saved to theme.ui" << std::endl;
+	}
+	else
+	{
+		std::cerr << "Failed to open theme.ui for writing" << std::endl;
+	}
+}
+
+void GUI::ui_editor() {
+	ImGuiStyle& style = ImGui::GetStyle();
+
+	if (ImGui::BeginTabItem("Style")) {
+		static float window_scale = 1.0f;
+
+
+		if (ImGui::Button("Export Theme")) {
+			export_theme(theme_name);
+		}
+
+		ImGui::SameLine();
+
+		if (ImGui::Button("Import Theme")) {
+			ImGuiFileDialog::Instance()->OpenDialog("ThemeImport", "Choose File", ".ui", ".echo/themes/");
+		}
+
+		ImGui::InputText("Export As", theme_name, MAX_PATH);
+
+		ImGui::Separator();
+
+		if (ImGuiFileDialog::Instance()->Display("ThemeImport", ImGuiWindowFlags_NoCollapse, ImVec2(500, 700)))
+		{
+			// action if OK
+			if (ImGuiFileDialog::Instance()->IsOk())
+			{
+				try {
+					import_theme(ImGuiFileDialog::Instance()->GetFilePathName());
+				}
+				catch (std::runtime_error& e) {
+					printf("%s", e.what());
+				}
+			}
+
+			ImGuiFileDialog::Instance()->Close();
+		}
+
+		ImGuiIO& io = ImGui::GetIO();
+		ImFontAtlas* atlas = io.Fonts;
+		//HelpMarker("Read FAQ and docs/FONTS.md for details on font loading.");
+		//ImGui::ShowFontAtlas(atlas);
+
+		// Post-baking font scaling. Note that this is NOT the nice way of scaling fonts, read below.
+		// (we enforce hard clamping manually as by default DragFloat/SliderFloat allows CTRL+Click text to get out of bounds).
+		const float MIN_SCALE = 0.3f;
+		const float MAX_SCALE = 2.0f;
+
+		//ImGui::PushItemWidth(ImGui::GetFontSize() * 8);
+		//if (ImGui::DragFloat("Window Scale", &window_scale, 0.005f, MIN_SCALE, MAX_SCALE, "%.2f", ImGuiSliderFlags_AlwaysClamp)) // Scale only this window
+		//	ImGui::SetWindowFontScale(window_scale);
+		//ImGui::DragFloat("Global Scale", &io.FontGlobalScale, 0.005f, MIN_SCALE, MAX_SCALE, "%.2f", ImGuiSliderFlags_AlwaysClamp); // Scale everything
+		//ImGui::PopItemWidth();
+
+		if (ImGui::BeginTabBar("##tabs", ImGuiTabBarFlags_None))
+		{
+			if (ImGui::BeginTabItem("Sizes"))
+			{
+
+				ImGui::SetNextWindowSizeConstraints(ImVec2(-1, 500), ImVec2(-1, 500));
+				ImGui::BeginChild("###sizesChild", ImVec2(0, 0), false);
+				ImGui::Text("Main");
+				ImGui::SliderFloat2("WindowPadding", (float*)&style.WindowPadding, 0.0f, 20.0f, "%.0f");
+				ImGui::SliderFloat2("FramePadding", (float*)&style.FramePadding, 0.0f, 20.0f, "%.0f");
+				ImGui::SliderFloat2("CellPadding", (float*)&style.CellPadding, 0.0f, 20.0f, "%.0f");
+				ImGui::SliderFloat2("ItemSpacing", (float*)&style.ItemSpacing, 0.0f, 20.0f, "%.0f");
+				ImGui::SliderFloat2("ItemInnerSpacing", (float*)&style.ItemInnerSpacing, 0.0f, 20.0f, "%.0f");
+				ImGui::SliderFloat2("TouchExtraPadding", (float*)&style.TouchExtraPadding, 0.0f, 10.0f, "%.0f");
+				ImGui::SliderFloat("IndentSpacing", &style.IndentSpacing, 0.0f, 30.0f, "%.0f");
+				ImGui::SliderFloat("ScrollbarSize", &style.ScrollbarSize, 1.0f, 20.0f, "%.0f");
+				ImGui::SliderFloat("GrabMinSize", &style.GrabMinSize, 1.0f, 20.0f, "%.0f");
+				ImGui::Text("Borders");
+				ImGui::SliderFloat("WindowBorderSize", &style.WindowBorderSize, 0.0f, 1.0f, "%.0f");
+				ImGui::SliderFloat("ChildBorderSize", &style.ChildBorderSize, 0.0f, 1.0f, "%.0f");
+				ImGui::SliderFloat("PopupBorderSize", &style.PopupBorderSize, 0.0f, 1.0f, "%.0f");
+				ImGui::SliderFloat("FrameBorderSize", &style.FrameBorderSize, 0.0f, 1.0f, "%.0f");
+				ImGui::SliderFloat("TabBorderSize", &style.TabBorderSize, 0.0f, 1.0f, "%.0f");
+				ImGui::Text("Rounding");
+				ImGui::SliderFloat("WindowRounding", &style.WindowRounding, 0.0f, 12.0f, "%.0f");
+				ImGui::SliderFloat("ChildRounding", &style.ChildRounding, 0.0f, 12.0f, "%.0f");
+				ImGui::SliderFloat("FrameRounding", &style.FrameRounding, 0.0f, 12.0f, "%.0f");
+				ImGui::SliderFloat("PopupRounding", &style.PopupRounding, 0.0f, 12.0f, "%.0f");
+				ImGui::SliderFloat("ScrollbarRounding", &style.ScrollbarRounding, 0.0f, 12.0f, "%.0f");
+				ImGui::SliderFloat("GrabRounding", &style.GrabRounding, 0.0f, 12.0f, "%.0f");
+				ImGui::SliderFloat("LogSliderDeadzone", &style.LogSliderDeadzone, 0.0f, 12.0f, "%.0f");
+				ImGui::SliderFloat("TabRounding", &style.TabRounding, 0.0f, 12.0f, "%.0f");
+				ImGui::Text("Alignment");
+				ImGui::SliderFloat2("WindowTitleAlign", (float*)&style.WindowTitleAlign, 0.0f, 1.0f, "%.2f");
+				int window_menu_button_position = style.WindowMenuButtonPosition + 1;
+				if (ImGui::Combo("WindowMenuBtnPos", (int*)&window_menu_button_position, "None\0Left\0Right\0"))
+					style.WindowMenuButtonPosition = window_menu_button_position - 1;
+				ImGui::Combo("ColorButtonPosition", (int*)&style.ColorButtonPosition, "Left\0Right\0");
+				ImGui::SliderFloat2("ButtonTextAlign", (float*)&style.ButtonTextAlign, 0.0f, 1.0f, "%.2f");
+				ImGui::SameLine(); HelpMarker("Alignment applies when a button is larger than its text content.");
+				ImGui::SliderFloat2("SelectTextAlign", (float*)&style.SelectableTextAlign, 0.0f, 1.0f, "%.2f");
+				ImGui::SameLine(); HelpMarker("Alignment applies when a selectable is larger than its text content.");
+				ImGui::Text("Safe Area Padding");
+				ImGui::SameLine(); HelpMarker("Adjust if you cannot see the edges of your screen (e.g. on a TV where scaling has not been configured).");
+				ImGui::SliderFloat2("SafePadding", (float*)&style.DisplaySafeAreaPadding, 0.0f, 30.0f, "%.0f");
+
+				ImGui::EndChild();
+				ImGui::EndTabItem();
+			}
+
+			if (ImGui::BeginTabItem("Colors"))
+			{
+				static ImGuiTextFilter filter;
+				filter.Draw("Filter colors", ImGui::GetFontSize() * 16);
+
+				static ImGuiColorEditFlags alpha_flags = 0;
+				if (ImGui::RadioButton("Opaque", alpha_flags == ImGuiColorEditFlags_None)) { alpha_flags = ImGuiColorEditFlags_None; } ImGui::SameLine();
+				if (ImGui::RadioButton("Alpha", alpha_flags == ImGuiColorEditFlags_AlphaPreview)) { alpha_flags = ImGuiColorEditFlags_AlphaPreview; } ImGui::SameLine();
+				if (ImGui::RadioButton("Both", alpha_flags == ImGuiColorEditFlags_AlphaPreviewHalf)) { alpha_flags = ImGuiColorEditFlags_AlphaPreviewHalf; } ImGui::SameLine();
+				HelpMarker(
+					"In the color list:\n"
+					"Left-click on color square to open color picker,\n"
+					"Right-click to open edit options menu.");
+				
+				ImGui::SetNextWindowSizeConstraints(ImVec2(500, 500), ImVec2(500, 500));
+				ImGui::BeginChild("##colors", ImVec2(-1, 0), true);
+				ImGui::PushItemWidth(250);
+				if (filter.PassFilter("Player 1 In Editor")) {
+					ImGui::PushID(998);
+					ImGui::ColorEdit4("##color", (float*)&player_1_button_color, ImGuiColorEditFlags_AlphaBar | alpha_flags);
+					ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
+					ImGui::TextUnformatted("Player 1 In Editor");
+					ImGui::PopID();
+				}
+				if (filter.PassFilter("Player 2 In Editor")) {
+					ImGui::PushID(999);
+					ImGui::ColorEdit4("##color", (float*)&player_2_button_color, ImGuiColorEditFlags_AlphaBar | alpha_flags);
+					ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
+					ImGui::TextUnformatted("Player 2 In Editor");
+					ImGui::PopID();
+				}
+				for (int i = 0; i < ImGuiCol_COUNT; i++)
+				{
+					const char* name = ImGui::GetStyleColorName(i);
+					if (!filter.PassFilter(name))
+						continue;
+					ImGui::PushID(i);
+					ImGui::ColorEdit4("##color", (float*)&style.Colors[i], ImGuiColorEditFlags_AlphaBar | alpha_flags);
+					ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
+					ImGui::TextUnformatted(name);
+					ImGui::PopID();
+				}
+				ImGui::PopItemWidth();
+				ImGui::EndChild();
+
+				ImGui::EndTabItem();
+			}
+
+			if (ImGui::BeginTabItem("Rendering"))
+			{
+				ImGui::Checkbox("Anti-aliased lines", &style.AntiAliasedLines);
+				ImGui::SameLine();
+				HelpMarker("When disabling anti-aliasing lines, you'll probably want to disable borders in your style as well.");
+
+				ImGui::Checkbox("Anti-aliased lines use texture", &style.AntiAliasedLinesUseTex);
+				ImGui::SameLine();
+				HelpMarker("Faster lines using texture data. Require backend to render with bilinear filtering (not point/nearest filtering).");
+
+				ImGui::Checkbox("Anti-aliased fill", &style.AntiAliasedFill);
+				ImGui::PushItemWidth(ImGui::GetFontSize() * 8);
+				ImGui::DragFloat("Curve Tessellation Tolerance", &style.CurveTessellationTol, 0.02f, 0.10f, 10.0f, "%.2f");
+				if (style.CurveTessellationTol < 0.10f) style.CurveTessellationTol = 0.10f;
+
+				// When editing the "Circle Segment Max Error" value, draw a preview of its effect on auto-tessellated circles.
+				ImGui::DragFloat("Circle Tessellation Max Error", &style.CircleTessellationMaxError, 0.005f, 0.10f, 5.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+				if (ImGui::IsItemActive())
+				{
+					ImGui::SetNextWindowPos(ImGui::GetCursorScreenPos());
+					ImGui::BeginTooltip();
+					ImGui::TextUnformatted("(R = radius, N = number of segments)");
+					ImGui::Spacing();
+					ImDrawList* draw_list = ImGui::GetWindowDrawList();
+					const float min_widget_width = ImGui::CalcTextSize("N: MMM\nR: MMM").x;
+					for (int n = 0; n < 8; n++)
+					{
+						const float RAD_MIN = 5.0f;
+						const float RAD_MAX = 70.0f;
+						const float rad = RAD_MIN + (RAD_MAX - RAD_MIN) * (float)n / (8.0f - 1.0f);
+
+						ImGui::BeginGroup();
+
+						ImGui::Text("R: %.f\nN: %d", rad, draw_list->_CalcCircleAutoSegmentCount(rad));
+
+						const float canvas_width = IM_MAX(min_widget_width, rad * 2.0f);
+						const float offset_x = floorf(canvas_width * 0.5f);
+						const float offset_y = floorf(RAD_MAX);
+
+						const ImVec2 p1 = ImGui::GetCursorScreenPos();
+						draw_list->AddCircle(ImVec2(p1.x + offset_x, p1.y + offset_y), rad, ImGui::GetColorU32(ImGuiCol_Text));
+						ImGui::Dummy(ImVec2(canvas_width, RAD_MAX * 2));
+
+						/*
+						const ImVec2 p2 = ImGui::GetCursorScreenPos();
+						draw_list->AddCircleFilled(ImVec2(p2.x + offset_x, p2.y + offset_y), rad, ImGui::GetColorU32(ImGuiCol_Text));
+						ImGui::Dummy(ImVec2(canvas_width, RAD_MAX * 2));
+						*/
+
+						ImGui::EndGroup();
+						ImGui::SameLine();
+					}
+					ImGui::EndTooltip();
+				}
+				ImGui::SameLine();
+				HelpMarker("When drawing circle primitives with \"num_segments == 0\" tesselation will be calculated automatically.");
+
+				ImGui::DragFloat("Global Alpha", &style.Alpha, 0.005f, 0.20f, 1.0f, "%.2f"); // Not exposing zero here so user doesn't "lose" the UI (zero alpha clips all widgets). But application code could have a toggle to switch between zero and non-zero.
+				ImGui::DragFloat("Disabled Alpha", &style.DisabledAlpha, 0.005f, 0.0f, 1.0f, "%.2f"); ImGui::SameLine(); HelpMarker("Additional alpha multiplier for disabled items (multiply over current value of Alpha).");
+				ImGui::PopItemWidth();
+
+				ImGui::EndTabItem();
+			}
+
+			ImGui::EndTabBar();
+		}
+	}
 }
 
 void GUI::editor() {
@@ -125,10 +580,18 @@ void GUI::editor() {
 
 	const float editAreaHeight = 150.0f;
 
-	ImGui::SetNextWindowSizeConstraints(ImVec2(300, 300), ImVec2(300, 300));
+	//ImGui::SetNextWindowSizeConstraints(ImVec2(255, 300), ImVec2(245 * ImGui::GetIO().FontGlobalScale, 300));
 
-	if (ImGui::BeginTabItem("Editor")) {
+	if (ImGui::BeginTabItem("Editor") || !docked) {
+
+		if (!docked) {
+			ImGui::Begin("Editor");
+		}
 		float firstChildHeight = 300;
+
+
+		ImGui::Text("X: %f", ImGui::GetWindowPos().x);
+		ImGui::Text("Y: %f", ImGui::GetWindowPos().y);
 
 		ImGui::Columns(2, "##Columns", false);
 
@@ -146,30 +609,88 @@ void GUI::editor() {
 		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Inputs");
 		ImGui::BeginChild("##List", ImVec2(0, firstChildHeight - ImGui::GetFrameHeightWithSpacing() + 1), true);
 		if (!inputs.empty()) {
+			int closestFrameDiff = INT_MAX;
+			int closestInputIndex = -1;
+
 			for (unsigned i = 0; i < inputs.size(); i++) {
-				if (inputs[i].isPlayer2)
-					style.Colors[ImGuiCol_Header] = ImVec4(0.f, 1.f, 0.4f, 0.2f);
+				int frameDiff = std::abs(static_cast<int>(inputs[i].number - logic.get_frame()));
+				if (frameDiff < closestFrameDiff) {
+					closestFrameDiff = frameDiff;
+					closestInputIndex = i;
+				}
+			}
+
+			int previousSelectedInput = -1; // New variable to store the index of the previously selected input
+
+			for (unsigned i = 0; i < inputs.size(); i++) {
+				ImVec4 color;
+				if (inputs[i].isPlayer2) {
+					color = player_2_button_color;
+				}
 				else {
-					style.Colors[ImGuiCol_Header] = ImVec4(0.f, 0.73f, 1.f, 0.2f);
+					color = player_1_button_color;
 				}
 
-				if (ImGui::Selectable("##Input", selectedInput == i, ImGuiSelectableFlags_AllowDoubleClick)) {
-					selectedInput = i;
-					newInput = inputs[i];
+				if (i == closestInputIndex) {
+					// Make the closest input's button brighter
+					color.x = max(color.x - 0.3f, 0);
+					color.y = max(color.y - 0.3f, 0);
+					color.z = max(color.z - 0.3f, 0);
 				}
 
-				ImGui::SameLine();
-				ImGui::Text("%s at %d", inputs[i].pressingDown ? "Click" : "Release", inputs[i].number);
-				ImGui::PopID();
-				style.Colors[ImGuiCol_Header] = tempColor;
+				char buffer[100];
+				std::sprintf(buffer, "%s at %d##Input", inputs[i].pressingDown ? "Click" : "Release", inputs[i].number);
+				std::string text = buffer;
+
+				if (ImGui::Button(text.c_str())) {
+					if (selectedInput != i) {
+						previousSelectedInput = selectedInput;
+						selectedInput = i;
+						newInput = inputs[i];
+
+						if (previousSelectedInput != -1) {
+							// Restore the color of the previously selected input
+							ImVec4 prevColor;
+							if (inputs[previousSelectedInput].isPlayer2) {
+								prevColor = player_2_button_color;
+							}
+							else {
+								prevColor = player_1_button_color;
+							}
+							ImGui::PushStyleColor(ImGuiCol_Button, prevColor);
+						}
+
+						// Make the newly selected input's button brighter
+						color.x = max(color.x - 0.3f, 0);
+						color.y = max(color.y - 0.3f, 0);
+						color.z = max(color.z - 0.3f, 0);
+					}
+				}
+
+				ImGui::PushStyleColor(ImGuiCol_Button, color);
+				ImGui::PopStyleColor();
+			}
+
+			// Restore the color of the previously selected input (if any)
+			if (previousSelectedInput != -1) {
+				ImVec4 prevColor;
+				if (inputs[previousSelectedInput].isPlayer2) {
+					prevColor = player_2_button_color;
+				}
+				else {
+					prevColor = player_1_button_color;
+				}
+				ImGui::PushStyleColor(ImGuiCol_Button, prevColor);
 			}
 		}
 		else {
 			ImGui::TextColored(ImVec4(1, 1, 1, 1), "No Inputs");
 		}
+
 		ImGui::EndChild();
 
-		if (ImGui::Button("Add Input")) {
+
+		if (ImGui::Button("Add Input", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.5, 0))) {
 			if (selectedInput == -1) {
 				inputs.push_back(Frame());
 				selectedInput = inputs.size() - 1;
@@ -187,7 +708,7 @@ void GUI::editor() {
 
 		if (!logic.cps_over_percents.empty()) {
 			if (logic.end_portal_position == 0) {
-				ImGui::TextColored(ImVec4(1, 1, 1, 1), "Only Echo Replays support this");
+				ImGui::TextColored(ImVec4(1, 1, 1, 1), "Only Echo Replays support this! Not converted ones.");
 			}
 			else {
 				for (unsigned i = 0; i < logic.cps_over_percents.size(); i++) {
@@ -250,7 +771,19 @@ void GUI::editor() {
 		ImGui::InputInt("###frames", &offset_frames, 0, 0); ImGui::SameLine();
 		ImGui::PopItemFlag();
 
-		ImGui::NewLine();
+		ImGui::SameLine();
+
+		if (ImGui::Button("Offset Frames")) {
+			logic.offset_frames(offset_frames);
+		}
+
+		ImGui::SameLine();
+
+		ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "(?)");
+
+		if (ImGui::IsItemHovered()) {
+			ImGui::SetTooltip("Offsets all frames in replay");
+		}
 
 		if (ImGui::Button("Random Offset Frames")) {
 			logic.offset_inputs(-offset_frames, offset_frames);
@@ -265,20 +798,8 @@ void GUI::editor() {
 			ImGui::SetTooltip("Randomly offsets all frames in replay from -input to +input");
 		}
 
-		if (ImGui::Button("Offset Frames")) {
-			logic.offset_frames(offset_frames);
-			offset_frames = 0;
-		}
-
-		ImGui::SameLine();
-
-		ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "(?)");
-
-		if (ImGui::IsItemHovered()) {
-			ImGui::SetTooltip("Offsets all frames in replay");
-		}
-
-		ImGui::EndTabItem();
+		if (docked)
+			ImGui::EndTabItem();
 	}
 }
 
@@ -361,15 +882,30 @@ void GUI::renderer() {
 
 		ImGui::Separator();
 
+		ImGui::InputFloat("Fade In Duration", &logic.recorder.fade_in_time, 0.01, 0.1, "%.2f");
+
+		ImGui::InputFloat("Fade Out Duration", &logic.recorder.fade_out_time, 0.01, 0.1, "%.2f");
+
+		ImGui::Checkbox("Fade Audio", &logic.recorder.fade_audio); ImGui::SameLine();
+		ImGui::Checkbox("Fade Video", &logic.recorder.fade_audio);
+
+		ImGui::Separator();
+
 		ImGui::InputText("Video Name", &logic.recorder.video_name);
 
 		ImGui::Checkbox("Color Fix", &logic.recorder.color_fix); ImGui::SameLine();
 
-		ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "(?)");
+		HelpMarker("The color fix vf args are: colorspace=all=bt709:iall=bt470bg:fast=1");
 
-		if (ImGui::IsItemHovered()) {
-			ImGui::SetTooltip("The color fix vf args are: colorspace=all=bt709:iall=bt470bg:fast=1");
-		}
+		ImGui::SameLine();
+
+		ImGui::Checkbox("Scroll Speed Bugfix", &logic.recorder.color_fix); ImGui::SameLine();
+
+		HelpMarker("Syncs the video with the song when scroll speed desyncs them.");
+
+		ImGui::Checkbox("Real Time Rendering", &logic.recorder.real_time_rendering); ImGui::SameLine();
+
+		HelpMarker("Real Time Rendering is a technique used to render videos in real-time or close to real-time.\nThis means that, while rendering, the game does not slow down as much.\nNote: This may add visual bugs to the final video.");
 
 		if (PLAYLAYER) {
 			if (!logic.recorder.m_recording) {
@@ -500,8 +1036,13 @@ void GUI::sequential_replay() {
 void GUI::tools() {
 	auto& logic = Logic::get();
 
-	if (ImGui::BeginTabItem("Tools")) {
+	if (ImGui::BeginTabItem("Tools") || !docked) {
 
+		if (!docked) {
+			
+			ImGui::Begin("Tools");
+			
+		}
 		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Macro Tools");
 		ImGui::Separator();
 
@@ -516,6 +1057,7 @@ void GUI::tools() {
 				std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
 				std::string filePath = ImGuiFileDialog::Instance()->GetCurrentPath();
 				std::vector<Frame> before_inputs = logic.get_inputs();
+				logic.inputs.clear();
 
 				std::string suffix = ".bin";
 				if (filePathName.size() >= suffix.size() && filePathName.rfind(suffix) == (filePathName.size() - suffix.size()))
@@ -646,6 +1188,16 @@ void GUI::tools() {
 
 		ImGui::SetNextItemWidth(get_width(50.f));
 
+		if (ImGui::Checkbox("Save Replay Debug Info", &logic.save_debug_info)) {
+			if (logic.save_debug_info) {
+				logic.format = logic.DEBUG;
+			}
+			else {
+				logic.format = logic.SIMPLE;
+			}
+		} ImGui::SameLine();
+		HelpMarker("Saving debug information allows for bugfixing and checking accuracy in the replay.");
+
 		if (logic.format == logic.SIMPLE) ImGui::BeginDisabled();
 
 		if (ImGui::Button("Open Debug Console")) {
@@ -657,16 +1209,8 @@ void GUI::tools() {
 
 		if (logic.format == logic.SIMPLE) ImGui::EndDisabled();
 
-		if (ImGui::Checkbox("Save Debug Info", &logic.save_debug_info)) {
-			if (logic.save_debug_info) {
-				logic.format = logic.DEBUG;
-			}
-			else {
-				logic.format = logic.SIMPLE;
-			}
-		}
-
-		ImGui::EndTabItem();
+		if (docked)
+			ImGui::EndTabItem();
 	}
 }
 
@@ -680,7 +1224,12 @@ std::map<std::string, std::shared_ptr<Convertible>> options = {
 void GUI::conversion() {
 	auto& logic = Logic::get();
 
-	if (ImGui::BeginTabItem("Conversion")) {
+	if (ImGui::BeginTabItem("Conversion") || !docked) {
+
+		if (!docked) {
+			ImGui::Begin("Conversion");
+		}
+
 		if (ImGuiFileDialog::Instance()->IsOpened("ConversionImport"))
 			ImGui::BeginDisabled();
 
@@ -710,13 +1259,13 @@ void GUI::conversion() {
 			ImGui::BeginDisabled();
 
 			if (ImGui::Button("Import"))
-				ImGuiFileDialog::Instance()->OpenDialog("ConversionImport", "Choose File", options[current_option]->get_type_filter().c_str(), ".echo/");
+				ImGuiFileDialog::Instance()->OpenDialog("ConversionImport", "Choose File", options[current_option]->get_type_filter().c_str(), options[current_option]->get_directory().c_str());
 
 			ImGui::EndDisabled();
 		}
 		else {
 			if (ImGui::Button("Import"))
-				ImGuiFileDialog::Instance()->OpenDialog("ConversionImport", "Choose File", options[current_option]->get_type_filter().c_str(), ".echo/");
+				ImGuiFileDialog::Instance()->OpenDialog("ConversionImport", "Choose File", options[current_option]->get_type_filter().c_str(), options[current_option]->get_directory().c_str());
 		}
 
 		ImGui::SameLine();
@@ -756,7 +1305,8 @@ void GUI::conversion() {
 		ImGui::Separator();
 		ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 1.0f), "%s", logic.conversion_message);
 
-		ImGui::EndTabItem();
+		if (docked)
+			ImGui::EndTabItem();
 	}
 }
 
@@ -765,9 +1315,10 @@ void GUI::main() {
 	const ImVec2 buttonSize = { get_width(48), 0 };
 	const ImVec2 fullWidth = { get_width(100), 0 };
 
-	if (ImGui::BeginTabItem("Main")) {
-		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Recording Controls");
-		ImGui::Separator();
+	if (ImGui::BeginTabItem("Main") || !docked) {
+		if (!docked) {
+			ImGui::Begin("Echo v1.0");
+		}
 
 		ImGuiStyle& style = ImGui::GetStyle();
 
@@ -775,10 +1326,12 @@ void GUI::main() {
 		ImVec4 tempColor2 = style.Colors[ImGuiCol_ButtonHovered];
 		ImVec4 tempColor3 = style.Colors[ImGuiCol_ButtonActive];
 
+		ImGui::Checkbox("Docked Menu", &docked);
+
 		if (logic.is_recording()) {
-			style.Colors[ImGuiCol_Button] = ImVec4(0.6f, 0.6f, 0.6f, 0.2f);
-			style.Colors[ImGuiCol_ButtonHovered] = ImVec4(0.6f, 0.6f, 0.6f, 0.3f);
-			style.Colors[ImGuiCol_ButtonActive] = ImVec4(0.6f, 0.6f, 0.6f, 0.4f);
+			style.Colors[ImGuiCol_Button] = style.Colors[ImGuiCol_FrameBg];
+			style.Colors[ImGuiCol_ButtonHovered] = style.Colors[ImGuiCol_FrameBgHovered];
+			style.Colors[ImGuiCol_ButtonActive] = style.Colors[ImGuiCol_FrameBgHovered];
 		}
 
 		if (ImGui::Button(logic.is_recording() ? "Stop Recording" : "Start Recording", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.5f, 0))) {
@@ -798,9 +1351,9 @@ void GUI::main() {
 			ImVec4 tempColor = style.Colors[ImGuiCol_Button];
 			ImVec4 tempColor2 = style.Colors[ImGuiCol_ButtonHovered];
 			ImVec4 tempColor3 = style.Colors[ImGuiCol_ButtonActive];
-			style.Colors[ImGuiCol_Button] = ImVec4(0.6f, 0.6f, 0.6f, 0.2f);
-			style.Colors[ImGuiCol_ButtonHovered] = ImVec4(0.6f, 0.6f, 0.6f, 0.3f);
-			style.Colors[ImGuiCol_ButtonActive] = ImVec4(0.6f, 0.6f, 0.6f, 0.4f);
+			style.Colors[ImGuiCol_Button] = style.Colors[ImGuiCol_FrameBg];
+			style.Colors[ImGuiCol_ButtonHovered] = style.Colors[ImGuiCol_FrameBgHovered];
+			style.Colors[ImGuiCol_ButtonActive] = style.Colors[ImGuiCol_FrameBgHovered];
 		}
 
 		if (ImGui::Button(logic.is_playing() ? "Stop Playing" : "Start Playing", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.48f, 0))) {
@@ -821,17 +1374,30 @@ void GUI::main() {
 
 		ImGui::Spacing();
 
-		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Playback Settings");
 		ImGui::Separator();
 
-		ImGui::Text("Frame: %i", logic.get_frame());
-		ImGui::Text("Highest CPS: %s", logic.highest_cps_cached().c_str());
+		ImGui::Text("Replay FPS: %.2f", logic.get_fps()); ImGui::SameLine();
+		
+		std::string frame_text = "Frame: " + std::to_string(logic.get_frame());
+		float fps_text_width = ImGui::CalcTextSize(frame_text.c_str()).x;
+		float cursor_pos_x = (ImGui::GetWindowContentRegionWidth() - fps_text_width) * 0.5;
+
+		ImGui::SetCursorPosX(cursor_pos_x);
+		ImGui::Text("Frame: %i", logic.get_frame()); ImGui::SameLine();
 
 
-		if (logic.is_playing() || logic.is_recording()) ImGui::BeginDisabled();
+		std::string macro_size_text = "Macro Size: " + std::to_string(logic.inputs.size());
+		float macro_size_text_width = ImGui::CalcTextSize(macro_size_text.c_str()).x;
+		cursor_pos_x = ImGui::GetWindowContentRegionWidth() - macro_size_text_width; // .45 so it doesnt seem unaligned later
+
+		ImGui::SetCursorPosX(cursor_pos_x);
+
+		ImGui::Text("Macro Size: %i", logic.get_inputs().size());
+
+
 		ImGui::PushItemFlag(ImGuiItemFlags_NoTabStop, true);
-		ImGui::SetNextItemWidth(get_width(30));
-		ImGui::InputFloat("###fps", &input_fps, 0, 0, "%.0f");
+		ImGui::SetNextItemWidth(100);
+		ImGui::DragFloat("###fps", &input_fps, 0.01, 1.f);
 		ImGui::PopItemFlag();
 
 		ImGui::SameLine();
@@ -839,13 +1405,21 @@ void GUI::main() {
 		if (ImGui::Button("Set FPS")) {
 			if (!logic.is_recording() && !logic.is_playing()) {
 				logic.fps = input_fps;
+				CCDirector::sharedDirector()->setAnimationInterval(1.f / logic.fps);
 			}
-			CCDirector::sharedDirector()->setAnimationInterval(1.f / logic.fps);
+			else {
+				CCDirector::sharedDirector()->setAnimationInterval(1.f / input_fps);
+			}
 		}
 
-		if (logic.is_playing() || logic.is_recording()) ImGui::EndDisabled();
+		ImGui::SameLine();
 
 		float speed = logic.speedhack;
+
+		ImGui::PushItemWidth(100);
+
+		ImGui::SameLine();
+
 		if (ImGui::DragFloat("Speed", &speed, 0.01, 0.01f, 100.f, "%.2f")) {
 			if (speed < 0.1) speed = 0.1f;
 			logic.speedhack = speed;
@@ -854,6 +1428,7 @@ void GUI::main() {
 				opcode.ModifyFloatAtOffset(0x20A677, logic.speedhack);
 			}
 		}
+		ImGui::PopItemWidth();
 
 		auto& audiospeedhack = AudiopitchHack::getInstance();
 		bool isEnabled = audiospeedhack.isEnabled();
@@ -864,7 +1439,7 @@ void GUI::main() {
 			else {
 				audiospeedhack.setEnabled(false);
 			}
-		}
+		} ImGui::SameLine();
 
 		/*static std::string keyName = "[None]";
 		if (ImGui::Button(keyName.c_str())) {
@@ -884,18 +1459,39 @@ void GUI::main() {
 
 		ImGui::Checkbox("Real Time Mode", &logic.real_time_mode);
 
-		ImGui::Checkbox("No Input Overwrite", &logic.no_overwrite);
+		ImGui::Checkbox("No Input Overwrite", &logic.no_overwrite); ImGui::SameLine();
 
 		ImGui::Checkbox("Ignore actions during playback", &logic.ignore_actions_at_playback);
 
-		ImGui::Spacing();
-		ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Macro Options");
 		ImGui::Separator();
 
-		ImGui::Checkbox("Show frame", &logic.show_frame);
+		ImGui::Checkbox("Show Frame", &logic.show_frame); ImGui::SameLine();
 
-		if (logic.show_frame) {
+		ImGui::Checkbox("Show CPS", &logic.show_cps); ImGui::SameLine();
+
+		bool open_label_modal = true;
+
+		if (ImGui::Button("Label Settings")) {
+			ImGui::OpenPopup("Label Settings");
+		}
+
+		if (logic.inputs.empty()) ImGui::EndDisabled();
+
+		if (ImGui::BeginPopupModal("Label Settings", &open_label_modal, ImGuiWindowFlags_NoResize)) {
+			
+			ImGui::Text("CPS Label");
+
+			ImGui::PushItemWidth(75);
+			ImGui::DragFloat("X###cps_x", &logic.cps_counter_x, 1);
+			ImGui::PopItemWidth();
 			ImGui::SameLine();
+			ImGui::PushItemWidth(75);
+			ImGui::DragFloat("Y###cps_y", &logic.cps_counter_y, 1);
+
+			ImGui::Separator();
+
+			ImGui::Text("Frame Label");
+
 			ImGui::PushItemWidth(75);
 			ImGui::DragFloat("X###frame_x", &logic.frame_counter_x, 1);
 			ImGui::PopItemWidth();
@@ -903,40 +1499,41 @@ void GUI::main() {
 			ImGui::PushItemWidth(75);
 			ImGui::DragFloat("Y###frame_y", &logic.frame_counter_y, 1);
 			ImGui::PopItemWidth();
+
+			ImGui::EndPopup();
 		}
 
-		ImGui::Checkbox("Show CPS", &logic.show_cps);
+		ImGui::PushItemWidth(150);
+		ImGui::DragFloat("Max CPS", &logic.max_cps, 0.01, 1, 100, "%.2f"); ImGui::SameLine();
+		ImGui::PopItemWidth();
 
-		if (logic.show_cps) {
-			ImGui::SameLine();
-			ImGui::PushItemWidth(75);
-			ImGui::DragFloat("X###cps_x", &logic.cps_counter_x, 1);
-			ImGui::PopItemWidth();
-			ImGui::SameLine();
-			ImGui::PushItemWidth(75);
-			ImGui::DragFloat("Y###cps_y", &logic.cps_counter_y, 1);
-			ImGui::PopItemWidth();
-		}
+		std::string highest_cps_text = "Highest CPS: " + logic.highest_cps_cached();
+		float highest_cps_text_width = ImGui::CalcTextSize(highest_cps_text.c_str()).x;
+		cursor_pos_x = (ImGui::GetWindowContentRegionWidth() - highest_cps_text_width);
 
-		ImGui::DragFloat("Max CPS", &logic.max_cps, 0.01, 1, 100, "%.2f");
+		ImGui::SetCursorPosX(cursor_pos_x);
+
+		ImGui::Text("Highest CPS: %s", logic.highest_cps_cached().c_str());
 
 		ImGui::Separator();
-
-		ImGui::Text("Macro Size: %i", logic.get_inputs().size());
-
-		ImGui::SameLine();
 
 		bool open_modal = true;
 
 		if (logic.inputs.empty()) ImGui::BeginDisabled();
 		if (ImGui::Button("Reset Macro")) {
-			logic.get_inputs().clear();
-			//ImGui::OpenPopup("Confirm Reset");
-			//ImGui::SetNextWindowPos({ ImGui::GetWindowWidth() / 2.f, ImGui::GetWindowHeight() / 2.f });
+			ImGui::OpenPopup("Confirm Reset");
+
+			ImVec2 popupSize(200, 100);
+			ImVec2 popupPos(
+				(ImGui::GetIO().DisplaySize.x - popupSize.x) / 2.f,
+				(ImGui::GetIO().DisplaySize.y - popupSize.y) / 2.f
+			);
+
+			ImGui::SetNextWindowPos(popupPos);
 		}
 		if (logic.inputs.empty()) ImGui::EndDisabled();
 
-		if (ImGui::BeginPopupModal("Confirm Reset", &open_modal, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize)) {
+		if (ImGui::BeginPopupModal("Confirm Reset", &open_modal, ImGuiWindowFlags_NoResize)) {
 			ImGui::Text("Are you sure you want to reset your macro?");
 
 			const ImVec2 buttonSize((ImGui::GetWindowContentRegionWidth() - ImGui::GetStyle().ItemSpacing.x) * 0.5f, 0);
@@ -954,6 +1551,7 @@ void GUI::main() {
 			ImGui::EndPopup();
 		}
 
+		ImGui::SameLine();
 
 		ImGui::Checkbox("Use JSON", &logic.use_json_for_files);
 
@@ -1028,13 +1626,11 @@ void GUI::main() {
 		if (ImGui::Checkbox("Use Binary", &useBinary)) {
 			logic.use_json_for_files = !useBinary;
 		}*/
-
-		if (logic.error != "") {
-			ImGui::Separator();
-			ImGui::Text("%s", logic.error);
-		}
-
-		ImGui::EndTabItem();
+		
+		if (docked)
+			ImGui::EndTabItem();
+		else
+			ImGui::End();
 	}
 }
 
