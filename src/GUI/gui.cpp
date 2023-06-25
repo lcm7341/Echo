@@ -6,6 +6,7 @@
 #include <MinHook.h>
 #include <cmath>
 #include <sstream>
+#include <algorithm>
 #include <imgui-hook.hpp>
 #include <../imguifiledialog/ImGuiFileDialog.h>
 #include <string_view>
@@ -846,11 +847,12 @@ void GUI::main() {
 
 		float speed = logic.speedhack;
 		if (ImGui::DragFloat("Speed", &speed, 0.01, 0.01f, 100.f, "%.2f")) {
-			if (speed > 0) logic.speedhack = speed;
-			/*if (logic.respawn_time_modified) {
+			if (speed < 0.1) speed = 0.1f;
+			logic.speedhack = speed;
+			if (logic.respawn_time_modified) {
 				Opcode opcode(Cheat::AntiCheatBypass);
 				opcode.ModifyFloatAtOffset(0x20A677, logic.speedhack);
-			}*/
+			}
 		}
 
 		auto& audiospeedhack = AudiopitchHack::getInstance();
