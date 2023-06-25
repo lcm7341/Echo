@@ -62,7 +62,7 @@ void writeConfig() {
 	j["autoclicker"]["player_1"] = logic.autoclicker_player_1;
 	j["autoclicker"]["player_2"] = logic.autoclicker_player_2;
 
-	j["autoclicker"]["audo_disable"] = logic.autoclicker_auto_disable;
+	j["autoclicker"]["auto_disable"] = logic.autoclicker_auto_disable;
 
 	j["frame_advance_hold_duration"] = logic.frame_advance_hold_duration;
 	j["frame_advance_delay"] = logic.frame_advance_delay;
@@ -147,8 +147,6 @@ void readConfig() {
 	CCDirector::sharedDirector()->setAnimationInterval(1.f / GUI::get().input_fps);
 
 	file.close();
-
-	float window_scale = 1.f;
 }
 
 void UnfullscreenGame()
@@ -179,8 +177,6 @@ DWORD WINAPI my_thread(void* hModule) {
 
 	readConfig();
 
-	srand(GetTickCount());
-
 	ImGuiHook::setRenderFunction(renderFuncWrapper);
 	//ImGuiHook::setToggleCallback(callback);
 	ImGuiHook::setInitFunction(initFuncWrapper);
@@ -194,11 +190,13 @@ DWORD WINAPI my_thread(void* hModule) {
 	std::filesystem::path echoDirectory = ".echo";
 	std::filesystem::path videoDirectory = ".echo/renders";
 	std::filesystem::path configDirectory = ".echo/settings";
+	std::filesystem::path themesDirectory = ".echo/themes";
 	std::filesystem::path osuDirectory = ".echo/osu";
 
 	std::filesystem::create_directory(echoDirectory);
 	std::filesystem::create_directory(videoDirectory);
 	std::filesystem::create_directory(configDirectory);
+	std::filesystem::create_directory(themesDirectory);
 	std::filesystem::create_directory(osuDirectory);
 
 	return 0;
@@ -211,6 +209,7 @@ BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID) {
 	}
 	if (reason == DLL_PROCESS_DETACH) {
 		writeConfig();
+		GUI::get().export_theme(".echo\\settings\\theme.ui", true);
 	}
 	return TRUE;
 }

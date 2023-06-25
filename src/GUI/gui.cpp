@@ -73,7 +73,13 @@ void delay(int milliseconds) {
 	}
 }
 
+int g_has_imported = false; // ffs
+
 void GUI::draw() {
+	if (!g_has_imported)
+		import_theme(".echo\\settings\\theme.ui");
+	g_has_imported = true;
+
 	if (g_font) ImGui::PushFont(g_font);
 
 	if (show_window) {
@@ -121,14 +127,14 @@ float get_width(float percent) {
 	return (ImGui::GetWindowContentRegionWidth() - ImGui::GetStyle().ItemSpacing.x) * (percent / 100.f);
 }
 
-void GUI::import_theme(std::string path, float window_scale) {
+void GUI::import_theme(std::string path) {
 	std::ifstream file(path);
 
 	ImGuiStyle& style = ImGui::GetStyle();
 
 	if (!file.is_open())
 	{
-		std::cerr << "Failed to open theme.json for reading" << std::endl;
+		printf("Failed to open theme.ui for reading");
 		return;
 	}
 
@@ -140,7 +146,7 @@ void GUI::import_theme(std::string path, float window_scale) {
 	}
 	catch (const std::exception& e)
 	{
-		std::cerr << "Failed to parse theme.json: " << e.what() << std::endl;
+		printf("Failed to parse theme.ui: %s", e.what());
 		file.close();
 		return;
 	}
@@ -148,11 +154,7 @@ void GUI::import_theme(std::string path, float window_scale) {
 	file.close();
 
 	// Import ImGui style variables
-	ImGui::SetWindowFontScale(json["WindowScale"]);
-	window_scale = json["WindowScale"];
 	ImGui::GetIO().FontGlobalScale = json["GlobalScale"];
-	style.WindowPadding.x = json["WindowPaddingX"];
-	style.WindowPadding.y = json["WindowPaddingY"];
 	style.FramePadding.x = json["FramePaddingX"];
 	style.FramePadding.y = json["FramePaddingY"];
 	style.CellPadding.x = json["CellPaddingX"];
@@ -219,7 +221,91 @@ void GUI::import_theme(std::string path, float window_scale) {
 		}
 	}
 
-	std::cout << "Theme imported from theme.json" << std::endl;
+	std::cout << "Theme imported from theme.ui" << std::endl;
+}
+
+void GUI::export_theme(std::string path, bool custom_path) {
+	ImGuiStyle& style = ImGui::GetStyle();
+	nlohmann::json json;
+
+	// Fill the json object with the variables
+	json["GlobalScale"] = ImGui::GetIO().FontGlobalScale;
+	json["FramePaddingX"] = style.FramePadding.x;
+	json["FramePaddingY"] = style.FramePadding.y;
+	json["CellPaddingX"] = style.CellPadding.x;
+	json["CellPaddingY"] = style.CellPadding.y;
+	json["ItemSpacingX"] = style.ItemSpacing.x;
+	json["ItemSpacingY"] = style.ItemSpacing.y;
+	json["ItemInnerSpacingX"] = style.ItemInnerSpacing.x;
+	json["ItemInnerSpacingY"] = style.ItemInnerSpacing.y;
+	json["TouchExtraPaddingX"] = style.TouchExtraPadding.x;
+	json["TouchExtraPaddingY"] = style.TouchExtraPadding.y;
+	json["IndentSpacing"] = style.IndentSpacing;
+	json["ScrollbarSize"] = style.ScrollbarSize;
+	json["GrabMinSize"] = style.GrabMinSize;
+	json["WindowBorderSize"] = style.WindowBorderSize;
+	json["ChildBorderSize"] = style.ChildBorderSize;
+	json["PopupBorderSize"] = style.PopupBorderSize;
+	json["FrameBorderSize"] = style.FrameBorderSize;
+	json["TabBorderSize"] = style.TabBorderSize;
+	json["WindowRounding"] = style.WindowRounding;
+	json["ChildRounding"] = style.ChildRounding;
+	json["FrameRounding"] = style.FrameRounding;
+	json["PopupRounding"] = style.PopupRounding;
+	json["ScrollbarRounding"] = style.ScrollbarRounding;
+	json["GrabRounding"] = style.GrabRounding;
+	json["LogSliderDeadzone"] = style.LogSliderDeadzone;
+	json["TabRounding"] = style.TabRounding;
+	json["WindowTitleAlignX"] = style.WindowTitleAlign.x;
+	json["WindowTitleAlignY"] = style.WindowTitleAlign.x;
+	json["WindowMenuButtonPosition"] = style.WindowMenuButtonPosition;
+	json["ColorButtonPosition"] = style.ColorButtonPosition;
+	json["ButtonTextAlignX"] = style.ButtonTextAlign.x;
+	json["ButtonTextAlignY"] = style.ButtonTextAlign.y;
+	json["SelectableTextAlignX"] = style.SelectableTextAlign.x;
+	json["SelectableTextAlignY"] = style.SelectableTextAlign.y;
+	json["DisplaySafeAreaPaddingX"] = style.DisplaySafeAreaPadding.x;
+	json["DisplaySafeAreaPaddingY"] = style.DisplaySafeAreaPadding.y;
+	json["AntiAliasedLines"] = style.AntiAliasedLines;
+	json["AntiAliasedLinesUseTex"] = style.AntiAliasedLinesUseTex;
+	json["AntiAliasedFill"] = style.AntiAliasedFill;
+	json["CurveTessellationTol"] = style.CurveTessellationTol;
+	json["CircleTessellationMaxError"] = style.CircleTessellationMaxError;
+	json["Alpha"] = style.Alpha;
+	json["DisabledAlpha"] = style.DisabledAlpha;
+
+	for (int i = 0; i < ImGuiCol_COUNT; i++)
+	{
+		ImVec4 color = ImGui::GetStyleColorVec4(i);
+		std::string colorName = ImGui::GetStyleColorName(i);
+		json[colorName] = { color.x, color.y, color.z, color.w };
+	}
+
+	json["player_1_button_color"] = { player_1_button_color.x, player_1_button_color.y, player_1_button_color.z, player_1_button_color.w };
+	json["player_2_button_color"] = { player_2_button_color.x, player_2_button_color.y, player_2_button_color.z, player_2_button_color.w };
+
+	// Save the json object to a file
+	std::string name = "";
+	if (!custom_path) {
+		name += ".echo\\themes\\";
+		name += path;
+		name += ".ui";
+	}
+	else {
+		name = path;
+	}
+
+	std::ofstream file(name);
+	if (file.is_open())
+	{
+		file << json.dump(4); // Use 4 spaces for indentation
+		file.close();
+		std::cout << "Theme saved to theme.ui" << std::endl;
+	}
+	else
+	{
+		std::cerr << "Failed to open theme.ui for writing" << std::endl;
+	}
 }
 
 void GUI::ui_editor() {
@@ -230,102 +316,26 @@ void GUI::ui_editor() {
 
 
 		if (ImGui::Button("Export Theme")) {
-			nlohmann::json json;
-
-			// Fill the json object with the variables
-			json["WindowScale"] = window_scale;
-			json["GlobalScale"] = ImGui::GetIO().FontGlobalScale;
-			json["WindowPaddingX"] = style.WindowPadding.x;
-			json["WindowPaddingY"] = style.WindowPadding.y;
-			json["FramePaddingX"] = style.FramePadding.x;
-			json["FramePaddingY"] = style.FramePadding.y;
-			json["CellPaddingX"] = style.CellPadding.x;
-			json["CellPaddingY"] = style.CellPadding.y;
-			json["ItemSpacingX"] = style.ItemSpacing.x;
-			json["ItemSpacingY"] = style.ItemSpacing.y;
-			json["ItemInnerSpacingX"] = style.ItemInnerSpacing.x;
-			json["ItemInnerSpacingY"] = style.ItemInnerSpacing.y;
-			json["TouchExtraPaddingX"] = style.TouchExtraPadding.x;
-			json["TouchExtraPaddingY"] = style.TouchExtraPadding.y;
-			json["IndentSpacing"] = style.IndentSpacing;
-			json["ScrollbarSize"] = style.ScrollbarSize;
-			json["GrabMinSize"] = style.GrabMinSize;
-			json["WindowBorderSize"] = style.WindowBorderSize;
-			json["ChildBorderSize"] = style.ChildBorderSize;
-			json["PopupBorderSize"] = style.PopupBorderSize;
-			json["FrameBorderSize"] = style.FrameBorderSize;
-			json["TabBorderSize"] = style.TabBorderSize;
-			json["WindowRounding"] = style.WindowRounding;
-			json["ChildRounding"] = style.ChildRounding;
-			json["FrameRounding"] = style.FrameRounding;
-			json["PopupRounding"] = style.PopupRounding;
-			json["ScrollbarRounding"] = style.ScrollbarRounding;
-			json["GrabRounding"] = style.GrabRounding;
-			json["LogSliderDeadzone"] = style.LogSliderDeadzone;
-			json["TabRounding"] = style.TabRounding;
-			json["WindowTitleAlignX"] = style.WindowTitleAlign.x;
-			json["WindowTitleAlignY"] = style.WindowTitleAlign.x;
-			json["WindowMenuButtonPosition"] = style.WindowMenuButtonPosition;
-			json["ColorButtonPosition"] = style.ColorButtonPosition;
-			json["ButtonTextAlignX"] = style.ButtonTextAlign.x;
-			json["ButtonTextAlignY"] = style.ButtonTextAlign.y;
-			json["SelectableTextAlignX"] = style.SelectableTextAlign.x;
-			json["SelectableTextAlignY"] = style.SelectableTextAlign.y;
-			json["DisplaySafeAreaPaddingX"] = style.DisplaySafeAreaPadding.x;
-			json["DisplaySafeAreaPaddingY"] = style.DisplaySafeAreaPadding.y;
-			json["AntiAliasedLines"] = style.AntiAliasedLines;
-			json["AntiAliasedLinesUseTex"] = style.AntiAliasedLinesUseTex;
-			json["AntiAliasedFill"] = style.AntiAliasedFill;
-			json["CurveTessellationTol"] = style.CurveTessellationTol;
-			json["CircleTessellationMaxError"] = style.CircleTessellationMaxError;
-			json["Alpha"] = style.Alpha;
-			json["DisabledAlpha"] = style.DisabledAlpha;
-
-			for (int i = 0; i < ImGuiCol_COUNT; i++)
-			{
-				ImVec4 color = ImGui::GetStyleColorVec4(i);
-				std::string colorName = ImGui::GetStyleColorName(i);
-				json[colorName] = { color.x, color.y, color.z, color.w };
-			}
-
-			json["player_1_button_color"] = { player_1_button_color.x, player_1_button_color.y, player_1_button_color.z, player_1_button_color.w };
-			json["player_2_button_color"] = { player_2_button_color.x, player_2_button_color.y, player_2_button_color.z, player_2_button_color.w };
-
-			// Save the json object to a file
-			std::string path = ".echo\\settings\\";
-			path += theme_name;
-			path += ".ui";
-
-			std::ofstream file(path);
-			if (file.is_open())
-			{
-				file << json.dump(4); // Use 4 spaces for indentation
-				file.close();
-				std::cout << "Theme saved to theme.ui" << std::endl;
-			}
-			else
-			{
-				std::cerr << "Failed to open theme.ui for writing" << std::endl;
-			}
+			export_theme(theme_name);
 		}
 
 		ImGui::SameLine();
 
 		if (ImGui::Button("Import Theme")) {
-			ImGuiFileDialog::Instance()->OpenDialog("ThemeImport", "Choose File", ".ui", ".echo/settings/");
+			ImGuiFileDialog::Instance()->OpenDialog("ThemeImport", "Choose File", ".ui", ".echo/themes/");
 		}
 
 		ImGui::InputText("Export As", theme_name, MAX_PATH);
 
 		ImGui::Separator();
 
-		if (ImGuiFileDialog::Instance()->Display("ThemeImport", ImGuiWindowFlags_NoCollapse, ImVec2(500, 200)))
+		if (ImGuiFileDialog::Instance()->Display("ThemeImport", ImGuiWindowFlags_NoCollapse, ImVec2(500, 700)))
 		{
 			// action if OK
 			if (ImGuiFileDialog::Instance()->IsOk())
 			{
 				try {
-					import_theme(ImGuiFileDialog::Instance()->GetFilePathName(), window_scale);
+					import_theme(ImGuiFileDialog::Instance()->GetFilePathName());
 				}
 				catch (std::runtime_error& e) {
 					printf("%s", e.what());
@@ -967,6 +977,7 @@ void GUI::tools() {
 				std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
 				std::string filePath = ImGuiFileDialog::Instance()->GetCurrentPath();
 				std::vector<Frame> before_inputs = logic.get_inputs();
+				logic.inputs.clear();
 
 				std::string suffix = ".bin";
 				if (filePathName.size() >= suffix.size() && filePathName.rfind(suffix) == (filePathName.size() - suffix.size()))
@@ -1097,6 +1108,16 @@ void GUI::tools() {
 
 		ImGui::SetNextItemWidth(get_width(50.f));
 
+		if (ImGui::Checkbox("Save Replay Debug Info", &logic.save_debug_info)) {
+			if (logic.save_debug_info) {
+				logic.format = logic.DEBUG;
+			}
+			else {
+				logic.format = logic.SIMPLE;
+			}
+		} ImGui::SameLine();
+		HelpMarker("Saving debug information allows for bugfixing and checking accuracy in the replay.");
+
 		if (logic.format == logic.SIMPLE) ImGui::BeginDisabled();
 
 		if (ImGui::Button("Open Debug Console")) {
@@ -1107,15 +1128,6 @@ void GUI::tools() {
 		}
 
 		if (logic.format == logic.SIMPLE) ImGui::EndDisabled();
-
-		if (ImGui::Checkbox("Save Debug Info", &logic.save_debug_info)) {
-			if (logic.save_debug_info) {
-				logic.format = logic.DEBUG;
-			}
-			else {
-				logic.format = logic.SIMPLE;
-			}
-		}
 
 		ImGui::EndTabItem();
 	}

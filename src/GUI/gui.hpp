@@ -30,7 +30,9 @@ public:
 
 	void ui_editor();
 
-	void import_theme(std::string path, float window_scale);
+	void import_theme(std::string path);
+
+	void export_theme(std::string path, bool custom_path = false);
 
 	bool show_reset_popup = false;
 
@@ -42,7 +44,7 @@ public:
 
 	float scheduler_dt = 60.f;
 
-	char theme_name[1000] = "theme";
+	char theme_name[1000] = "My Theme";
 
 	ImVec4 player_1_button_color = { 0.18, 0.89, 0.7, 0.54 };
 	ImVec4 player_2_button_color = { 0.18, 0.89, 0.46, 0.54 };
