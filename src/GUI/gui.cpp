@@ -64,6 +64,13 @@ static Opcode anticheatBypass(Cheat::AntiCheatBypass);
 static Opcode practiceMusic(Cheat::PracticeMusic);
 static Opcode noEscape(Cheat::NoESC);
 
+#define CHECK_KEYBIND(label) \
+do { \
+    if (ImGui::IsItemHovered() && ImGui::IsMouseReleased(1)) { \
+        keybind_prompt = label; \
+    } \
+} while(0)
+
 void delay(int milliseconds) {
 	auto start = std::chrono::steady_clock::now();
 	auto end = start + std::chrono::milliseconds(milliseconds);
@@ -77,14 +84,12 @@ int g_has_imported = false; // ffs
 int g_has_placed_positions = false; // ffs
 
 void GUI::draw() {
+	Logic::get().processKeybinds();
 	if (!g_has_imported)
 		import_theme(".echo\\settings\\theme.ui");
 	g_has_imported = true;
 
 	if (g_font) ImGui::PushFont(g_font);
-
-	if (keybind_prompt != "")
-		show_keybind_prompt(keybind_prompt);
 
 	if (show_window) {
 		std::stringstream full_title;
@@ -99,6 +104,9 @@ void GUI::draw() {
 
 		if (io.KeysDown[ImGui::GetKeyIndex(ImGuiKey_Escape)])
 			ImGui::SetKeyboardFocusHere();
+
+		if (!keybind_prompt.empty())
+			show_keybind_prompt(keybind_prompt);
 
 		bool open_modal = true;
 		if (Logic::get().error != "") {
@@ -1531,27 +1539,77 @@ void GUI::tools() {
 
 }
 
+#ifdef _WIN32
+#include <windows.h>
+
+std::string GetKeyName(int key) {
+	char name[128];
+	UINT scanCode = MapVirtualKey(key, MAPVK_VK_TO_VSC);
+	int result = GetKeyNameText(scanCode << 16, name, sizeof(name));
+	if (result > 0) {
+		return name;
+	}
+	return "Unknown";
+}
+#endif
+
 void GUI::show_keybind_prompt(const std::string& buttonName) {
 	static std::string keybindButtonName = "";
+	static std::optional<int> newKey = std::nullopt;
+	static bool newCtrl = false, newShift = false, newAlt = false;
+
 	keybindButtonName = buttonName;
 
-	if (ImGui::BeginPopupModal("Confirm Keybind", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
-		ImGui::Text("Please click a button for keybind");
+	if (keybind_prompt_cache != keybind_prompt) {
+		keybind_prompt_cache = keybind_prompt;
+		newKey = std::nullopt; // clear the key when the prompt is reopened
+		newCtrl = false, newShift = false, newAlt = false;
+		ImGui::OpenPopup("Confirm Keybind");
+	}
 
-		// Detect key presses when the modal is open
-		for (int i = 0; i < 512; i++) {
-			if (ImGui::IsKeyPressed(i)) {
-				// Set the keybind for the captured button name
-				Logic::get().keybinds.GetKeybind(buttonName).SetKey(i);
-				keybindButtonName = "";
-				ImGui::CloseCurrentPopup();
+	if (ImGui::BeginPopupModal("Confirm Keybind", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+		Keybind& existingKeybind = Logic::get().keybinds.GetKeybind(keybindButtonName);
+		if (existingKeybind.GetKey().has_value()) {
+			std::string keyInfo = "Existing keybind: " + GetKeyName(*existingKeybind.GetKey());
+			if (existingKeybind.GetCtrl()) keyInfo += " with Control";
+			if (existingKeybind.GetShift()) keyInfo += " with Shift";
+			if (existingKeybind.GetAlt()) keyInfo += " with Alt";
+			ImGui::Text(keyInfo.c_str());
+			ImGui::Separator();
+		}
+		ImGui::Text("Please press a button for keybinding '%s'", &buttonName);
+
+		for (int key = 0; key < 512; key++) {
+			if (ImGui::IsKeyPressed(key, false)) {
+				newKey = key;
+				newCtrl = ImGui::GetIO().KeyCtrl;
+				newShift = ImGui::GetIO().KeyShift;
+				newAlt = ImGui::GetIO().KeyAlt;
+				break;
 			}
 		}
 
-		if (ImGui::Button("Set")) {
-			// Reset the keybind button name
-			keybindButtonName = "";
+		if (ImGui::Button("Exit")) {
 			ImGui::CloseCurrentPopup();
+			keybind_prompt_cache = "";
+			keybind_prompt = "";
+		}
+
+		if (newKey.has_value()) {
+			std::string keyInfo = "Pressed key: " + GetKeyName(*newKey);
+			if (newCtrl) keyInfo += " with Control";
+			if (newShift) keyInfo += " with Shift";
+			if (newAlt) keyInfo += " with Alt";
+			ImGui::Text(keyInfo.c_str());
+
+			ImGui::SameLine();
+
+			if (ImGui::Button("Save")) {
+				Logic::get().keybinds.GetKeybind(keybindButtonName).SetKey(*newKey, newCtrl, newShift, newAlt);
+				ImGui::CloseCurrentPopup();
+				keybind_prompt_cache = "";
+				keybind_prompt = "";
+			}
 		}
 
 		ImGui::EndPopup();
@@ -1561,14 +1619,12 @@ void GUI::show_keybind_prompt(const std::string& buttonName) {
 void GUI::main() {
 	auto& logic = Logic::get();
 	const ImVec2 buttonSize = { get_width(48), 0 };
-	const ImVec2 fullWidth = { get_width(100), 0 };
 
 	float tabWidth = ImGui::GetWindowContentRegionWidth() / 6.0f;
 	if (docked)
 	ImGui::SetNextItemWidth(tabWidth);
 	if (ImGui::BeginTabItem("Main") || !docked) {
 		if (!docked) {
-			ImGui::SetNextWindowPos(ImVec2(200, 200), ImGuiCond_FirstUseEver);
 			ImGui::Begin("Echo v0.5 BETA", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
 			main_pos = ImGui::GetWindowPos();
 		}
@@ -1683,6 +1739,7 @@ void GUI::main() {
 
 		auto& audiospeedhack = AudiopitchHack::getInstance();
 		bool isEnabled = audiospeedhack.isEnabled();
+
 		if (ImGui::Checkbox("Audio Speedhack", &isEnabled)) {
 			if (isEnabled) {
 				audiospeedhack.setEnabled(true);
@@ -1690,12 +1747,10 @@ void GUI::main() {
 			else {
 				audiospeedhack.setEnabled(false);
 			}
-		} 
-
-		if (ImGui::IsItemHovered() && ImGui::IsMouseReleased(1)) {
-			keybind_prompt = "audioHack";
-			ImGui::OpenPopup("Confirm Keybind");
 		}
+
+		CHECK_KEYBIND("audioHack");
+
 		
 		ImGui::SameLine();
 
@@ -1910,6 +1965,22 @@ void GUI::main() {
 }
 
 void GUI::init() {
+	std::unique_ptr<KeybindableBase> audioSpeedHackAction = std::unique_ptr<KeybindableBase>(new Keybindable([this]() {
+		auto& audiospeedhack = AudiopitchHack::getInstance();
+		bool isEnabled = audiospeedhack.isEnabled();
+		printf("Test");
+
+		isEnabled = !isEnabled; // flip the value
+		if (isEnabled) {
+			audiospeedhack.setEnabled(true);
+		}
+		else {
+			audiospeedhack.setEnabled(false);
+		}
+	}));
+
+	Logic::get().keybinds.SetAction("audioHack", std::move(audioSpeedHackAction));
+
 	auto& style = ImGui::GetStyle();
 	style.WindowTitleAlign = ImVec2(0.5f, 0.5f);
 	style.WindowBorderSize = 0;

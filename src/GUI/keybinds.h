@@ -4,26 +4,31 @@
 #include <unordered_map>
 #include <string>
 #include <optional>
+#include "keybindable.h"
+#include <memory>
 
 class Keybind {
 public:
     Keybind();
-    void SetKey(int key);
+    void SetKey(int key, bool ctrl = false, bool shift = false, bool alt = false);
     void UnsetKey();
     std::optional<int> GetKey() const;
+    bool GetCtrl() const;
+    bool GetShift() const;
+    bool GetAlt() const;
+
 private:
     std::optional<int> key;
+    bool ctrl;
+    bool shift;
+    bool alt;
 };
 
 class Keybinds {
 public:
     Keybinds();
     Keybind& GetKeybind(const std::string& action);
-    bool GetKeybindMode(const std::string& pane) const;
-    void SetKeybindMode(const std::string& pane, bool mode);
-
-private:
-    std::unordered_map<std::string, Keybind> bindings;
-    std::unordered_map<std::string, bool> keybindModes;
+    void SetAction(const std::string& action, std::unique_ptr<KeybindableBase> keybindable);
+    std::unordered_map<std::string, std::pair<Keybind, std::unique_ptr<KeybindableBase>>> bindings;
 };
 #endif // KEYBINDS_H

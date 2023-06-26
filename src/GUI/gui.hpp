@@ -49,6 +49,7 @@ public:
 	bool docked = false;
 
 	std::string keybind_prompt = "";
+	std::string keybind_prompt_cache = "";
 	ImVec4 popup_bg_color = { 0, 0, 0, 60 };
 
 	ImVec4 player_1_button_color = { 0.18, 0.89, 0.7, 0.54 };
