@@ -18,6 +18,7 @@ enum State {
 #include <cocos2d.h>
 #include <chrono>
 #include <conio.h>
+#include "../GUI/keybinds.h"
 
 using namespace cocos2d;
 
@@ -165,6 +166,8 @@ public:
 	double player_acceleration = 1;
 	std::vector<float> player_x_positions; // because fuck attempt 1, also this isnt my calculated one
 	int calculated_frame = 0;
+	Keybinds keybinds;
+	bool keybindMode = false;
 
 	bool ignore_actions_at_playback = true;
 	bool show_frame = false;

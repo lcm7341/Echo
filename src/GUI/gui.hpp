@@ -28,6 +28,8 @@ public:
 
 	void ui_editor();
 
+	void show_keybind_prompt(const std::string& buttonName);
+
 	void import_theme(std::string path);
 
 	void export_theme(std::string path, bool custom_path = false);
@@ -46,6 +48,7 @@ public:
 
 	bool docked = false;
 
+	std::string keybind_prompt = "";
 	ImVec4 popup_bg_color = { 0, 0, 0, 60 };
 
 	ImVec4 player_1_button_color = { 0.18, 0.89, 0.7, 0.54 };
