@@ -196,14 +196,14 @@ void Recorder::handle_recording(gd::PlayLayer* play_layer, float dt) {
             m_finished_level = true;
         }
         auto frame_dt = 1. / static_cast<double>(m_fps);
-
-        auto time = (ssb_fix ? (Logic::get().calculated_frame / Logic::get().fps) : play_layer->m_time) + m_extra_t - m_last_frame_t;
+        auto tfx2_frame = play_layer->timeForXPos2(play_layer->m_player1->m_position.x, true);
+        auto time = (ssb_fix ? tfx2_frame : play_layer->m_time) + m_extra_t - m_last_frame_t;
 
         if (time >= frame_dt) {
             gd::FMODAudioEngine::sharedEngine()->setBackgroundMusicTime(
-                (ssb_fix ? (Logic::get().calculated_frame / Logic::get().fps) : play_layer->m_time) + m_song_start_offset);
+                (ssb_fix ? tfx2_frame : play_layer->m_time) + m_song_start_offset);
             m_extra_t = time - frame_dt;
-            m_last_frame_t = ssb_fix ? (Logic::get().calculated_frame / Logic::get().fps) : play_layer->m_time;
+            m_last_frame_t = ssb_fix ? tfx2_frame : play_layer->m_time;
             capture_frame();
         }
     }

@@ -31,6 +31,8 @@
 #include <imgui_demo.cpp>
 #include <format>
 
+#define BIND(key, var) Keybinds::get().add(key, [&]() { var = !var; })
+
 int getRandomInt(int N) {
 	// Seed the random number generator with current time
 	std::random_device rd;
@@ -395,27 +397,35 @@ void GUI::ui_editor() {
 			style_pos = ImGui::GetWindowPos();
 		}
 
-		if (ImGui::Button("Export Theme")) {
+		ImGui::PushItemWidth(150);
+		ImGui::InputText("", theme_name, MAX_PATH);
+		ImGui::PopItemWidth();
+
+		ImGui::SameLine();
+
+		if (ImGui::Button("Save Theme")) {
 			export_theme(theme_name);
 		}
 
 		ImGui::SameLine();
 
-		if (ImGui::Button("Import Theme")) {
+		if (ImGui::Button("Load Theme")) {
 			ImGuiFileDialog::Instance()->OpenDialog("ThemeImport", "Choose File", ".ui", ".echo/themes/");
 		}
 
-		ImGui::InputText("Export As", theme_name, MAX_PATH);
-
-		ImGui::Checkbox("Docked Menu", &docked);
+		ImGui::Checkbox("Docked Menu", &docked); ImGui::SameLine();
 
 		ImGuiIO& io = ImGui::GetIO();
 
+		ImGui::PushItemWidth(150);
+
 		ImGui::DragFloat("Global Scale", &io.FontGlobalScale, 0.01, 0.1, 3.f, "%.2f");
+
+		ImGui::PopItemWidth();
 
 		ImGui::Separator();
 
-		if (ImGuiFileDialog::Instance()->Display("ThemeImport", ImGuiWindowFlags_NoCollapse, ImVec2(500, 700)))
+		if (ImGuiFileDialog::Instance()->Display("ThemeImport", ImGuiWindowFlags_NoCollapse, ImVec2(300, 500)))
 		{
 			// action if OK
 			if (ImGuiFileDialog::Instance()->IsOk())
@@ -454,8 +464,8 @@ void GUI::ui_editor() {
 			if (ImGui::BeginTabItem("Sizes"))
 			{
 
-				ImGui::SetNextWindowSizeConstraints(ImVec2(-1, 500), ImVec2(-1, 500));
-				ImGui::BeginChild("###sizesChild", ImVec2(0, 0), false);
+				ImGui::SetNextWindowSizeConstraints(ImVec2(-1, 350 * io.FontGlobalScale), ImVec2(-1, 350 * io.FontGlobalScale));
+				ImGui::BeginChild("###sizesChild", ImVec2(-1, 350 * io.FontGlobalScale), true, ImGuiWindowFlags_AlwaysAutoResize);
 				ImGui::Text("Main");
 				ImGui::PushItemWidth(200);
 				ImGui::SliderFloat2("WindowPadding", (float*)&style.WindowPadding, 0.0f, 20.0f, "%.0f");
@@ -485,7 +495,7 @@ void GUI::ui_editor() {
 				ImGui::Text("Alignment");
 				ImGui::DragFloat2("WindowTitleAlign", (float*)&style.WindowTitleAlign, 0.01f, 0.0f, 1.0f, "%.2f");
 				int window_menu_button_position = style.WindowMenuButtonPosition + 1;
-				if (ImGui::Combo("WindowMenuBtnPos", (int*)&window_menu_button_position, "None\0Left\0Right\0"))
+				if (ImGui::Combo("WindowBtnPos", (int*)&window_menu_button_position, "None\0Left\0Right\0"))
 					style.WindowMenuButtonPosition = window_menu_button_position - 1;
 				ImGui::Combo("ColorButtonPosition", (int*)&style.ColorButtonPosition, "Left\0Right\0");
 				ImGui::DragFloat2("ButtonTextAlign", (float*)&style.ButtonTextAlign, 0.01f, 0.0f, 1.0f, "%.2f");
@@ -510,7 +520,7 @@ void GUI::ui_editor() {
 				static ImGuiColorEditFlags alpha_flags = 0;
 
 				//ImGui::SetNextWindowSizeConstraints(ImVec2(500, 500), ImVec2(500, 500));
-				ImGui::BeginChild("##colors", ImVec2(-1, 500), true, ImGuiWindowFlags_AlwaysAutoResize);
+				ImGui::BeginChild("##colors", ImVec2(-1, 350 * io.FontGlobalScale), true, ImGuiWindowFlags_AlwaysAutoResize);
 				ImGui::PushItemWidth(250);
 				if (filter.PassFilter("Player 1 In Editor")) {
 					ImGui::PushID(998);
@@ -981,16 +991,16 @@ void GUI::renderer() {
 			ImGui::Separator();
 
 			ImGui::PushItemWidth(75);
-			ImGui::DragFloat("Fade In Time###audio", &logic.recorder.a_fade_in_time, 0.1, 0, 10, "%.2f"); ImGui::SameLine();
+			ImGui::DragFloat("Fade In Time###audio_in", &logic.recorder.a_fade_in_time, 0.01, 0, 10, "%.2f"); ImGui::SameLine();
 
-			ImGui::DragFloat("Fade Out Time###audio", &logic.recorder.a_fade_out_time, 0.1, 0, 10, "%.2f");
+			ImGui::DragFloat("Fade Out Time###audio_out", &logic.recorder.a_fade_out_time, 0.01, 0, 10, "%.2f");
 
 			ImGui::Text("Video");
 			ImGui::Separator();
 
-			ImGui::DragFloat("Fade In Time###video", &logic.recorder.v_fade_in_time, 0.1, 0, 10, "%.2f"); ImGui::SameLine();
+			ImGui::DragFloat("Fade In Time###video_in", &logic.recorder.v_fade_in_time, 0.01, 0, 10, "%.2f"); ImGui::SameLine();
 
-			ImGui::DragFloat("Fade Out Time###video", &logic.recorder.v_fade_out_time, 0.1, 0, 10, "%.2f");
+			ImGui::DragFloat("Fade Out Time###video_out", &logic.recorder.v_fade_out_time, 0.01, 0, 10, "%.2f");
 
 			ImGui::PopItemWidth();
 			ImGui::Separator();
@@ -1610,7 +1620,7 @@ void GUI::main() {
 
 		ImGui::PushItemFlag(ImGuiItemFlags_NoTabStop, true);
 		ImGui::SetNextItemWidth(150);
-		ImGui::DragFloat("###fps", &input_fps, 0.01, 1.f);
+		ImGui::DragFloat("###fps", &input_fps, 0.1, 1.f);
 		ImGui::PopItemFlag();
 
 		ImGui::SameLine();
@@ -1653,21 +1663,24 @@ void GUI::main() {
 			}
 		} ImGui::SameLine();
 
-		/*static std::string keyName = "[None]";
+		static std::string keyName = "[None]";
+		static bool waiting = false;
 		if (ImGui::Button(keyName.c_str())) {
 			keyName = "Press a key...";
+			waiting = true;
 		}
 		
-		if (ImGui::IsItemHovered())
-		{
+		if (waiting) {
 			for (int i = 0; i < ImGuiKey_COUNT; i++)
 			{
 				if (ImGui::IsKeyPressed(i))
 				{
 					keyName = ImGui::GetKeyName(i);
+					waiting = false;
+					BIND(i, logic.frame_advance);
 				}
 			}
-		}*/
+		}
 
 		ImGui::Checkbox("Real Time Mode", &logic.real_time_mode);
 
