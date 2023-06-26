@@ -347,14 +347,7 @@ public:
 		checkpoints.pop_back();
 	}
 
-	void offset_frames(int offset) {
-		for (auto& frame : inputs) {
-			// Ensure that the offset does not result in a negative frame number
-			if (static_cast<int>(frame.number) + offset >= 0) {
-				frame.number += offset;
-			}
-		}
-	}
+	void offset_frames(int offset);
 
 	Checkpoint get_latest_checkpoint() {
 		if (checkpoints.size() > 0) {

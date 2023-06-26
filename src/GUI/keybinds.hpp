@@ -3,12 +3,18 @@
 
 class Keybinds {
 public:
+
+    static auto& get() {
+        static Keybinds instance;
+        return instance;
+    }
+
     using Func = std::function<void()>;
 
-    void add(const std::string& key, Func function);
+    void add(const int& key, Func function);
 
-    void execute(const std::string& key);
+    void execute(const int& key);
 
 private:
-    std::unordered_map<std::string, Func> binds;
+    std::unordered_map<int, Func> binds;
 };
