@@ -1,38 +1,47 @@
-// Keybinds.cpp
 #include "Keybinds.h"
+#include <iostream>
 
-Keybind::Keybind() : key(std::nullopt) {}
+Keybind::Keybind() : key(std::nullopt), ctrl(false), shift(false), alt(false) {}
 
-void Keybind::SetKey(int newKey) {
-    key = newKey;
+void Keybind::SetKey(int key, bool ctrl, bool shift, bool alt) {
+    this->key = key;
+    this->ctrl = ctrl;
+    this->shift = shift;
+    this->alt = alt;
 }
 
 void Keybind::UnsetKey() {
-    key = std::nullopt;
+    this->key = std::nullopt;
+    this->ctrl = false;
+    this->shift = false;
+    this->alt = false;
 }
 
 std::optional<int> Keybind::GetKey() const {
-    return key;
+    return this->key;
 }
 
-Keybinds::Keybinds() {
-    // Initialize keybinds with no keys by default
-    bindings["audioHack"] = Keybind();
-    bindings["Play"] = Keybind();
-    // ... add more keybinds as needed
-
-    keybindModes["Editor"] = false;
-    keybindModes["Main"] = false;
+bool Keybind::GetCtrl() const {
+    return this->ctrl;
 }
+
+bool Keybind::GetShift() const {
+    return this->shift;
+}
+
+bool Keybind::GetAlt() const {
+    return this->alt;
+}
+
+Keybinds::Keybinds() {}
 
 Keybind& Keybinds::GetKeybind(const std::string& action) {
-    return bindings.at(action);
+    return this->bindings[action].first;
 }
 
-bool Keybinds::GetKeybindMode(const std::string& pane) const {
-    return keybindModes.at(pane);
-}
-
-void Keybinds::SetKeybindMode(const std::string& pane, bool mode) {
-    keybindModes[pane] = mode;
+void Keybinds::SetAction(const std::string& action, std::unique_ptr<KeybindableBase> keybindable) {
+    // Update the bindings map with the new action
+    bindings[action] = std::make_pair(Keybind(), std::move(keybindable));
+    std::cout << "Action " << action << " has been set." << std::endl;
+    std::cout << "Total bindings: " << bindings.size() << std::endl;
 }

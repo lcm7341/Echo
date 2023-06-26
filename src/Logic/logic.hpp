@@ -166,8 +166,27 @@ public:
 	double player_acceleration = 1;
 	std::vector<float> player_x_positions; // because fuck attempt 1, also this isnt my calculated one
 	int calculated_frame = 0;
+
 	Keybinds keybinds;
-	bool keybindMode = false;
+
+	void processKeybinds() {
+		auto& io = ImGui::GetIO();
+
+		for (auto& pair : keybinds.bindings) {
+			printf("Processing keybinds");
+			Keybind& keybind = pair.second.first;
+			std::unique_ptr<KeybindableBase>& keybindable = pair.second.second;
+
+			if (keybind.GetKey().has_value() &&
+				ImGui::IsKeyPressed(keybind.GetKey().value(), false) &&
+				io.KeyCtrl == keybind.GetCtrl() &&
+				io.KeyShift == keybind.GetShift() &&
+				io.KeyAlt == keybind.GetAlt()) {
+				// Call the Keybindable stored in the map
+				keybindable->ran();
+			}
+		}
+	}
 
 	bool ignore_actions_at_playback = true;
 	bool show_frame = false;
