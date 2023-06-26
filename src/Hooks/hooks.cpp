@@ -59,6 +59,9 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
     auto& logic = Logic::get();
     auto play_layer = gd::GameManager::sharedState()->getPlayLayer();
 
+    if (GUI::get().change_display_fps)
+        CCDirector::sharedDirector()->setAnimationInterval(1.f / GUI::get().input_fps);
+
     auto end = std::chrono::steady_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - logic.start);
 

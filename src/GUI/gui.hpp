@@ -48,6 +48,8 @@ public:
 
 	bool docked = false;
 
+	bool change_display_fps = false; // so it doesnt change when ur typing lol
+
 	std::string keybind_prompt = "";
 	std::string keybind_prompt_cache = "";
 	ImVec4 popup_bg_color = { 0, 0, 0, 60 };
