@@ -136,14 +136,9 @@ std::string Logic::highest_cps() {
                 current_percent = std::round(((inputFramesWithinASecond[j].xPosition / end_portal_position) * 100.f) * 100) / 100;
 
                 if (cps != 0 && numClicks + 1 > 3) {
-                    // Rule 3: CPS must not exceed 20 clicks per second rate in any stint of more than 3 clicks and shorter than 1/3rd of a second.
-                    if (cps > 20 && timeBetweenClicks < 1.0f / 3.0f) {
-                        // cps_percents.push_back({ current_percent, "Rule 3 violation: " + std::to_string(cps) + " cps rate for the " + std::to_string(numClicks + 1) + " click stint from frame " + std::to_string(firstClickFrame) + " to " + std::to_string(inputFramesWithinASecond[j].number) + " (" + std::to_string(timeBetweenClicks) + "s)" });
-                        cps_percents.push_back({ current_percent, "Rule 3" });
-                    }
 
                     // Rule 2: CPS must not exceed 18 clicks per second rate in any 1/3rd of a second to 1 second.
-                    if (cps > 18 && timeBetweenClicks >= 1.0f / 3.0f) {
+                    if (cps > 20 && timeBetweenClicks >= 1.0f / 3.0f) {
                         // cps_percents.push_back({ current_percent, "Rule 2 violation: " + std::to_string(cps) + " cps rate for the " + std::to_string(numClicks + 1) + " click stint from frame " + std::to_string(firstClickFrame) + " to " + std::to_string(inputFramesWithinASecond[j].number) + " (" + std::to_string(timeBetweenClicks) + "s)" });
                         cps_percents.push_back({ current_percent, "Rule 2" });
                     }
@@ -151,14 +146,9 @@ std::string Logic::highest_cps() {
             }
             else {
                 if (cps != 0 && numClicks + 1 > 3) {
-                    // Rule 3: CPS must not exceed 20 clicks per second rate in any stint of more than 3 clicks and shorter than 1/3rd of a second.
-                    if (cps > 20 && timeBetweenClicks < 1.0f / 3.0f) {
-                        // cps_percents.push_back({ current_percent, "Rule 3 violation: " + std::to_string(cps) + " cps rate for the " + std::to_string(numClicks + 1) + " click stint from frame " + std::to_string(firstClickFrame) + " to " + std::to_string(inputFramesWithinASecond[j].number) + " (" + std::to_string(timeBetweenClicks) + "s)" });
-                        cps_percents.push_back({ inputFramesWithinASecond[j].number, "Rule 3"});
-                    }
 
                     // Rule 2: CPS must not exceed 18 clicks per second rate in any 1/3rd of a second to 1 second.
-                    if (cps > 18 && timeBetweenClicks >= 1.0f / 3.0f) {
+                    if (cps > 20 && timeBetweenClicks >= 1.0f / 3.0f) {
                         // cps_percents.push_back({ current_percent, "Rule 2 violation: " + std::to_string(cps) + " cps rate for the " + std::to_string(numClicks + 1) + " click stint from frame " + std::to_string(firstClickFrame) + " to " + std::to_string(inputFramesWithinASecond[j].number) + " (" + std::to_string(timeBetweenClicks) + "s)" });
                         cps_percents.push_back({ inputFramesWithinASecond[j].number, "Rule 2" });
                     }
@@ -226,6 +216,15 @@ void Logic::offset_inputs(int lower, int upper) {
             input.number += offset;  // add offset to the frame
             return input;
         });
+}
+
+void Logic::offset_frames(int offset) {
+    for (auto& frame : inputs) {
+        // Ensure that the offset does not result in a negative frame number
+        if (static_cast<int>(frame.number) + offset >= 0) {
+            frame.number += offset;
+        }
+    }
 }
 
 void Logic::set_replay_pos(unsigned idx) {

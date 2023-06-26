@@ -10,7 +10,7 @@ public:
 		return instance;
 	}
 
-	bool show_window = true;
+	bool show_window = false;
 
 	void draw();
 
@@ -50,4 +50,11 @@ public:
 
 	ImVec4 player_1_button_color = { 0.18, 0.89, 0.7, 0.54 };
 	ImVec4 player_2_button_color = { 0.18, 0.89, 0.46, 0.54 };
+
+	ImVec2 main_pos;
+	ImVec2 tools_pos;
+	ImVec2 editor_pos;
+	ImVec2 render_pos;
+	ImVec2 sequence_pos;
+	ImVec2 style_pos;
 };
