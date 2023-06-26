@@ -1,12 +1,38 @@
-#include "keybinds.hpp"
-#include <conio.h> // For _kbhit() and _getch() (Windows-specific)
+// Keybinds.cpp
+#include "Keybinds.h"
 
-void Keybinds::add(const int& key, Func function) {
-    binds[key] = function;
+Keybind::Keybind() : key(std::nullopt) {}
+
+void Keybind::SetKey(int newKey) {
+    key = newKey;
 }
 
-void Keybinds::execute(const int& key) {
-    if (binds.count(key) > 0) {
-        binds[key]();
-    }
+void Keybind::UnsetKey() {
+    key = std::nullopt;
+}
+
+std::optional<int> Keybind::GetKey() const {
+    return key;
+}
+
+Keybinds::Keybinds() {
+    // Initialize keybinds with no keys by default
+    bindings["audioHack"] = Keybind();
+    bindings["Play"] = Keybind();
+    // ... add more keybinds as needed
+
+    keybindModes["Editor"] = false;
+    keybindModes["Main"] = false;
+}
+
+Keybind& Keybinds::GetKeybind(const std::string& action) {
+    return bindings.at(action);
+}
+
+bool Keybinds::GetKeybindMode(const std::string& pane) const {
+    return keybindModes.at(pane);
+}
+
+void Keybinds::SetKeybindMode(const std::string& pane, bool mode) {
+    keybindModes[pane] = mode;
 }

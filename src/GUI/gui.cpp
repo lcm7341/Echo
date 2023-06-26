@@ -1,4 +1,4 @@
-#include "gui.hpp"
+﻿#include "gui.hpp"
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #include <cocos2d.h>
@@ -6,6 +6,7 @@
 #include <MinHook.h>
 #include <cmath>
 #include <sstream>
+#include <algorithm>
 #include <imgui-hook.hpp>
 #include <../imguifiledialog/ImGuiFileDialog.h>
 #include <string_view>
@@ -30,8 +31,6 @@
 #include "../Hooks/hooks.hpp"
 #include <imgui_demo.cpp>
 #include <format>
-
-#define BIND(key, var) Keybinds::get().add(key, [&]() { var = !var; })
 
 int getRandomInt(int N) {
 	// Seed the random number generator with current time
@@ -84,13 +83,15 @@ void GUI::draw() {
 
 	if (g_font) ImGui::PushFont(g_font);
 
+	if (keybind_prompt != "")
+		show_keybind_prompt(keybind_prompt);
+
 	if (show_window) {
 		std::stringstream full_title;
 
 		//full_title << "Echo [" << ECHO_VERSION << "b]";
 
-		full_title << "Echo v0.5 BETA";
-
+		full_title << "Echo v0.5";
 		
 		ImGuiIO& io = ImGui::GetIO();
 
@@ -1530,17 +1531,44 @@ void GUI::tools() {
 
 }
 
+void GUI::show_keybind_prompt(const std::string& buttonName) {
+	static std::string keybindButtonName = "";
+	keybindButtonName = buttonName;
+
+	if (ImGui::BeginPopupModal("Confirm Keybind", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+		ImGui::Text("Please click a button for keybind");
+
+		// Detect key presses when the modal is open
+		for (int i = 0; i < 512; i++) {
+			if (ImGui::IsKeyPressed(i)) {
+				// Set the keybind for the captured button name
+				Logic::get().keybinds.GetKeybind(buttonName).SetKey(i);
+				keybindButtonName = "";
+				ImGui::CloseCurrentPopup();
+			}
+		}
+
+		if (ImGui::Button("Set")) {
+			// Reset the keybind button name
+			keybindButtonName = "";
+			ImGui::CloseCurrentPopup();
+		}
+
+		ImGui::EndPopup();
+	}
+}
+
 void GUI::main() {
 	auto& logic = Logic::get();
 	const ImVec2 buttonSize = { get_width(48), 0 };
 	const ImVec2 fullWidth = { get_width(100), 0 };
-
 
 	float tabWidth = ImGui::GetWindowContentRegionWidth() / 6.0f;
 	if (docked)
 	ImGui::SetNextItemWidth(tabWidth);
 	if (ImGui::BeginTabItem("Main") || !docked) {
 		if (!docked) {
+			ImGui::SetNextWindowPos(ImVec2(200, 200), ImGuiCond_FirstUseEver);
 			ImGui::Begin("Echo v0.5 BETA", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
 			main_pos = ImGui::GetWindowPos();
 		}
@@ -1644,11 +1672,12 @@ void GUI::main() {
 		ImGui::SameLine();
 
 		if (ImGui::DragFloat("Speed", &speed, 0.01, 0.01f, 100.f, "%.2f")) {
-			if (speed > 0) logic.speedhack = speed;
-			/*if (logic.respawn_time_modified) {
+			if (speed < 0.1) speed = 0.1f;
+			logic.speedhack = speed;
+			if (logic.respawn_time_modified) {
 				Opcode opcode(Cheat::AntiCheatBypass);
 				opcode.ModifyFloatAtOffset(0x20A677, logic.speedhack);
-			}*/
+			}
 		}
 		ImGui::PopItemWidth();
 
@@ -1661,26 +1690,14 @@ void GUI::main() {
 			else {
 				audiospeedhack.setEnabled(false);
 			}
-		} ImGui::SameLine();
+		} 
 
-		static std::string keyName = "[None]";
-		static bool waiting = false;
-		if (ImGui::Button(keyName.c_str())) {
-			keyName = "Press a key...";
-			waiting = true;
+		if (ImGui::IsItemHovered() && ImGui::IsMouseReleased(1)) {
+			keybind_prompt = "audioHack";
+			ImGui::OpenPopup("Confirm Keybind");
 		}
 		
-		if (waiting) {
-			for (int i = 0; i < ImGuiKey_COUNT; i++)
-			{
-				if (ImGui::IsKeyPressed(i))
-				{
-					keyName = ImGui::GetKeyName(i);
-					waiting = false;
-					BIND(i, logic.frame_advance);
-				}
-			}
-		}
+		ImGui::SameLine();
 
 		ImGui::Checkbox("Real Time Mode", &logic.real_time_mode);
 
@@ -1881,16 +1898,14 @@ void GUI::main() {
 			ImGuiFileDialog::Instance()->Close();
 		}
 
-		/*
-		bool useBinary = !logic.use_json_for_files;
-		if (ImGui::Checkbox("Use Binary", &useBinary)) {
-			logic.use_json_for_files = !useBinary;
-		}*/
-		
+		const ImVec2 main_size = ImGui::GetWindowSize();
+
 		if (docked)
 			ImGui::EndTabItem();
-		else
+		else {
 			ImGui::End();
+		}
+	
 	}
 }
 
