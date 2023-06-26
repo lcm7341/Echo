@@ -1648,7 +1648,8 @@ void GUI::main() {
 
 		ImGui::PushItemFlag(ImGuiItemFlags_NoTabStop, true);
 		ImGui::SetNextItemWidth(150);
-		ImGui::DragFloat("###fps", &input_fps, 0.1, 1.f);
+		if (ImGui::DragFloat("###fps", &input_fps, 0.1, 1.f))
+			GUI::get().change_display_fps = false;
 		ImGui::PopItemFlag();
 
 		ImGui::SameLine();
@@ -1661,6 +1662,7 @@ void GUI::main() {
 			else {
 				CCDirector::sharedDirector()->setAnimationInterval(1.f / input_fps);
 			}
+			change_display_fps = true ;
 		}
 
 		ImGui::SameLine();
