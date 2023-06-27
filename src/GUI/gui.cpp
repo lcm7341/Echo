@@ -171,36 +171,29 @@ void GUI::draw() {
 	auto advancing_key = Logic::get().keybinds.GetKeybind("advancing").key;
 	if (advancing_key.has_value()) {
 		if (ImGui::IsKeyPressed(advancing_key.value())) {
-			if (!Logic::get().frame_advance) {
-				Logic::get().start = std::chrono::steady_clock::now();
-				Logic::get().frame_advance = true;
-			}
+			Logic::get().start = std::chrono::steady_clock::now();
+			Logic::get().frame_advance = false;
+			Hooks::CCScheduler_update_h(gd::GameManager::sharedState()->getScheduler(), 0, 1.f / Logic::get().fps / Logic::get().speedhack);
+			Logic::get().frame_advance = true;
 		}
 		else {
-			Logic::get().frame_advance = false;
 			Logic::get().start = std::chrono::steady_clock::time_point();
 		}
 	}
 
-	if (Logic::get().frame_advance) {
-		auto end = std::chrono::steady_clock::now();
-		auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - Logic::get().start);
+	auto end = std::chrono::steady_clock::now();
+	auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - Logic::get().start);
 
-		if (duration.count() >= Logic::get().frame_advance_hold_duration) {
-			Logic::get().frame_advance = false;
-			Logic::get().holding_frame_advance = true;
-
-			Hooks::CCScheduler_update_h(gd::GameManager::sharedState()->getScheduler(), 0, 1.f / Logic::get().fps);
-			delay(Logic::get().frame_advance_delay);
-
-			Logic::get().frame_advance = true;
-		}
-		else {
-			Logic::get().holding_frame_advance = false;
-		}
+	if (duration.count() >= Logic::get().frame_advance_hold_duration && Logic::get().start != std::chrono::steady_clock::time_point()) {
+		Logic::get().frame_advance = false;
+		Hooks::CCScheduler_update_h(gd::GameManager::sharedState()->getScheduler(), 0, 1.f / Logic::get().fps);
+		Logic::get().frame_advance = true;
+		delay(Logic::get().frame_advance_delay);
+		Logic::get().holding_frame_advance = true;
 	}
-
-
+	else {
+		Logic::get().holding_frame_advance = false;
+	}
 
 	if (g_font) ImGui::PopFont();
 }
@@ -1789,7 +1782,7 @@ void GUI::main() {
 		ImGui::SameLine();
 
 		if (ImGui::DragFloat("Speed", &speed, 0.01, 0.01f, 100.f, "%.2f")) {
-			if (speed < 0.1) speed = 0.1f;
+			if (speed < 0.01) speed = 0.01f;
 			logic.speedhack = speed;
 			/*if (logic.respawn_time_modified) {
 				Opcode opcode(Cheat::AntiCheatBypass);
