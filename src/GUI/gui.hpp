@@ -1,6 +1,7 @@
 #pragma once
 #include "../Hack/opcode.hpp"
 #include <imgui.h>
+#include "keybinds.h"
 
 class GUI {
 public:
@@ -10,7 +11,7 @@ public:
 		return instance;
 	}
 
-	bool show_window = false;
+	bool show_window = true;
 
 	void draw();
 
@@ -35,8 +36,6 @@ public:
 	void export_theme(std::string path, bool custom_path = false);
 
 	bool show_reset_popup = false;
-
-	int keybind = VK_MENU;
 
 	float input_fps = 60.f;
 

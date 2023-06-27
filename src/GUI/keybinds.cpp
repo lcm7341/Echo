@@ -1,4 +1,4 @@
-#include "Keybinds.h"
+#include "keybinds.h"
 #include <iostream>
 
 Keybind::Keybind() : key(std::nullopt), ctrl(false), shift(false), alt(false) {}

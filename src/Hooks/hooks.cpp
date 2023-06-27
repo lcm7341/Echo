@@ -162,30 +162,6 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
 void __fastcall Hooks::CCKeyboardDispatcher_dispatchKeyboardMSG_h(CCKeyboardDispatcher* self, int, int key, bool down) {
     auto& logic = Logic::get();
 
-    if (down) {
-        auto scheduler = gd::GameManager::sharedState()->getScheduler();
-
-        if (key == 'C') {
-            if (logic.start == std::chrono::steady_clock::time_point())
-                logic.start = std::chrono::steady_clock::now();
-            logic.frame_advance = false;
-            CCScheduler_update_h(scheduler, 0, 1.f / logic.fps / logic.speedhack);
-            logic.frame_advance = true;
-        }
-        else if (key == 'V') {
-            logic.frame_advance = !logic.frame_advance;
-        }
-        else if (key == 'B') {
-            logic.autoclicker = !logic.autoclicker;
-        }
-        else if (key == GUI::get().keybind && !gd::GameManager::sharedState()->getEditorLayer()) {
-            GUI::get().show_window = !GUI::get().show_window;
-        }
-    }
-    else {
-        logic.start = std::chrono::steady_clock::time_point();
-    }
-
     CCKeyboardDispatcher_dispatchKeyboardMSG(self, key, down);
 }
 
@@ -284,11 +260,15 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
     if (frame_counter) {
         if (logic.show_frame) {
             // Update the frame counter label with the current frame number
-            char out[24];
-            const char* text = "Frame: " + logic.get_frame() + 1;
-            sprintf_s(out, "Frame: %i", text);
-            frame_counter->setPosition(logic.frame_counter_x + strlen(text), logic.frame_counter_y);
+            char out[1000];
+            int frame = logic.get_frame();
+            std::string text = std::to_string(frame);
+            int length = text.length();
+            sprintf_s(out, "Frame: %i", frame);
+            frame_counter->setAlignment(CCTextAlignment::kCCTextAlignmentLeft);
+            frame_counter->setPosition(logic.frame_counter_x + length, logic.frame_counter_y); // Adjusted the x-position calculation
             frame_counter->setString(out);
+
         }
         else {
             // Remove and release the frame counter label if show_frame is false
@@ -308,7 +288,7 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
     if (recording_label) {
         if (logic.is_recording()) {
             // Update the frame counter label with the current frame number
-            char out[24];
+            char out[1000];
             sprintf_s(out, "Recording: %i", logic.inputs.size());
             recording_label->setPosition(cocos2d::CCDirector::sharedDirector()->getWinSize().width / 2.f, 20);
             recording_label->setString(out);

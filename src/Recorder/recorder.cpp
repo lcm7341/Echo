@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <fstream>
 #include "../Logic/logic.hpp"
+#include <cstdlib>
 
 // completely stolen from mat, sorry dude
 
@@ -114,7 +115,7 @@ void Recorder::start(const std::string& path) {
             stream << "-filter:a \"volume=1[0:a]";
                 if (!is_testmode)
                     stream << ";[0:a]afade=t=in:d=" << a_fade_in_time << "[0:a]";
-                if (fade_out && a_fade_in_time > 0 && m_finished_level)
+                if (fade_out && a_fade_out_time > 0 && m_finished_level)
                     stream << ";[0:a]afade=t=out:d=" << a_fade_out_time << ":st = " << (total_time - m_after_end_duration - 3.5f) << "[0:a]";
             std::cout << "in " << fade_in << " out " << fade_out << std::endl;
             stream << "\" \"" << temp_path << "\" ";

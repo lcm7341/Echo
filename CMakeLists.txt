@@ -3,6 +3,10 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 project(Echo)
+set(Echo_VERSION_MAJOR 0)
+set(Echo_VERSION_MINOR 6)
+
+set(CMAKE_SHARED_LIBRARY_SUFFIX " v${Echo_VERSION_MAJOR}.${Echo_VERSION_MINOR}.dll")
 
 add_custom_target(
     increment_version_number

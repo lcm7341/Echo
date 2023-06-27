@@ -102,6 +102,20 @@ void writeConfig() {
 	j["style_pos_x"] = GUI::get().style_pos.x;
 	j["style_pos_y"] = GUI::get().style_pos.y;
 
+	for (const auto& binding : logic.keybinds.bindings) {
+		const std::string& action = binding.first;
+		const Keybind& keybind = binding.second.first;
+
+		nlohmann::json jsonKeybind;
+		if (keybind.GetKey().has_value())
+			jsonKeybind["key"] = keybind.GetKey().value();
+		jsonKeybind["ctrl"] = keybind.GetCtrl();
+		jsonKeybind["shift"] = keybind.GetShift();
+		jsonKeybind["alt"] = keybind.GetAlt();
+
+		j["keybinds"][action] = jsonKeybind;
+	}
+
 	std::ofstream file(".echo\\settings\\settings.json");
 
 	file << j.dump(4);
@@ -197,8 +211,7 @@ void readConfig() {
 	GUI::get().style_pos.x = getOrDefault(j, "style_pos_x", 1425);
 	GUI::get().style_pos.y = getOrDefault(j, "style_pos_y", 35);
 
-
-	CCDirector::sharedDirector()->setAnimationInterval(1.f / GUI::get().input_fps);
+	CCDirector::sharedDirector()->setAnimationInterval(1.f / logic.fps);
 
 	file.close();
 }
@@ -224,13 +237,12 @@ void UnfullscreenGame()
 }
 
 DWORD WINAPI my_thread(void* hModule) {
+	readConfig();
 	// UnfullscreenGame();
 	MH_Initialize();
 	Hooks::init_hooks();
 	auto& instance = GUI::get();
 	AudiopitchHack::getInstance().initialize();
-
-	readConfig();
 
 	ImGuiHook::setRenderFunction(renderFuncWrapper);
 	//ImGuiHook::setToggleCallback(callback);

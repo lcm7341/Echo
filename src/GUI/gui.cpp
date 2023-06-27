@@ -96,7 +96,7 @@ void GUI::draw() {
 
 		//full_title << "Echo [" << ECHO_VERSION << "b]";
 
-		full_title << "Echo v0.5";
+		full_title << "Echo v0.6";
 		
 		ImGuiIO& io = ImGui::GetIO();
 
@@ -892,7 +892,6 @@ struct Resolution {
 	int height;
 };
 
-
 void GUI::renderer() {
 	auto& logic = Logic::get();
 	const char* resolution_types[] = { "SD (720p)", "HD (1080p)", "QHD (1440p)", "4K (2160p)" };
@@ -1039,12 +1038,12 @@ void GUI::renderer() {
 
 		if (PLAYLAYER) {
 			if (!logic.recorder.m_recording) {
-				if (ImGui::Button("Start Recording")) {
+				if (ImGui::Button("Start Rendering")) {
 					logic.recorder.start(logic.recorder.directory + logic.recorder.video_name + logic.recorder.extension);
 				}
 			}
 			else {
-				if (ImGui::Button("Stop Recording")) {
+				if (ImGui::Button("Stop Rendering")) {
 					logic.recorder.stop();
 				}
 			}
@@ -1054,6 +1053,8 @@ void GUI::renderer() {
 			ImGui::Button("Start Recording");
 			ImGui::EndDisabled();
 		}
+
+		CHECK_KEYBIND("toggleRendering");
 
 		if (docked)
 			ImGui::EndTabItem();
@@ -1191,7 +1192,7 @@ void GUI::sequential_replay() {
 	}
 }
 
-static int selected_noclip = 3; // Index of "Both" option (auto selected)
+static int selected_noclip = 0; // Index of "Both" option (auto selected)
 static int selected_autoclicker_player = 2; // Index of "Both" option (auto selected)
 
 std::map<std::string, std::shared_ptr<Convertible>> options = {
@@ -1360,8 +1361,12 @@ void GUI::tools() {
 		ImGui::PopItemWidth();
 
 		ImGui::Checkbox("Click Both Players", &logic.click_both_players);
+
+		CHECK_KEYBIND("clickBoth");
+		
 		ImGui::SameLine();
 		ImGui::Checkbox("Swap Player Input", &logic.swap_player_input);
+		CHECK_KEYBIND("swapInput");
 
 		ImGui::Separator();
 
@@ -1369,6 +1374,7 @@ void GUI::tools() {
 		if (ImGui::Checkbox("Disable Anticheat", &antiCheatBypass)) {
 			antiCheatBypass ? anticheatBypass.activate() : anticheatBypass.deactivate();
 		}
+		CHECK_KEYBIND("anticheat");
 
 		ImGui::SameLine(0, docked ? 100 : -1);
 
@@ -1382,8 +1388,9 @@ void GUI::tools() {
 				opcode.ModifyFloatAtOffset(0x20A677, 1.0f);
 			}
 		}
-		
 
+		CHECK_KEYBIND("modifyRespawn");
+		
 		bool practiceActivated = practiceMusic.isActivated();
 		if (ImGui::Checkbox("Overwrite Practice Music", &practiceActivated)) {
 			if (practiceActivated) {
@@ -1393,6 +1400,7 @@ void GUI::tools() {
 				practiceMusic.deactivate();
 			}
 		}
+		CHECK_KEYBIND("practiceHack");
 
 		ImGui::SameLine(0, docked ? 46 : -1);
 
@@ -1405,14 +1413,12 @@ void GUI::tools() {
 				noEscape.deactivate();
 			}
 		}
+		CHECK_KEYBIND("noEsc");
 
 		ImGui::Separator();
 
 		ImGui::Checkbox("Enable Autoclicker", &logic.autoclicker);
-
-		ImGui::SameLine();
-
-		HelpMarker("Keybind for this setting is 'B'");
+		CHECK_KEYBIND("autoClicker");
 
 		ImGui::SameLine();
 
@@ -1467,6 +1473,7 @@ void GUI::tools() {
 		ImGui::PopItemWidth();
 
 		ImGui::Checkbox("Auto Disable", &logic.autoclicker_auto_disable);
+		CHECK_KEYBIND("autoDisableClicker");
 
 		ImGui::SameLine();
 
@@ -1488,6 +1495,9 @@ void GUI::tools() {
 		ImGui::Separator();
 
 		ImGui::Checkbox("Frame Advance", &logic.frame_advance); ImGui::SameLine(0, docked ? 75 : -1);
+
+		CHECK_KEYBIND("frameAdvance");
+
 		if (ImGui::Button("Advance", ImVec2(150, 0))) {
 			if (logic.start == std::chrono::steady_clock::time_point())
 				logic.start = std::chrono::steady_clock::now();
@@ -1495,6 +1505,8 @@ void GUI::tools() {
 			Hooks::CCScheduler_update_h(gd::GameManager::sharedState()->getScheduler(), 0, 1.f / logic.fps / logic.speedhack);
 			logic.frame_advance = true;
 		} else logic.start = std::chrono::steady_clock::time_point();
+
+		CHECK_KEYBIND("advancing");
 
 		ImGui::SameLine();
 		HelpMarker("Frame Advance is a tool that allows you to step through the game's frames one at a time.\nYou can use either the 'Advance' button or the respective keybind to advance.");
@@ -1589,12 +1601,6 @@ void GUI::show_keybind_prompt(const std::string& buttonName) {
 			}
 		}
 
-		if (ImGui::Button("Exit")) {
-			ImGui::CloseCurrentPopup();
-			keybind_prompt_cache = "";
-			keybind_prompt = "";
-		}
-
 		if (newKey.has_value()) {
 			std::string keyInfo = "Pressed key: " + GetKeyName(*newKey);
 			if (newCtrl) keyInfo += " with Control";
@@ -1602,14 +1608,39 @@ void GUI::show_keybind_prompt(const std::string& buttonName) {
 			if (newAlt) keyInfo += " with Alt";
 			ImGui::Text(keyInfo.c_str());
 
-			ImGui::SameLine();
-
-			if (ImGui::Button("Save")) {
+			if (ImGui::Button("Save", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.5, 0))) {
 				Logic::get().keybinds.GetKeybind(keybindButtonName).SetKey(*newKey, newCtrl, newShift, newAlt);
 				ImGui::CloseCurrentPopup();
 				keybind_prompt_cache = "";
 				keybind_prompt = "";
 			}
+		}
+		else {
+			ImGui::BeginDisabled();
+			ImGui::Button("Save", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.5, 0));
+			ImGui::EndDisabled();
+		}
+		ImGui::SameLine();
+		if (existingKeybind.GetKey().has_value()) {
+
+			if (ImGui::Button("Remove", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.48, 0))) {
+				Logic::get().keybinds.GetKeybind(keybindButtonName).UnsetKey();
+				ImGui::CloseCurrentPopup();
+				keybind_prompt_cache = "";
+				keybind_prompt = "";
+			}
+		}
+		else {
+			ImGui::BeginDisabled();
+			ImGui::Button("Remove", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.48, 0));
+			ImGui::EndDisabled();
+		}
+		ImGui::Separator();
+
+		if (ImGui::Button("Exit", ImVec2(ImGui::GetWindowContentRegionWidth(), 0))) {
+			ImGui::CloseCurrentPopup();
+			keybind_prompt_cache = "";
+			keybind_prompt = "";
 		}
 
 		ImGui::EndPopup();
@@ -1625,7 +1656,7 @@ void GUI::main() {
 	ImGui::SetNextItemWidth(tabWidth);
 	if (ImGui::BeginTabItem("Main") || !docked) {
 		if (!docked) {
-			ImGui::Begin("Echo v0.5 BETA", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+			ImGui::Begin("Echo v0.6", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
 			main_pos = ImGui::GetWindowPos();
 		}
 
@@ -1645,6 +1676,8 @@ void GUI::main() {
 			logic.toggle_recording();
 			logic.sort_inputs();
 		}
+
+		CHECK_KEYBIND("toggleRecording");
 
 		if (logic.is_recording()) {
 			style.Colors[ImGuiCol_Button] = tempColor;
@@ -1667,6 +1700,8 @@ void GUI::main() {
 			logic.toggle_playing();
 			logic.sort_inputs();
 		}
+
+		CHECK_KEYBIND("togglePlaying");
 
 		if (logic.is_playing()) {
 			style.Colors[ImGuiCol_Button] = tempColor;
@@ -1732,10 +1767,10 @@ void GUI::main() {
 		if (ImGui::DragFloat("Speed", &speed, 0.01, 0.01f, 100.f, "%.2f")) {
 			if (speed < 0.1) speed = 0.1f;
 			logic.speedhack = speed;
-			if (logic.respawn_time_modified) {
+			/*if (logic.respawn_time_modified) {
 				Opcode opcode(Cheat::AntiCheatBypass);
 				opcode.ModifyFloatAtOffset(0x20A677, logic.speedhack);
-			}
+			}*/
 		}
 		ImGui::PopItemWidth();
 
@@ -1752,21 +1787,28 @@ void GUI::main() {
 		}
 
 		CHECK_KEYBIND("audioHack");
-
 		
 		ImGui::SameLine();
 
 		ImGui::Checkbox("Real Time Mode", &logic.real_time_mode);
 
+		CHECK_KEYBIND("realTimeMode");
+
 		ImGui::Checkbox("No Input Overwrite", &logic.no_overwrite); ImGui::SameLine();
+		CHECK_KEYBIND("noOverwrite");
 
 		ImGui::Checkbox("Ignore actions during playback", &logic.ignore_actions_at_playback);
+		CHECK_KEYBIND("ignoreActions");
 
 		ImGui::Separator();
 
 		ImGui::Checkbox("Show Frame", &logic.show_frame); ImGui::SameLine();
 
+		CHECK_KEYBIND("showFrame");
+
 		ImGui::Checkbox("Show CPS", &logic.show_cps); ImGui::SameLine();
+
+		CHECK_KEYBIND("showCPS");
 
 		bool open_label_modal = true;
 
@@ -1889,9 +1931,13 @@ void GUI::main() {
 
 		ImGui::Checkbox("Use JSON", &logic.use_json_for_files);
 
+		CHECK_KEYBIND("useJSON");
+
 		ImGui::SameLine();
 
 		ImGui::Checkbox("Use File Dialog", &logic.file_dialog);
+
+		CHECK_KEYBIND("useDialog");
 
 		ImGui::PushItemFlag(ImGuiItemFlags_NoTabStop, true);
 		ImGui::SetNextItemWidth(get_width(75.f));
@@ -1955,6 +2001,12 @@ void GUI::main() {
 			ImGuiFileDialog::Instance()->Close();
 		}
 
+		if (ImGui::Button("Close Menu", ImVec2(ImGui::GetWindowContentRegionWidth(), 0))) {
+			show_window = false;
+		}
+
+		CHECK_KEYBIND("menuBind");
+
 		const ImVec2 main_size = ImGui::GetWindowSize();
 
 		if (docked)
@@ -1965,6 +2017,49 @@ void GUI::main() {
 	
 	}
 }
+
+// has to be here now for keybinds, cuz they aint loaded til gui init
+void readBinds() {
+	auto& logic = Logic::get();
+	auto& recorder = logic.recorder;
+
+	std::ifstream file(".echo\\settings\\settings.json");
+	if (!file.is_open()) {
+		logic.error = "Error: Failed to open config file";
+		return;
+	}
+	json j;
+	file >> j;
+
+	if (j.contains("keybinds")) {
+		const nlohmann::json& jsonKeybinds = j["keybinds"];
+
+		for (auto it = jsonKeybinds.begin(); it != jsonKeybinds.end(); ++it) {
+			const std::string& action = it.key();
+			const nlohmann::json& jsonKeybind = it.value();
+
+			Keybind& keybind = logic.keybinds.bindings[action].first;
+
+			keybind.ctrl = jsonKeybind["ctrl"].get<bool>();
+			keybind.shift = jsonKeybind["shift"].get<bool>();
+			keybind.alt = jsonKeybind["alt"].get<bool>();
+			if (jsonKeybind.contains("key")) {
+				keybind.SetKey(jsonKeybind["key"].get<int>());
+				Logic::get().keybinds.GetKeybind(action).SetKey(keybind.key.value(), keybind.ctrl, keybind.shift, keybind.alt);
+			}
+		}
+	}
+
+	CCDirector::sharedDirector()->setAnimationInterval(1.f / logic.fps);
+
+	file.close();
+}
+
+#define SET_BIND(name, var) \
+    std::unique_ptr<KeybindableBase> name = std::unique_ptr<KeybindableBase>(new Keybindable([this]() { \
+        var = !var; \
+    })); \
+    Logic::get().keybinds.SetAction(#name, std::move(name))
 
 void GUI::init() {
 	std::unique_ptr<KeybindableBase> audioSpeedHackAction = std::unique_ptr<KeybindableBase>(new Keybindable([this]() {
@@ -1981,7 +2076,95 @@ void GUI::init() {
 		}
 	}));
 
+	std::unique_ptr<KeybindableBase> anticheatAction = std::unique_ptr<KeybindableBase>(new Keybindable([this]() {
+		bool isEnabled = anticheatBypass.isActivated();
+
+		isEnabled = !isEnabled; // flip the value
+		isEnabled ? anticheatBypass.activate() : anticheatBypass.deactivate();
+		}));
+
+	std::unique_ptr<KeybindableBase> practiceMusicAction = std::unique_ptr<KeybindableBase>(new Keybindable([this]() {
+		bool isEnabled = practiceMusic.isActivated();
+
+		isEnabled = !isEnabled; // flip the value
+		isEnabled ? practiceMusic.activate() : practiceMusic.deactivate();
+		}));
+
+	std::unique_ptr<KeybindableBase> noEscAction = std::unique_ptr<KeybindableBase>(new Keybindable([this]() {
+		bool isEnabled = practiceMusic.isActivated();
+
+		isEnabled = !isEnabled; // flip the value
+		isEnabled ? noEscape.activate() : noEscape.deactivate();
+		}));
+
+	std::unique_ptr<KeybindableBase> advanceAction = std::unique_ptr<KeybindableBase>(new Keybindable([this]() {
+		if (Logic::get().start == std::chrono::steady_clock::time_point())
+			Logic::get().start = std::chrono::steady_clock::now();
+		Logic::get().frame_advance = false;
+		Hooks::CCScheduler_update_h(gd::GameManager::sharedState()->getScheduler(), 0, 1.f / Logic::get().fps / Logic::get().speedhack);
+		Logic::get().frame_advance = true;
+		}));
+
+
+	std::unique_ptr<KeybindableBase> renderingAction = std::unique_ptr<KeybindableBase>(new Keybindable([this]() {
+		Logic::get().recorder.m_recording = !Logic::get().recorder.m_recording;
+		if (Logic::get().recorder.m_recording) {
+				Logic::get().recorder.start(Logic::get().recorder.directory + Logic::get().recorder.video_name + Logic::get().recorder.extension);
+		}
+		else {
+				Logic::get().recorder.stop();
+		}
+		}));
+
+	std::unique_ptr<KeybindableBase> recordingAction = std::unique_ptr<KeybindableBase>(new Keybindable([this]() {
+
+		Logic::get().toggle_recording();
+		Logic::get().sort_inputs();
+		}));
+
+	std::unique_ptr<KeybindableBase> playingAction = std::unique_ptr<KeybindableBase>(new Keybindable([this]() {
+
+		Logic::get().toggle_playing();
+		Logic::get().sort_inputs();
+		}));
+
 	Logic::get().keybinds.SetAction("audioHack", std::move(audioSpeedHackAction));
+
+	Logic::get().keybinds.SetAction("anticheat", std::move(anticheatAction));
+
+	Logic::get().keybinds.SetAction("practiceHack", std::move(practiceMusicAction));
+	Logic::get().keybinds.SetAction("noEsc", std::move(noEscAction));
+	Logic::get().keybinds.SetAction("toggleRendering", std::move(renderingAction));
+
+	Logic::get().keybinds.SetAction("toggleRecording", std::move(recordingAction));
+	Logic::get().keybinds.SetAction("togglePlaying", std::move(playingAction));
+	Logic::get().keybinds.SetAction("advancing", std::move(advanceAction));
+
+	SET_BIND(realTimeMode, Logic::get().real_time_mode);
+	
+	SET_BIND(showFrame, Logic::get().show_frame);
+
+	SET_BIND(showCPS, Logic::get().show_cps);
+
+	SET_BIND(useJSON, Logic::get().use_json_for_files);
+
+	SET_BIND(useDialog, Logic::get().file_dialog);
+
+	SET_BIND(clickBoth, Logic::get().click_both_players);
+
+	SET_BIND(swapInput, Logic::get().swap_player_input);
+
+	SET_BIND(noOverwrite, Logic::get().no_overwrite);
+	SET_BIND(ignoreActions, Logic::get().ignore_actions_at_playback);
+	SET_BIND(modifyRespawn, Logic::get().respawn_time_modified);
+	SET_BIND(autoClicker, Logic::get().autoclicker);
+	SET_BIND(autoDisableClicker, Logic::get().autoclicker_auto_disable);
+	SET_BIND(frameAdvance, Logic::get().frame_advance);
+	SET_BIND(menuBind, show_window);
+
+	Logic::get().keybinds.GetKeybind("menuBind").SetKey(164, false, false, true);
+
+	readBinds();
 
 	auto& style = ImGui::GetStyle();
 	style.WindowTitleAlign = ImVec2(0.5f, 0.5f);
@@ -1990,6 +2173,8 @@ void GUI::init() {
 
 	ImFontConfig fontConfig;
 	fontConfig.FontDataOwnedByAtlas = false;
+
+	CCDirector::sharedDirector()->setAnimationInterval(1.f / Logic::get().fps);
 
 	ImGui::GetIO().Fonts->AddFontFromMemoryTTF(Fonts::OpenSans_Medium, sizeof(Fonts::OpenSans_Medium), 21.f, &fontConfig);
 

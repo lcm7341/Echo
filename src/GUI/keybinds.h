@@ -17,7 +17,6 @@ public:
     bool GetShift() const;
     bool GetAlt() const;
 
-private:
     std::optional<int> key;
     bool ctrl;
     bool shift;
