@@ -126,13 +126,12 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
         if (logic.real_time_mode) {
 
             const float target_dt = 1.f / logic.fps / logic.speedhack;
-
-            if (!logic.real_time_mode) CCScheduler_update(self, dt);
+            
 
             g_disable_render = true;
 
             // min(static_cast<int>(g_left_over / target_dt), 50) <- super fast but i think its inaccurate
-            const unsigned int times = min(round((dt + g_left_over) / target_dt), 100);
+            const unsigned int times = min(round((dt + g_left_over) / target_dt), 150);
 
             GUI::get().scheduler_dt = times;
 
@@ -144,20 +143,9 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
             }
             g_left_over += dt - target_dt * times;
         }
-        /*else if (logic.recorder.m_recording) {
-            dt = 1.f / logic.fps;
-            return CCScheduler_update(self, dt);
-        }*/
         else {
             dt = 1.f / logic.fps;
             return CCScheduler_update(self, dt);
-        }
-    }
-    else {
-        if (gd::GameManager::sharedState()->getPlayLayer()) {
-            if (gd::GameManager::sharedState()->getPlayLayer()->m_player1->m_position.x != logic.last_xpos) {
-                //logic.frame++;
-            }
         }
     }
     return CCScheduler_update(self, dt);

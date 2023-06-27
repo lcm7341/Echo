@@ -1735,8 +1735,6 @@ void GUI::main() {
 		auto end = std::chrono::steady_clock::now();
 		auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - Logic::get().start);
 
-		ImGui::Text("Duration: %i", duration.count());
-
 		ImGui::Text("FPS: %.2f", logic.get_fps()); ImGui::SameLine();
 		
 		std::string frame_text = "Frame: " + std::to_string(logic.get_frame());

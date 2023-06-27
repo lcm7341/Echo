@@ -42,6 +42,6 @@ Keybind& Keybinds::GetKeybind(const std::string& action) {
 void Keybinds::SetAction(const std::string& action, std::unique_ptr<KeybindableBase> keybindable) {
     // Update the bindings map with the new action
     bindings[action] = std::make_pair(Keybind(), std::move(keybindable));
-    std::cout << "Action " << action << " has been set." << std::endl;
-    std::cout << "Total bindings: " << bindings.size() << std::endl;
+    //std::cout << "Action " << action << " has been set." << std::endl;
+    //std::cout << "Total bindings: " << bindings.size() << std::endl;
 }

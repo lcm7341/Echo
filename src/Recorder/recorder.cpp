@@ -38,9 +38,9 @@ std::wstring widen(const char* str) {
 Recorder::Recorder() : m_width(1920), m_height(1080), m_fps(60) {}
 
 void Recorder::start(const std::string& path) {
-    /* AllocConsole();
+     AllocConsole();
      static std::ofstream conout("CONOUT$", std::ios::out);
-     std::cout.rdbuf(conout.rdbuf());*/
+     std::cout.rdbuf(conout.rdbuf());
     auto& logic = Logic::get();
     m_recording = true;
     m_frame_has_data = false;
@@ -75,10 +75,18 @@ void Recorder::start(const std::string& path) {
             stream << "-pix_fmt yuv420p ";
         auto playlayer = gd::GameManager::sharedState()->getPlayLayer();
         int end_frame = playlayer->timeForXPos2(playlayer->m_endPortal->getPositionX(), true) * logic.fps;
-        if (color_fix) {
-            stream << "-cq 0 -vf colorspace=all=bt709:iall=bt470bg:fast=1," << m_vf_args << "\"vflip\"" << " -an \"" << path << "\" ";
+        if (!m_vf_args.empty()) {
+            if (color_fix) {
+                stream << "-cq 0 -vf colorspace=all=bt709:iall=bt470bg:fast=1," << m_vf_args << ",\"vflip\"" << " -an \"" << path << "\" ";
+            }
+            else stream << "-cq 0 -vf " << m_vf_args << ",\"vflip\"" << " -an \"" << path << "\" ";
         }
-        else stream << "-cq 0 -vf " << m_vf_args << "\"vflip\"" << " -an \"" << path << "\" ";
+        else {
+            if (color_fix) {
+                stream << "-cq 0 -vf colorspace=all=bt709:iall=bt470bg:fast=1,\"vflip\"" << " -an \"" << path << "\" ";
+            }
+            else stream << "-cq 0 -vf \"vflip\"" << " -an \"" << path << "\" ";
+        }
         //m_vf_args = "";
 
         auto process = subprocess::Popen(stream.str());
