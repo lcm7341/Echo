@@ -20,7 +20,7 @@ file(
   src/*.hpp
 )
 
-add_library(Echo SHARED ${SOURCE_FILES} )
+add_library(Echo SHARED ${SOURCE_FILES}  "src/Logic/speedhack.h" "src/Logic/speedhack.cpp")
 
 add_dependencies(Echo
     increment_version_number

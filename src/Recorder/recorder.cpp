@@ -38,9 +38,9 @@ std::wstring widen(const char* str) {
 Recorder::Recorder() : m_width(1920), m_height(1080), m_fps(60) {}
 
 void Recorder::start(const std::string& path) {
-   /* AllocConsole();
-    static std::ofstream conout("CONOUT$", std::ios::out);
-    std::cout.rdbuf(conout.rdbuf());*/
+    /* AllocConsole();
+     static std::ofstream conout("CONOUT$", std::ios::out);
+     std::cout.rdbuf(conout.rdbuf());*/
     auto& logic = Logic::get();
     m_recording = true;
     m_frame_has_data = false;
@@ -64,7 +64,7 @@ void Recorder::start(const std::string& path) {
     auto song_offset = m_song_start_offset;
     std::thread([&, path, song_file, fade_in, fade_out, bg_volume, sfx_volume, is_testmode, song_offset]() {
         std::stringstream stream;
-        stream << '"' << m_ffmpeg_path << '"' << " -y -f rawvideo -pix_fmt rgb24 -s " << m_width << "x" << m_height << " -r " << m_fps
+        stream << '"' << "ffmpeg\\ffmpeg.exe" << '"' << " -y -f rawvideo -pix_fmt rgb24 -s " << m_width << "x" << m_height << " -r " << m_fps
             << " -i - ";
         if (!m_codec.empty())
             stream << "-c:v " << m_codec << " ";
@@ -76,9 +76,9 @@ void Recorder::start(const std::string& path) {
         auto playlayer = gd::GameManager::sharedState()->getPlayLayer();
         int end_frame = playlayer->timeForXPos2(playlayer->m_endPortal->getPositionX(), true) * logic.fps;
         if (color_fix) {
-            stream << "-cq 0 -vf \"fade=in:0:d=" << v_fade_in_time << "\",\"fade=out:st=" << end_frame << ":d=" << v_fade_in_time << "\",colorspace=all=bt709:iall=bt470bg:fast=1," << m_vf_args << "\"vflip\"" << " -an \"" << path << "\" ";
+            stream << "-cq 0 -vf colorspace=all=bt709:iall=bt470bg:fast=1," << m_vf_args << "\"vflip\"" << " -an \"" << path << "\" ";
         }
-        else stream << "-cq 0 -vf \"fade=in:0:d=" << v_fade_in_time << "\",\"fade=out:st=" << end_frame << ":d=" << v_fade_in_time << "\," << m_vf_args << "\"vflip\"" << " -an \"" << path << "\" ";
+        else stream << "-cq 0 -vf " << m_vf_args << "\"vflip\"" << " -an \"" << path << "\" ";
         //m_vf_args = "";
 
         auto process = subprocess::Popen(stream.str());
@@ -108,15 +108,15 @@ void Recorder::start(const std::string& path) {
         auto total_time = m_last_frame_t; // 1 frame too short?
         {
             std::stringstream stream;
-            stream << '"' << m_ffmpeg_path << '"' << " -y -ss " << song_offset << " -i \"" << song_file
+            stream << '"' << "ffmpeg\\ffmpeg.exe" << '"' << " -y -ss " << song_offset << " -i \"" << song_file
                 << "\" -i \"" << path << "\" -t " << total_time << " -c:v copy ";
             if (!m_extra_audio_args.empty())
                 stream << m_extra_audio_args << " ";
             stream << "-filter:a \"volume=1[0:a]";
-                if (!is_testmode)
-                    stream << ";[0:a]afade=t=in:d=" << a_fade_in_time << "[0:a]";
-                if (fade_out && a_fade_out_time > 0 && m_finished_level)
-                    stream << ";[0:a]afade=t=out:d=" << a_fade_out_time << ":st = " << (total_time - m_after_end_duration - 3.5f) << "[0:a]";
+            if (!is_testmode)
+                stream << ";[0:a]afade=t=in:d=" << a_fade_in_time << "[0:a]";
+            if (fade_out && a_fade_out_time > 0 && m_finished_level)
+                stream << ";[0:a]afade=t=out:d=" << a_fade_out_time << ":st = " << (total_time - m_after_end_duration - 3.5f) << "[0:a]";
             std::cout << "in " << fade_in << " out " << fade_out << std::endl;
             stream << "\" \"" << temp_path << "\" ";
             auto process = subprocess::Popen(stream.str());

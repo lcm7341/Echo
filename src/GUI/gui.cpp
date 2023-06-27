@@ -71,6 +71,9 @@ do { \
     } \
 } while(0)
 
+int g_has_imported = false; // ffs
+int g_has_placed_positions = false; // ffs
+
 void delay(int milliseconds) {
 	auto start = std::chrono::steady_clock::now();
 	auto end = start + std::chrono::milliseconds(milliseconds);
@@ -79,9 +82,6 @@ void delay(int milliseconds) {
 		// Do nothing, just wait
 	}
 }
-
-int g_has_imported = false; // ffs
-int g_has_placed_positions = false; // ffs
 
 void GUI::draw() {
 	Logic::get().processKeybinds();
@@ -168,6 +168,19 @@ void GUI::draw() {
 		}
 	}
 
+	auto advancing_key = Logic::get().keybinds.GetKeybind("advancing").key;
+	if (advancing_key.has_value()) {
+		if (ImGui::IsKeyPressed(advancing_key.value())) {
+			Logic::get().start = std::chrono::steady_clock::now();
+			Logic::get().frame_advance = false;
+			Hooks::CCScheduler_update_h(gd::GameManager::sharedState()->getScheduler(), 0, 1.f / Logic::get().fps / Logic::get().speedhack);
+			Logic::get().frame_advance = true;
+		}
+		else {
+			Logic::get().start = std::chrono::steady_clock::time_point();
+		}
+	}
+
 	auto end = std::chrono::steady_clock::now();
 	auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - Logic::get().start);
 
@@ -181,6 +194,7 @@ void GUI::draw() {
 	else {
 		Logic::get().holding_frame_advance = false;
 	}
+
 	if (g_font) ImGui::PopFont();
 }
 
@@ -1718,6 +1732,11 @@ void GUI::main() {
 
 		ImGui::Separator();
 
+		auto end = std::chrono::steady_clock::now();
+		auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - Logic::get().start);
+
+		ImGui::Text("Duration: %i", duration.count());
+
 		ImGui::Text("FPS: %.2f", logic.get_fps()); ImGui::SameLine();
 		
 		std::string frame_text = "Frame: " + std::to_string(logic.get_frame());
@@ -1790,7 +1809,12 @@ void GUI::main() {
 		
 		ImGui::SameLine();
 
+		if (logic.recorder.m_recording && !logic.recorder.real_time_rendering) {
+			ImGui::BeginDisabled();
+			logic.real_time_mode = false;
+		}
 		ImGui::Checkbox("Real Time Mode", &logic.real_time_mode);
+		if (logic.recorder.m_recording && !logic.recorder.real_time_rendering) ImGui::EndDisabled();
 
 		CHECK_KEYBIND("realTimeMode");
 
@@ -2040,11 +2064,11 @@ void readBinds() {
 
 			Keybind& keybind = logic.keybinds.bindings[action].first;
 
-			keybind.ctrl = jsonKeybind["ctrl"].get<bool>();
-			keybind.shift = jsonKeybind["shift"].get<bool>();
-			keybind.alt = jsonKeybind["alt"].get<bool>();
 			if (jsonKeybind.contains("key")) {
 				keybind.SetKey(jsonKeybind["key"].get<int>());
+				keybind.ctrl = jsonKeybind["ctrl"].get<bool>();
+				keybind.shift = jsonKeybind["shift"].get<bool>();
+				keybind.alt = jsonKeybind["alt"].get<bool>();
 				Logic::get().keybinds.GetKeybind(action).SetKey(keybind.key.value(), keybind.ctrl, keybind.shift, keybind.alt);
 			}
 		}
@@ -2162,7 +2186,7 @@ void GUI::init() {
 	SET_BIND(frameAdvance, Logic::get().frame_advance);
 	SET_BIND(menuBind, show_window);
 
-	Logic::get().keybinds.GetKeybind("menuBind").SetKey(164, false, false, true);
+	Logic::get().keybinds.GetKeybind("menuBind").SetKey(90, false, true, false);
 
 	readBinds();
 

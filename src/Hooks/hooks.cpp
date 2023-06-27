@@ -4,6 +4,7 @@
 #include "../Hack/audiopitchHack.hpp"
 #include "../Logic/autoclicker.hpp"
 #include "../GUI/gui.hpp"
+#include "../Logic/speedhack.h"
 
 #define FRAME_LABEL_ID 82369 + 1 //random value :P
 #define CPS_LABEL_ID 82369 + 2 //random value :P
@@ -59,16 +60,15 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
     auto& logic = Logic::get();
     auto play_layer = gd::GameManager::sharedState()->getPlayLayer();
 
+    if (logic.frame_advance) return;
+
     if (GUI::get().change_display_fps)
         CCDirector::sharedDirector()->setAnimationInterval(1.f / GUI::get().input_fps);
 
-    auto end = std::chrono::steady_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - logic.start);
-
-    /*if (logic.recorder.m_recording) {
+    if (logic.recorder.m_recording && !logic.recorder.real_time_rendering) {
         dt = 1.f / logic.fps;
         return CCScheduler_update(self, 1.f / logic.fps);
-    }*/
+    }
 
     if (logic.autoclicker && play_layer && !play_layer->m_isPaused) {
         Autoclicker::get().update(logic.get_frame());
@@ -95,10 +95,13 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
         }
     }
 
-    if (logic.frame_advance) return;
-
     if (logic.real_time_mode) {
+        Speedhack::SetSpeed(1);
         self->setTimeScale(logic.speedhack);
+    }
+    else {
+        self->setTimeScale(1);
+        Speedhack::SetSpeed(logic.speedhack);
     }
 
     auto& audiospeedhack = AudiopitchHack::getInstance();
@@ -147,16 +150,17 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
         }*/
         else {
             dt = 1.f / logic.fps;
+            return CCScheduler_update(self, dt);
         }
     }
     else {
         if (gd::GameManager::sharedState()->getPlayLayer()) {
             if (gd::GameManager::sharedState()->getPlayLayer()->m_player1->m_position.x != logic.last_xpos) {
-                logic.frame++;
+                //logic.frame++;
             }
         }
-        CCScheduler_update(self, dt);
     }
+    return CCScheduler_update(self, dt);
 }
 
 void __fastcall Hooks::CCKeyboardDispatcher_dispatchKeyboardMSG_h(CCKeyboardDispatcher* self, int, int key, bool down) {

@@ -10,6 +10,7 @@
 #include <chrono>
 #include <conio.h>
 #include <thread>
+#include "Logic/speedhack.h"
 
 using json = nlohmann::json;
 
@@ -107,13 +108,14 @@ void writeConfig() {
 		const Keybind& keybind = binding.second.first;
 
 		nlohmann::json jsonKeybind;
-		if (keybind.GetKey().has_value())
+		if (keybind.GetKey().has_value()) {
 			jsonKeybind["key"] = keybind.GetKey().value();
-		jsonKeybind["ctrl"] = keybind.GetCtrl();
-		jsonKeybind["shift"] = keybind.GetShift();
-		jsonKeybind["alt"] = keybind.GetAlt();
+			jsonKeybind["ctrl"] = keybind.GetCtrl();
+			jsonKeybind["shift"] = keybind.GetShift();
+			jsonKeybind["alt"] = keybind.GetAlt();
 
-		j["keybinds"][action] = jsonKeybind;
+			j["keybinds"][action] = jsonKeybind;
+		}
 	}
 
 	std::ofstream file(".echo\\settings\\settings.json");
@@ -238,6 +240,7 @@ void UnfullscreenGame()
 
 DWORD WINAPI my_thread(void* hModule) {
 	readConfig();
+	Speedhack::Setup();
 	// UnfullscreenGame();
 	MH_Initialize();
 	Hooks::init_hooks();
@@ -277,6 +280,7 @@ BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID) {
 	if (reason == DLL_PROCESS_DETACH) {
 		writeConfig();
 		GUI::get().export_theme(".echo\\settings\\theme.ui", true);
+		Speedhack::Detach();
 	}
 	return TRUE;
 }
