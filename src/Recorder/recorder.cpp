@@ -38,9 +38,9 @@ std::wstring widen(const char* str) {
 Recorder::Recorder() : m_width(1920), m_height(1080), m_fps(60) {}
 
 void Recorder::start(const std::string& path) {
-     AllocConsole();
+     /*AllocConsole();
      static std::ofstream conout("CONOUT$", std::ios::out);
-     std::cout.rdbuf(conout.rdbuf());
+     std::cout.rdbuf(conout.rdbuf());*/
     auto& logic = Logic::get();
     m_recording = true;
     m_frame_has_data = false;
@@ -124,7 +124,7 @@ void Recorder::start(const std::string& path) {
             if (!is_testmode)
                 stream << ";[0:a]afade=t=in:d=" << a_fade_in_time << "[0:a]";
             if (fade_out && a_fade_out_time > 0 && m_finished_level)
-                stream << ";[0:a]afade=t=out:d=" << a_fade_out_time << ":st = " << (total_time - m_after_end_duration - 3.5f) << "[0:a]";
+                stream << ";[0:a]afade=t=out:d=" << a_fade_out_time << ":st=" << (total_time + m_after_end_duration - 3.5f) << "[0:a]";
             std::cout << "in " << fade_in << " out " << fade_out << std::endl;
             stream << "\" \"" << temp_path << "\" ";
             auto process = subprocess::Popen(stream.str());

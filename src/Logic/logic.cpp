@@ -42,6 +42,7 @@ void Logic::play_input(Frame& input) {
 
     // PLAYLAYER->m_player1->setPositionY(input.yPosition);
     // PLAYLAYER->m_player1->setPositionX(input.xPosition);
+    
 
     if (PLAYLAYER->m_player1->m_yAccel != input.yVelocity) {
         printf("MISMATCH Y VELOCITY %f:%f\n", PLAYLAYER->m_player1->m_yAccel, input.yVelocity);
@@ -55,6 +56,14 @@ void Logic::play_input(Frame& input) {
         live_inputs.push_back(input);
         if (input.pressingDown) {
             Hooks::PlayLayer::pushButton(PLAYLAYER, 0, !input.isPlayer2 ^ gamevar);
+
+           /* ma_result result;
+            ma_engine engine;
+
+            result = ma_engine_init(NULL, &engine);
+
+            if (result == MA_SUCCESS)
+            ma_engine_play_sound(&engine, "1.wav", NULL);*/
         }
         else {
             Hooks::PlayLayer::releaseButton(PLAYLAYER, 0, !input.isPlayer2 ^ gamevar);

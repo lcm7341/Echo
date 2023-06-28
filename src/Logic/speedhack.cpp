@@ -54,8 +54,6 @@ namespace Speedhack
 		MH_CreateHook((LPVOID)_GTC64, _hGetTickCount64, reinterpret_cast<LPVOID*>(&_GTC64));
 		MH_CreateHook((LPVOID)_QPC, _hQueryPerformanceCounter, reinterpret_cast<LPVOID*>(&_QPC));
 
-		MH_EnableHook(MH_ALL_HOOKS);
-
 		initialised = true;
 	}
 

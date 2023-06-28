@@ -136,7 +136,6 @@ public:
 		DEBUG, // saves all debug info
 	};
 
-
 	FORMATS format = SIMPLE;
 
 	bool save_debug_info = false;
@@ -189,8 +188,13 @@ public:
 	}
 
 	bool ignore_actions_at_playback = true;
+
 	bool show_frame = false;
 	bool show_cps = false;
+	bool show_percent = true;
+	int percent_accuracy = 1;
+	bool show_time = false;
+
 	float end_portal_position = 0;
 	float max_cps = 15;
 	float current_cps = 0;
@@ -224,6 +228,14 @@ public:
 
 	float cps_counter_x = 30.f;
 	float cps_counter_y = 20.f;
+
+	float percent_counter_x = 5.f;
+	float percent_counter_y = 315.f;
+	float percent_scale = 0.4;
+
+	float time_counter_x = 90.f;
+	float time_counter_y = 20.f;
+	float time_scale = 0.4;
 
 	unsigned frame_advance_hold_duration = 300; // ms
 	unsigned frame_advance_delay = 50; // ms

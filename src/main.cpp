@@ -76,6 +76,17 @@ void writeConfig() {
 	j["cps_counter_x"] = logic.cps_counter_x;
 	j["cps_counter_y"] = logic.cps_counter_y;
 
+	j["show_percent"] = logic.show_percent;
+	j["percent_counter_x"] = logic.percent_counter_x;
+	j["percent_counter_y"] = logic.percent_counter_y;
+	j["percent_accuracy"] = logic.percent_accuracy;
+	j["percent_scale"] = logic.percent_scale;
+
+	j["show_time"] = logic.show_time;
+	j["time_counter_x"] = logic.time_counter_x;
+	j["time_counter_y"] = logic.time_counter_y;
+	j["time_scale"] = logic.time_scale;
+
 	j["ssb_fix"] = recorder.ssb_fix;
 	j["color_fix"] = recorder.color_fix;
 	j["real_time_render"] = recorder.real_time_rendering;
@@ -186,6 +197,17 @@ void readConfig() {
 	logic.cps_counter_x = getOrDefault(j, "cps_counter_x", 30);
 	logic.cps_counter_y = getOrDefault(j, "cps_counter_y", 20);
 
+	logic.show_percent = getOrDefault(j, "show_percent", false);
+	logic.percent_counter_x = getOrDefault(j, "percent_counter_x", 5);
+	logic.percent_counter_y = getOrDefault(j, "percent_counter_y", 315);
+	logic.percent_accuracy = getOrDefault(j, "percent_accuracy", 1);
+	logic.percent_scale = getOrDefault(j, "percent_scale", 0.4);
+
+	logic.time_counter_x = getOrDefault(j, "time_counter_x", 5);
+	logic.time_counter_y = getOrDefault(j, "time_counter_y", 302.5);
+	logic.time_scale = getOrDefault(j, "time_scale", 0.4);
+	logic.show_time = getOrDefault(j, "show_time", false);
+
 	recorder.ssb_fix = getOrDefault(j, "ssb_fix", true);
 	recorder.color_fix = getOrDefault(j, "color_fix", true);
 	recorder.real_time_rendering = getOrDefault(j, "real_time_render", false);
@@ -239,10 +261,11 @@ void UnfullscreenGame()
 }
 
 DWORD WINAPI my_thread(void* hModule) {
-	readConfig();
-	Speedhack::Setup();
-	// UnfullscreenGame();
+	
 	MH_Initialize();
+	readConfig();
+	//Speedhack::Setup();
+	// UnfullscreenGame();
 	Hooks::init_hooks();
 	auto& instance = GUI::get();
 	AudiopitchHack::getInstance().initialize();

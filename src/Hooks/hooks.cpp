@@ -5,11 +5,14 @@
 #include "../Logic/autoclicker.hpp"
 #include "../GUI/gui.hpp"
 #include "../Logic/speedhack.h"
+#include "../Logic/sound_system.hpp"
 
 #define FRAME_LABEL_ID 82369 + 1 //random value :P
 #define CPS_LABEL_ID 82369 + 2 //random value :P
 #define CPS_BREAKS_LABEL_ID 82369 + 3 //random value :P
 #define RECORDING_LABEL_ID 82369 + 4 //random value :P
+#define PERCENT_LABEL_ID 82369 + 5 //random value :P
+#define TIME_LABEL_ID 82369 + 6 //random value :P
 
 #define HOOK(o, f) MH_CreateHook(reinterpret_cast<void*>(gd::base + o), f##_h, reinterpret_cast<void**>(&f));
 // gracias matcool :]
@@ -129,7 +132,7 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
             g_disable_render = true;
 
             // min(static_cast<int>(g_left_over / target_dt), 50) <- super fast but i think its inaccurate
-            const int times = min(static_cast<int>((dt + g_left_over) / target_dt), 150);
+            const unsigned int times = min(round((dt + g_left_over) / target_dt), 150);
 
             GUI::get().scheduler_dt = times;
 
@@ -140,10 +143,11 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
                 CCScheduler_update(self, target_dt);
             }
             g_left_over += dt - target_dt * times;
+            return;
         }
         else {
+            g_disable_render = false;
             dt = 1.f / logic.fps;
-            return CCScheduler_update(self, dt);
         }
     }
     return CCScheduler_update(self, dt);
@@ -151,6 +155,24 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
 
 void __fastcall Hooks::CCKeyboardDispatcher_dispatchKeyboardMSG_h(CCKeyboardDispatcher* self, int, int key, bool down) {
     auto& logic = Logic::get();
+
+    if (down) {
+        auto advancing_key = Logic::get().keybinds.GetKeybind("advancing").key;
+        if (advancing_key.has_value()) {
+            if (ImGui::IsKeyPressed(advancing_key.value())) {
+                Logic::get().start = std::chrono::steady_clock::now();
+                Logic::get().frame_advance = false;
+                bool old_real_time = Logic::get().real_time_mode;
+                Logic::get().real_time_mode = false;
+                Hooks::CCScheduler_update_h(gd::GameManager::sharedState()->getScheduler(), 0, 1.f / Logic::get().fps / Logic::get().speedhack);
+                Logic::get().frame_advance = true;
+                Logic::get().real_time_mode = old_real_time;
+            }
+        }
+    }
+    else {
+        Logic::get().start = std::chrono::steady_clock::time_point();
+    }
 
     CCKeyboardDispatcher_dispatchKeyboardMSG(self, key, down);
 }
@@ -183,14 +205,15 @@ bool __fastcall Hooks::PauseLayer::init_h(gd::PauseLayer* self) {
     return Hooks::PauseLayer::init(self);
 }
 
-
 std::string formatTime(float timeInSeconds) {
+    int hours = static_cast<int>(timeInSeconds / 60 / 60);
     int minutes = static_cast<int>(timeInSeconds / 60);
     int seconds = static_cast<int>(timeInSeconds) % 60;
     int milliseconds = static_cast<int>((timeInSeconds - static_cast<int>(timeInSeconds)) * 100);
 
     std::stringstream formattedTime;
-    formattedTime << std::setfill('0') << std::setw(2) << minutes << ":"
+    formattedTime << std::setfill('0') << std::setw(2) << hours << ":"
+        << std::setfill('0') << std::setw(2) << minutes << ":"
         << std::setfill('0') << std::setw(2) << seconds;
 
     return formattedTime.str();
@@ -255,8 +278,8 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
             std::string text = std::to_string(frame);
             int length = text.length();
             sprintf_s(out, "Frame: %i", frame);
-            frame_counter->setAlignment(CCTextAlignment::kCCTextAlignmentLeft);
-            frame_counter->setPosition(logic.frame_counter_x + length, logic.frame_counter_y); // Adjusted the x-position calculation
+            frame_counter->setAnchorPoint({ 0, 0.5 });
+            frame_counter->setPosition(logic.frame_counter_x, logic.frame_counter_y); // Adjusted the x-position calculation
             frame_counter->setString(out);
 
         }
@@ -311,6 +334,7 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
             else if (logic.over_max_cps) {
                 cps_counter->setColor({ 255, 72, 0 });
             }
+            cps_counter->setAnchorPoint({ 0, 0.5 });
             cps_counter->setPosition(logic.cps_counter_x, logic.cps_counter_y);
         }
 
@@ -327,6 +351,71 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
         self->addChild(cps_counter2, 999, CPS_LABEL_ID);
     }
 
+    auto percent_label = (cocos2d::CCLabelBMFont*)self->getChildByTag(PERCENT_LABEL_ID);;
+
+    if (percent_label) {
+        if (logic.show_percent) {
+            char out[24];
+            std::stringstream stream;
+            float percent = (self->timeForXPos2(self->m_player1->getPositionX(), true) / self->timeForXPos2(self->m_endPortal->getPositionX(), true)) * 100.f;
+            if (logic.percent_accuracy > 0) {
+                stream << "%." << logic.percent_accuracy << "f%%";
+                sprintf_s(out, stream.str().c_str(), percent);
+            }
+            else {
+                stream << "%i%%";
+                sprintf_s(out, stream.str().c_str(), static_cast<int>(percent));
+            }
+            percent_label->setString(out);
+            percent_label->setAnchorPoint({ 0, 0.5 });
+            percent_label->setPosition(logic.percent_counter_x, logic.percent_counter_y);
+            percent_label->setScale(logic.percent_scale);
+            percent_label->setOpacity(70);
+        }
+
+        else {
+            percent_label->removeFromParent();
+            percent_label->release();
+        }
+    }
+    else if (logic.show_percent) {
+        auto percent_label2 = cocos2d::CCLabelBMFont::create("", "bigFont.fnt");
+        percent_label2->setPosition(logic.percent_counter_x, logic.percent_counter_y);
+        percent_label2->setScale(logic.percent_scale);
+        percent_label2->setOpacity(70);
+
+        self->addChild(percent_label2, 999, PERCENT_LABEL_ID);
+    }
+
+    auto time_label = (cocos2d::CCLabelBMFont*)self->getChildByTag(TIME_LABEL_ID);;
+    if (time_label) {
+
+        if (logic.show_time) {
+            char out[24];
+            const char* format = "%s";
+            std::string str = formatTime(self->m_time);
+            sprintf_s(out, str.c_str());
+            time_label->setString(out);
+            time_label->setAnchorPoint({ 0, 0.5 });
+            time_label->setPosition(logic.time_counter_x, logic.time_counter_y);
+            time_label->setScale(logic.time_scale);
+            time_label->setOpacity(70);
+        }
+
+        else {
+            time_label->removeFromParent();
+            time_label->release();
+        }
+    }
+    else if (logic.show_time) {
+        auto time_label2 = cocos2d::CCLabelBMFont::create("", "bigFont.fnt");
+        time_label2->setPosition(logic.time_counter_x, logic.time_counter_y);
+        time_label2->setScale(logic.time_scale);
+        time_label2->setOpacity(70);
+
+        self->addChild(time_label2, 999, TIME_LABEL_ID);
+    }
+
     if (self->m_isPaused) {
         ImGui::SetKeyboardFocusHere();
     }
@@ -336,6 +425,11 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
 
 int __fastcall Hooks::PlayLayer::pushButton_h(gd::PlayLayer* self, int, int idk, bool button) {
     auto& logic = Logic::get();
+
+    SoundSystem soundsystem;
+    soundsystem.init();
+
+    soundsystem.play_sound(soundsystem.click)
 
     if (logic.is_playing()) {
         if (logic.ignore_actions_at_playback) return 0;

@@ -32,6 +32,8 @@
 #include <imgui_demo.cpp>
 #include <format>
 
+std::string echo_version = "Echo v0.7b";
+
 int getRandomInt(int N) {
 	// Seed the random number generator with current time
 	std::random_device rd;
@@ -96,7 +98,7 @@ void GUI::draw() {
 
 		//full_title << "Echo [" << ECHO_VERSION << "b]";
 
-		full_title << "Echo v0.6";
+		full_title << echo_version;
 		
 		ImGuiIO& io = ImGui::GetIO();
 
@@ -165,19 +167,6 @@ void GUI::draw() {
 			}
 
 			ImGui::End();
-		}
-	}
-
-	auto advancing_key = Logic::get().keybinds.GetKeybind("advancing").key;
-	if (advancing_key.has_value()) {
-		if (ImGui::IsKeyPressed(advancing_key.value())) {
-			Logic::get().start = std::chrono::steady_clock::now();
-			Logic::get().frame_advance = false;
-			Hooks::CCScheduler_update_h(gd::GameManager::sharedState()->getScheduler(), 0, 1.f / Logic::get().fps / Logic::get().speedhack);
-			Logic::get().frame_advance = true;
-		}
-		else {
-			Logic::get().start = std::chrono::steady_clock::time_point();
 		}
 	}
 
@@ -1670,7 +1659,7 @@ void GUI::main() {
 	ImGui::SetNextItemWidth(tabWidth);
 	if (ImGui::BeginTabItem("Main") || !docked) {
 		if (!docked) {
-			ImGui::Begin("Echo v0.6", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+			ImGui::Begin(echo_version.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize);
 			main_pos = ImGui::GetWindowPos();
 		}
 
@@ -1824,48 +1813,6 @@ void GUI::main() {
 
 		ImGui::Separator();
 
-		ImGui::Checkbox("Show Frame", &logic.show_frame); ImGui::SameLine();
-
-		CHECK_KEYBIND("showFrame");
-
-		ImGui::Checkbox("Show CPS", &logic.show_cps); ImGui::SameLine();
-
-		CHECK_KEYBIND("showCPS");
-
-		bool open_label_modal = true;
-
-		if (ImGui::Button("Label Settings")) {
-			ImGui::OpenPopup("Label Settings");
-		}
-
-		if (logic.inputs.empty()) ImGui::EndDisabled();
-
-		if (ImGui::BeginPopupModal("Label Settings", &open_label_modal, ImGuiWindowFlags_AlwaysAutoResize)) {
-			
-			ImGui::Text("CPS Label");
-
-			ImGui::PushItemWidth(75);
-			ImGui::DragFloat("X###cps_x", &logic.cps_counter_x, 1);
-			ImGui::PopItemWidth();
-			ImGui::SameLine();
-			ImGui::PushItemWidth(75);
-			ImGui::DragFloat("Y###cps_y", &logic.cps_counter_y, 1);
-
-			ImGui::Separator();
-
-			ImGui::Text("Frame Label");
-
-			ImGui::PushItemWidth(75);
-			ImGui::DragFloat("X###frame_x", &logic.frame_counter_x, 1);
-			ImGui::PopItemWidth();
-			ImGui::SameLine();
-			ImGui::PushItemWidth(75);
-			ImGui::DragFloat("Y###frame_y", &logic.frame_counter_y, 1);
-			ImGui::PopItemWidth();
-
-			ImGui::EndPopup();
-		}
-
 		ImGui::PushItemWidth(100);
 		ImGui::DragFloat("Max CPS", &logic.max_cps, 0.01, 1, 100, "%.2f"); ImGui::SameLine();
 		ImGui::PopItemWidth();
@@ -1909,6 +1856,86 @@ void GUI::main() {
 				ImGui::Text("No CPS Breaks");
 			}
 			
+			ImGui::EndPopup();
+		}
+
+		ImGui::SameLine();
+
+		bool open_label_modal = true;
+
+		if (ImGui::Button("Label Settings", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
+			ImGui::OpenPopup("Label Settings");
+		}
+
+		if (logic.inputs.empty()) ImGui::EndDisabled();
+
+		if (ImGui::BeginPopupModal("Label Settings", &open_label_modal, ImGuiWindowFlags_AlwaysAutoResize)) {
+
+			ImGui::Checkbox("Show CPS", &logic.show_cps);
+
+			CHECK_KEYBIND("showCPS");
+
+			ImGui::PushItemWidth(75);
+			ImGui::DragFloat("X###cps_x", &logic.cps_counter_x, 1);
+			ImGui::PopItemWidth();
+			ImGui::SameLine();
+			ImGui::PushItemWidth(75);
+			ImGui::DragFloat("Y###cps_y", &logic.cps_counter_y, 1);
+
+			ImGui::Separator();
+
+			ImGui::Checkbox("Show Frame", &logic.show_frame);
+
+			CHECK_KEYBIND("showFrame");
+
+			ImGui::PushItemWidth(75);
+			ImGui::DragFloat("X###frame_x", &logic.frame_counter_x, 1);
+			ImGui::PopItemWidth();
+			ImGui::SameLine();
+			ImGui::PushItemWidth(75);
+			ImGui::DragFloat("Y###frame_y", &logic.frame_counter_y, 1);
+			ImGui::PopItemWidth();
+
+			ImGui::Separator();
+
+			ImGui::Checkbox("Show Percent", &logic.show_percent);
+
+			CHECK_KEYBIND("showPercent");
+
+			ImGui::PushItemWidth(75);
+			ImGui::DragFloat("X###percent_x", &logic.percent_counter_x, 1);
+			ImGui::PopItemWidth();
+			ImGui::SameLine();
+			ImGui::PushItemWidth(75);
+			ImGui::DragFloat("Y###percent_y", &logic.percent_counter_y, 1);
+			ImGui::PopItemWidth();
+
+			ImGui::PushItemWidth(150);
+			ImGui::InputInt("Accuracy###percent_acc", &logic.percent_accuracy, 1, 2);
+			ImGui::PopItemWidth();
+
+			ImGui::PushItemWidth(150);
+			ImGui::DragFloat("Scale###percent_scale", &logic.percent_scale, 0.01, 10);
+			ImGui::PopItemWidth();
+
+			ImGui::Separator();
+
+			ImGui::Checkbox("Show Time", &logic.show_time);
+
+			CHECK_KEYBIND("showTime");
+
+			ImGui::PushItemWidth(75);
+			ImGui::DragFloat("X###time_x", &logic.time_counter_x, 1);
+			ImGui::PopItemWidth();
+			ImGui::SameLine();
+			ImGui::PushItemWidth(75);
+			ImGui::DragFloat("Y###time_y", &logic.time_counter_y, 1);
+			ImGui::PopItemWidth();
+
+			ImGui::PushItemWidth(150);
+			ImGui::DragFloat("Scale###time_scale", &logic.time_scale, 0.01, 10);
+			ImGui::PopItemWidth();
+
 			ImGui::EndPopup();
 		}
 
@@ -2167,6 +2194,9 @@ void GUI::init() {
 	SET_BIND(showFrame, Logic::get().show_frame);
 
 	SET_BIND(showCPS, Logic::get().show_cps);
+
+	SET_BIND(showPercent, Logic::get().show_percent);
+	SET_BIND(showTime, Logic::get().show_time);
 
 	SET_BIND(useJSON, Logic::get().use_json_for_files);
 
