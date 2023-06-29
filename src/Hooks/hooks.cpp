@@ -5,7 +5,6 @@
 #include "../Logic/autoclicker.hpp"
 #include "../GUI/gui.hpp"
 #include "../Logic/speedhack.h"
-#include "../Logic/sound_system.hpp"
 
 #define FRAME_LABEL_ID 82369 + 1 //random value :P
 #define CPS_LABEL_ID 82369 + 2 //random value :P
@@ -70,7 +69,7 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
 
     if (logic.recorder.m_recording && !logic.recorder.real_time_rendering) {
         dt = 1.f / logic.fps;
-        return CCScheduler_update(self, 1.f / logic.fps);
+        return CCScheduler_update(self, dt);
     }
 
     if (logic.autoclicker && play_layer && !play_layer->m_isPaused) {
@@ -227,6 +226,11 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
     logic.player_acceleration = self->m_player1->m_xAccel;
     logic.player_speed = self->m_player1->m_playerSpeed;
 
+    if (logic.recorder.m_recording)
+        logic.recorder.handle_recording(self, dt);
+
+    logic.previous_real_xpos = self->m_player1->getPositionX();
+
     if (!logic.player_x_positions.empty()) {
         if (!self->m_isDead && (self->m_player1->m_position.x != logic.player_x_positions.back() || self->m_hasCompletedLevel)) {
             if (self->m_hasCompletedLevel) {
@@ -238,12 +242,11 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
                 logic.calculated_xpos = logic.xpos_calculation();
                 logic.calculated_frame = round(logic.get_frame() + (self->m_player1->getPositionX() - logic.calculated_xpos));//round((logic.calculated_xpos / (logic.player_speed * logic.player_acceleration) * (1.f / logic.fps)) * logic.fps); // doesnt work when changing speeds, fucjk
 
-                
-
                 logic.previous_xpos = logic.calculated_xpos;
             }
         }
     }
+
     logic.player_x_positions.push_back(self->m_player1->m_position.x);
 
     if (logic.is_playing() && !logic.get_inputs().empty()) {
@@ -262,9 +265,6 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
             logic.play_macro(_);
         }
     }
-
-    if (logic.recorder.m_recording)
-        logic.recorder.handle_recording(self, dt);
 
     logic.recorder.m_song_start_offset = self->m_levelSettings->m_songStartOffset;
 
@@ -416,20 +416,11 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
         self->addChild(time_label2, 999, TIME_LABEL_ID);
     }
 
-    if (self->m_isPaused) {
-        ImGui::SetKeyboardFocusHere();
-    }
-
     update(self, dt);
 }
 
 int __fastcall Hooks::PlayLayer::pushButton_h(gd::PlayLayer* self, int, int idk, bool button) {
     auto& logic = Logic::get();
-
-    SoundSystem soundsystem;
-    soundsystem.init();
-
-    soundsystem.play_sound(soundsystem.click)
 
     if (logic.is_playing()) {
         if (logic.ignore_actions_at_playback) return 0;

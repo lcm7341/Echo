@@ -56,14 +56,6 @@ void Logic::play_input(Frame& input) {
         live_inputs.push_back(input);
         if (input.pressingDown) {
             Hooks::PlayLayer::pushButton(PLAYLAYER, 0, !input.isPlayer2 ^ gamevar);
-
-           /* ma_result result;
-            ma_engine engine;
-
-            result = ma_engine_init(NULL, &engine);
-
-            if (result == MA_SUCCESS)
-            ma_engine_play_sound(&engine, "1.wav", NULL);*/
         }
         else {
             Hooks::PlayLayer::releaseButton(PLAYLAYER, 0, !input.isPlayer2 ^ gamevar);
@@ -208,6 +200,18 @@ bool Logic::play_macro(int& offset) {
         bool ret = false;
 
         while (inputs[replay_pos].number <= current_frame && replay_pos < inputs.size()) {
+            auto& input = inputs[replay_pos];
+            gd::GameSoundManager soundmanager;
+
+            auto oldSFX = gd::FMODAudioEngine::sharedEngine()->m_fEffectsVolume;
+            gd::FMODAudioEngine::sharedEngine()->m_fEffectsVolume = clickbot_volume;
+            if (input.pressingDown) {
+                soundmanager.playSound(".echo\\clickbot\\clicks\\1.wav");
+            }
+            else {
+                soundmanager.playSound(".echo\\clickbot\\releases\\1.wav");
+            }
+            gd::FMODAudioEngine::sharedEngine()->m_fEffectsVolume = oldSFX;
             play_input(inputs[replay_pos]);
             replay_pos += 1;
             ret = true;

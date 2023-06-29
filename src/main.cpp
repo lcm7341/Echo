@@ -235,6 +235,8 @@ void readConfig() {
 	GUI::get().style_pos.x = getOrDefault(j, "style_pos_x", 1425);
 	GUI::get().style_pos.y = getOrDefault(j, "style_pos_y", 35);
 
+	logic.clickbot_volume = getOrDefault(j, "clickbot_volume", 1);
+
 	CCDirector::sharedDirector()->setAnimationInterval(1.f / logic.fps);
 
 	file.close();
@@ -285,12 +287,18 @@ DWORD WINAPI my_thread(void* hModule) {
 	std::filesystem::path configDirectory = ".echo/settings";
 	std::filesystem::path themesDirectory = ".echo/themes";
 	std::filesystem::path osuDirectory = ".echo/osu";
+	std::filesystem::path clickbot = ".echo/clickbot";
+	std::filesystem::path clicks = ".echo/clickbot/clicks";
+	std::filesystem::path releases = ".echo/clickbot/releases";
 
 	std::filesystem::create_directory(echoDirectory);
 	std::filesystem::create_directory(videoDirectory);
 	std::filesystem::create_directory(configDirectory);
 	std::filesystem::create_directory(themesDirectory);
 	std::filesystem::create_directory(osuDirectory);
+	std::filesystem::create_directory(clickbot);
+	std::filesystem::create_directory(clicks);
+	std::filesystem::create_directory(releases);
 
 	return 0;
 }

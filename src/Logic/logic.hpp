@@ -148,6 +148,8 @@ public:
 	std::vector<gd::GameObject*> activated_objects_p2;
 	std::vector<std::pair<float, std::string>> cps_over_percents;
 
+	float clickbot_volume = 1.f;
+
 	float fps = 60.f;
 	char macro_name[1000] = "output";
 
@@ -161,10 +163,14 @@ public:
 
 	double calculated_xpos = 0;
 	double previous_xpos = 0;
+	float previous_real_xpos = 0.f; // this is robs variable, for renderer
 	float player_speed = 1;
 	double player_acceleration = 1;
 	std::vector<float> player_x_positions; // because fuck attempt 1, also this isnt my calculated one
 	int calculated_frame = 0;
+	bool completed_level = false;
+
+	double tfx2_calculated = 0.f;
 
 	Keybinds keybinds;
 

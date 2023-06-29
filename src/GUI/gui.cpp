@@ -32,7 +32,7 @@
 #include <imgui_demo.cpp>
 #include <format>
 
-std::string echo_version = "Echo v0.7b";
+std::string echo_version = "Echo v0.8b";
 
 int getRandomInt(int N) {
 	// Seed the random number generator with current time
@@ -93,6 +93,21 @@ void GUI::draw() {
 
 	if (g_font) ImGui::PushFont(g_font);
 
+
+	auto end = std::chrono::steady_clock::now();
+	auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - Logic::get().start);
+
+	if (duration.count() >= Logic::get().frame_advance_hold_duration && Logic::get().start != std::chrono::steady_clock::time_point()) {
+		Logic::get().frame_advance = false;
+		Hooks::CCScheduler_update_h(gd::GameManager::sharedState()->getScheduler(), 0, 1.f / Logic::get().fps);
+		Logic::get().frame_advance = true;
+		delay(Logic::get().frame_advance_delay);
+		Logic::get().holding_frame_advance = true;
+	}
+	else {
+		Logic::get().holding_frame_advance = false;
+	}
+
 	if (show_window) {
 		std::stringstream full_title;
 
@@ -138,6 +153,7 @@ void GUI::draw() {
 				renderer();
 				sequential_replay();
 				ui_editor();
+				clickbot();
 			}
 			ImGui::End();
 		}
@@ -155,6 +171,8 @@ void GUI::draw() {
 				sequential_replay();
 				ImGui::SetNextWindowPos(style_pos);
 				ui_editor();
+				ImGui::SetNextWindowPos(clickbot_pos);
+				clickbot();
 				g_has_placed_positions = true;
 			}
 			else {
@@ -164,13 +182,14 @@ void GUI::draw() {
 				renderer();
 				sequential_replay();
 				ui_editor();
+				clickbot();
 			}
 
 			ImGui::End();
 		}
 	}
 
-	auto end = std::chrono::steady_clock::now();
+	/*auto end = std::chrono::steady_clock::now();
 	auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - Logic::get().start);
 
 	if (duration.count() >= Logic::get().frame_advance_hold_duration && Logic::get().start != std::chrono::steady_clock::time_point()) {
@@ -182,7 +201,7 @@ void GUI::draw() {
 	}
 	else {
 		Logic::get().holding_frame_advance = false;
-	}
+	}*/
 
 	if (g_font) ImGui::PopFont();
 }
@@ -1554,6 +1573,31 @@ void GUI::tools() {
 
 }
 
+void GUI::clickbot() {
+	auto& logic = Logic::get();
+
+	float tabWidth = ImGui::GetWindowContentRegionWidth() / 6.0f;
+
+	if (docked)
+		ImGui::SetNextItemWidth(tabWidth);
+
+	if (ImGui::BeginTabItem("Clickbot") || !docked) {
+
+		if (!docked) {
+
+			ImGui::Begin("Clickbot", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+			clickbot_pos = ImGui::GetWindowPos();
+
+		}
+
+		ImGui::DragFloat("Volume###clickbot_volume", &logic.clickbot_volume, 0.01, 0.01, 25);
+
+		if (docked)
+			ImGui::EndTabItem();
+		else
+			ImGui::End();
+	}
+}
 #ifdef _WIN32
 #include <windows.h>
 
@@ -1668,6 +1712,15 @@ void GUI::main() {
 		ImVec4 tempColor = style.Colors[ImGuiCol_Button];
 		ImVec4 tempColor2 = style.Colors[ImGuiCol_ButtonHovered];
 		ImVec4 tempColor3 = style.Colors[ImGuiCol_ButtonActive];
+
+		/*if (PLAYLAYER) {
+			ImGui::Text("%f", logic.tfx2_calculated);
+			ImGui::Text("%f", logic.previous_real_xpos);
+			ImGui::Text("%f", PLAYLAYER->m_player1->getPositionX());
+			ImGui::Text("%f", Logic::get().calculated_xpos - PLAYLAYER->m_player1->getPositionX());
+			ImGui::Text("%f", (60.f * Logic::get().player_speed * Logic::get().player_acceleration) * (1.f / Logic::get().fps));
+			ImGui::Text("%i", Logic::get().completed_level);
+		}*/
 
 		if (logic.is_recording()) {
 			style.Colors[ImGuiCol_Button] = style.Colors[ImGuiCol_FrameBg];
@@ -2306,6 +2359,4 @@ void GUI::init() {
 	colors[ImGuiCol_NavWindowingHighlight] = ImVec4(1.00f, 1.00f, 1.00f, 0.70f);
 	colors[ImGuiCol_NavWindowingDimBg] = ImVec4(0.80f, 0.80f, 0.80f, 0.20f);
 	colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.80f, 0.80f, 0.80f, 0.35f);
-
-
 }

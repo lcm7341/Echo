@@ -199,20 +199,33 @@ void Recorder::capture_frame() {
 }
 
 void Recorder::handle_recording(gd::PlayLayer* play_layer, float dt) {
-    if (!play_layer->m_hasLevelCompleteMenu || m_after_end_extra_time < m_after_end_duration) {
-        if (play_layer->m_hasLevelCompleteMenu) {
+    double difference = play_layer->m_endPortal->getPositionX() - play_layer->m_player1->getPositionX();
+    double frame_time = (60.f * Logic::get().player_speed * Logic::get().player_acceleration) * (1.f / Logic::get().fps);
+
+    double abs_value_difference = difference > 0 ? difference : 0.f - difference;
+    Logic::get().completed_level = abs_value_difference <= 349.f || play_layer->m_hasCompletedLevel;
+
+    auto tfx2 = play_layer->timeForXPos2(play_layer->m_player1->m_position.x, true);
+    if (Logic::get().tfx2_calculated == 0 || !Logic::get().completed_level) Logic::get().tfx2_calculated = tfx2;
+
+    if (!Logic::get().completed_level || m_after_end_extra_time < m_after_end_duration) {
+        if (Logic::get().completed_level) {
             m_after_end_extra_time += dt;
             m_finished_level = true;
         }
         auto frame_dt = 1. / static_cast<double>(m_fps);
-        auto tfx2_frame = play_layer->timeForXPos2(play_layer->m_player1->m_position.x, true);
-        auto time = (ssb_fix ? tfx2_frame : play_layer->m_time) + m_extra_t - m_last_frame_t;
+
+        if (Logic::get().completed_level) {
+            Logic::get().tfx2_calculated += dt;
+        }
+
+        auto time = (ssb_fix ? Logic::get().tfx2_calculated : play_layer->m_time) + m_extra_t - m_last_frame_t;
 
         if (time >= frame_dt) {
             gd::FMODAudioEngine::sharedEngine()->setBackgroundMusicTime(
-                (ssb_fix ? tfx2_frame : play_layer->m_time) + m_song_start_offset);
+                (ssb_fix ? Logic::get().tfx2_calculated : play_layer->m_time) + m_song_start_offset);
             m_extra_t = time - frame_dt;
-            m_last_frame_t = ssb_fix ? tfx2_frame : play_layer->m_time;
+            m_last_frame_t = ssb_fix ? Logic::get().tfx2_calculated : play_layer->m_time;
             capture_frame();
         }
     }

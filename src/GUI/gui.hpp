@@ -29,6 +29,8 @@ public:
 
 	void ui_editor();
 
+	void clickbot();
+
 	void show_keybind_prompt(const std::string& buttonName);
 
 	void import_theme(std::string path);
@@ -62,4 +64,5 @@ public:
 	ImVec2 render_pos;
 	ImVec2 sequence_pos;
 	ImVec2 style_pos;
+	ImVec2 clickbot_pos;
 };
