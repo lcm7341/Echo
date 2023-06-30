@@ -278,7 +278,10 @@ DWORD WINAPI my_thread(void* hModule) {
 	ImGuiHook::setupHooks([](void* target, void* hook, void** trampoline) {
 		MH_CreateHook(target, hook, trampoline);
 		});
-	MH_EnableHook(MH_ALL_HOOKS);
+	MH_STATUS status = MH_EnableHook(MH_ALL_HOOKS);
+	if (status != MH_OK) {
+		Logic::get().error = "Could not hook MH";
+	}
 
 	//ImGuiHook::setKeybind(VK_SHIFT);
 

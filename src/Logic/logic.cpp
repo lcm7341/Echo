@@ -52,6 +52,11 @@ void Logic::play_input(Frame& input) {
         printf("MISMATCH X VELOCITY %f:%f\n", PLAYLAYER->m_player1->m_xAccel, input.xVelocity);
     }
 
+    if (!input.isPlayer2 ^ gamevar && !play_player_1)
+        return;
+    if (!(!input.isPlayer2 ^ gamevar) && !play_player_2)
+        return;
+
     if (PLAYLAYER) {
         live_inputs.push_back(input);
         if (input.pressingDown) {
@@ -348,10 +353,13 @@ void Logic::read_file(const std::string& filename, bool is_path = false) {
     file.close();
 }
 
-void Logic::remove_inputs(unsigned frame) {
+void Logic::remove_inputs(unsigned frame, bool player_1) {
     auto it = std::remove_if(inputs.begin(), inputs.end(),
-        [frame](const Frame& input) {
-            return input.number >= frame;
+        [frame, player_1](const Frame& input) {
+            if (!input.isPlayer2 && player_1)
+                return input.number >= frame;
+            else
+                return false;
         });
     inputs.erase(it, inputs.end());
 }
