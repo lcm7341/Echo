@@ -1215,6 +1215,8 @@ void GUI::sequential_replay() {
 }
 
 static int selected_noclip = 0; // Index of "Both" option (auto selected)
+static int selected_recording = 0; // Index of "Both" option (auto selected)
+static int selected_playback = 0; // Index of "Both" option (auto selected)
 static int selected_autoclicker_player = 2; // Index of "Both" option (auto selected)
 
 std::map<std::string, std::shared_ptr<Convertible>> options = {
@@ -1699,8 +1701,10 @@ void GUI::main() {
 	const ImVec2 buttonSize = { get_width(48), 0 };
 
 	float tabWidth = ImGui::GetWindowContentRegionWidth() / 6.0f;
-	if (docked)
-	ImGui::SetNextItemWidth(tabWidth);
+	if (docked) {
+		ImGui::SetNextItemWidth(tabWidth);
+		ImGui::SetNextWindowContentSize(ImVec2(tabWidth, -1));
+	}
 	if (ImGui::BeginTabItem("Main") || !docked) {
 		if (!docked) {
 			ImGui::Begin(echo_version.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize);
@@ -1721,16 +1725,26 @@ void GUI::main() {
 			ImGui::Text("%f", (60.f * Logic::get().player_speed * Logic::get().player_acceleration) * (1.f / Logic::get().fps));
 			ImGui::Text("%i", Logic::get().completed_level);
 		}*/
-
 		if (logic.is_recording()) {
 			style.Colors[ImGuiCol_Button] = style.Colors[ImGuiCol_FrameBg];
 			style.Colors[ImGuiCol_ButtonHovered] = style.Colors[ImGuiCol_FrameBgHovered];
 			style.Colors[ImGuiCol_ButtonActive] = style.Colors[ImGuiCol_FrameBgHovered];
 		}
 
-		if (ImGui::Button(logic.is_recording() ? "Stop Recording" : "Start Recording", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.5f, 0))) {
-			logic.toggle_recording();
-			logic.sort_inputs();
+		if (ImGui::Button(logic.is_recording() ? "Stop Recording" : "Start Recording", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.35f, 0))) {
+			bool change = true;
+			if (logic.is_playing()) {
+				if ((logic.play_player_1 && logic.record_player_1) || (logic.play_player_2 && logic.record_player_2)) {
+					change = false;
+					logic.error = "You cannot play and record a player at the same time!";
+					return;
+				}
+			}
+
+			if (change) {
+				logic.toggle_recording();
+				logic.sort_inputs();
+			}
 		}
 
 		CHECK_KEYBIND("toggleRecording");
@@ -1743,6 +1757,15 @@ void GUI::main() {
 
 		ImGui::SameLine();
 
+		if (logic.is_recording() || logic.is_playing())
+			ImGui::BeginDisabled();
+		if (ImGui::Checkbox("Record Player 1", &logic.record_player_1));
+		ImGui::SameLine();
+		ImGui::SetCursorPosX(ImGui::GetWindowContentRegionWidth() * 0.7);;
+		if (ImGui::Checkbox("Record Player 2", &logic.record_player_2));
+		if (logic.is_recording() || logic.is_playing())
+			ImGui::EndDisabled();
+
 		if (logic.is_playing()) {
 			ImVec4 tempColor = style.Colors[ImGuiCol_Button];
 			ImVec4 tempColor2 = style.Colors[ImGuiCol_ButtonHovered];
@@ -1752,9 +1775,20 @@ void GUI::main() {
 			style.Colors[ImGuiCol_ButtonActive] = style.Colors[ImGuiCol_FrameBgHovered];
 		}
 
-		if (ImGui::Button(logic.is_playing() ? "Stop Playing" : "Start Playing", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.48f, 0))) {
-			logic.toggle_playing();
-			logic.sort_inputs();
+		if (ImGui::Button(logic.is_playing() ? "Stop Playing" : "Start Playing", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.35f, 0))) {
+			bool change = true;
+			if (logic.is_recording()) {
+				if ((logic.play_player_1 && logic.record_player_1) || (logic.play_player_2 && logic.record_player_2)) {
+					change = false;
+					logic.error = "You cannot play and record a player at the same time!";
+					return;
+				}
+			}
+
+			if (change) {
+				logic.toggle_playing();
+				logic.sort_inputs();
+			}
 		}
 
 		CHECK_KEYBIND("togglePlaying");
@@ -1769,6 +1803,17 @@ void GUI::main() {
 		style.Colors[ImGuiCol_Button] = tempColor;
 		style.Colors[ImGuiCol_ButtonHovered] = tempColor2;
 		style.Colors[ImGuiCol_ButtonActive] = tempColor3;
+
+
+		ImGui::SameLine();
+		if (logic.is_recording() || logic.is_playing())
+			ImGui::BeginDisabled();
+		if (ImGui::Checkbox("Play Player 1", &logic.play_player_1));
+		ImGui::SameLine();
+		ImGui::SetCursorPosX(ImGui::GetWindowContentRegionWidth() * 0.7);;
+		if (ImGui::Checkbox("Play Player 2", &logic.play_player_2));
+		if (logic.is_recording() || logic.is_playing())
+			ImGui::EndDisabled();
 
 		ImGui::Spacing();
 
@@ -2219,16 +2264,37 @@ void GUI::init() {
 		}));
 
 	std::unique_ptr<KeybindableBase> recordingAction = std::unique_ptr<KeybindableBase>(new Keybindable([this]() {
+		auto& logic = Logic::get();
+		bool change = true;
+		if (logic.is_playing()) {
+			if ((logic.play_player_1 && logic.record_player_1) || (logic.play_player_2 && logic.record_player_2)) {
+				change = false;
+				logic.error = "You cannot play and record a player at the same time!";
+				return;
+			}
+		}
 
-		Logic::get().toggle_recording();
-		Logic::get().sort_inputs();
+		if (change) {
+			logic.toggle_playing();
+			logic.sort_inputs();
+		}
 		}));
 
 	std::unique_ptr<KeybindableBase> playingAction = std::unique_ptr<KeybindableBase>(new Keybindable([this]() {
+		auto& logic = Logic::get();
+		bool change = true;
+		if (logic.is_recording()) {
+			if ((logic.play_player_1 && logic.record_player_1) || (logic.play_player_2 && logic.record_player_2)) {
+				change = false;
+				logic.error = "You cannot play and record a player at the same time!";
+			}
+		}
 
-		Logic::get().toggle_playing();
-		Logic::get().sort_inputs();
-		}));
+		if (change) {
+			logic.toggle_playing();
+			logic.sort_inputs();
+		}
+	}));
 
 	Logic::get().keybinds.SetAction("audioHack", std::move(audioSpeedHackAction));
 

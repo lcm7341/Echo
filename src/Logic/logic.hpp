@@ -138,6 +138,11 @@ public:
 
 	FORMATS format = SIMPLE;
 
+	bool record_player_1 = true;
+	bool record_player_2 = true;
+	bool play_player_1 = true;
+	bool play_player_2 = true;
+
 	bool save_debug_info = false;
 
 	Recorder recorder;
@@ -178,7 +183,6 @@ public:
 		auto& io = ImGui::GetIO();
 
 		for (auto& pair : keybinds.bindings) {
-			printf("Processing keybinds");
 			Keybind& keybind = pair.second.first;
 			std::unique_ptr<KeybindableBase>& keybindable = pair.second.second;
 
@@ -250,11 +254,11 @@ public:
 	double get_time();
 
 	inline bool is_playing() {
-		return state == PLAYING;
+		return state == PLAYING || state == RECORDING_AND_PLAYING;
 	}
 
 	inline bool is_recording() {
-		return state == RECORDING;
+		return state == RECORDING || state == RECORDING_AND_PLAYING;
 	}
 
 	inline bool is_both() {
@@ -268,11 +272,17 @@ public:
 	void write_osu_file(const std::string& filename);
 
 	void toggle_playing() {
-		state = is_playing() ? IDLE : PLAYING;
+		state = (state == IDLE) ? PLAYING :
+			(state == PLAYING) ? IDLE :
+			(state == RECORDING) ? RECORDING_AND_PLAYING :
+			RECORDING; // if state was RECORDING_AND_PLAYING, switch to RECORDING
 	}
 
 	void toggle_recording() {
-		state = is_recording() ? IDLE : RECORDING;
+		state = (state == IDLE) ? RECORDING :
+			(state == RECORDING) ? IDLE :
+			(state == PLAYING) ? RECORDING_AND_PLAYING :
+			PLAYING; // if state was RECORDING_AND_PLAYING, switch to PLAYING
 	}
 
 	void idle() {
@@ -365,7 +375,7 @@ public:
 	bool click_both_players = false;
 	bool swap_player_input = false;
 
-	void remove_inputs(unsigned frame);
+	void remove_inputs(unsigned frame, bool player_1);
 
 	void convert_file(const std::string& filename, bool is_path);
 

@@ -58,6 +58,7 @@ bool __fastcall Hooks::PlayLayer::death_h(void* self, void*, void* go, void* thi
 
 }
 
+std::mutex mtx;
 void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
     auto& logic = Logic::get();
     auto play_layer = gd::GameManager::sharedState()->getPlayLayer();
@@ -125,14 +126,14 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
         }
 
         if (logic.real_time_mode) {
+            mtx.lock();
+            float speedhack = logic.speedhack;
+            mtx.unlock();
 
-            const float target_dt = 1.f / logic.fps / logic.speedhack;
-
+            const float target_dt = 1.f / logic.fps / speedhack;
             g_disable_render = true;
 
-            // min(static_cast<int>(g_left_over / target_dt), 50) <- super fast but i think its inaccurate
             const unsigned int times = min(round((dt + g_left_over) / target_dt), 150);
-
             GUI::get().scheduler_dt = times;
 
             for (unsigned i = 0; i < times; i++) {
@@ -141,6 +142,7 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
                 }
                 CCScheduler_update(self, target_dt);
             }
+
             g_left_over += dt - target_dt * times;
             return;
         }
@@ -195,8 +197,15 @@ bool __fastcall Hooks::PauseLayer::init_h(gd::PauseLayer* self) {
     auto& logic = Logic::get();
 
     if (logic.is_recording()) {
-        if (!logic.get_inputs().empty()) {
-            if (logic.get_inputs().back().pressingDown && (!logic.get_latest_checkpoint().player_1_data.m_isDashing || !logic.get_latest_checkpoint().player_2_data.m_isDashing))
+        auto& inputs = logic.get_inputs();
+        auto last_input_p1 = std::find_if(inputs.rbegin(), inputs.rend(), [](Frame input) { return input.isPlayer2 == false; });
+        auto last_input_p2 = std::find_if(inputs.rbegin(), inputs.rend(), [](Frame input) { return input.isPlayer2 == true; });
+
+        if (last_input_p1 != inputs.rend() && last_input_p1->pressingDown && !logic.get_latest_checkpoint().player_1_data.m_isDashing) {
+            logic.record_input(false, true);
+        }
+
+        if (last_input_p2 != inputs.rend() && last_input_p2->pressingDown && !logic.get_latest_checkpoint().player_2_data.m_isDashing) {
             logic.record_input(false, false);
         }
     }
@@ -297,6 +306,7 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
         self->addChild(frame_counter2, 999, FRAME_LABEL_ID);
     }
 
+    /*
     auto recording_label = (cocos2d::CCLabelBMFont*)self->getChildByTag(RECORDING_LABEL_ID);
     if (recording_label) {
         if (logic.is_recording()) {
@@ -318,7 +328,7 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
         recording_label2->setOpacity(70);
 
         self->addChild(recording_label2, 999, RECORDING_LABEL_ID);
-    }
+    }*/
 
 
     auto cps_counter = (cocos2d::CCLabelBMFont*)self->getChildByTag(CPS_LABEL_ID);
@@ -441,6 +451,11 @@ int __fastcall Hooks::PlayLayer::pushButton_h(gd::PlayLayer* self, int, int idk,
 
     if (logic.swap_player_input) button = !button;
 
+    if (button && !logic.record_player_1)
+        return 0;
+    if (!button && !logic.record_player_2)
+        return 0;
+
     logic.record_input(true, button);
 
     return pushButton(self, idk, button);
@@ -457,6 +472,11 @@ int __fastcall Hooks::PlayLayer::releaseButton_h(gd::PlayLayer* self, int, int i
     }
 
     if (logic.swap_player_input) button = !button;
+
+    if (button && !logic.record_player_1)
+        return 0;
+    if (!button && !logic.record_player_2)
+        return 0;
 
     logic.record_input(false, button);
 
@@ -561,8 +581,12 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
         if (!logic.checkpoints.empty()) {
             logic.set_removed(logic.get_removed() + (logic.get_frame() - logic.get_latest_checkpoint().number));
 
-            if (!logic.no_overwrite)
-                logic.remove_inputs(logic.get_frame());
+            if (!logic.no_overwrite) {
+                if (logic.record_player_1)
+                    logic.remove_inputs(logic.get_frame(), true);
+                if (logic.record_player_2)
+                    logic.remove_inputs(logic.get_frame(), false);
+            }
 
             printf("%i", logic.get_frame());
 
@@ -571,11 +595,11 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
                     bool currently_holdingP1 = self->m_player1->m_isHolding;
                     bool currently_holdingP2 = self->m_player2->m_isHolding;
 
-                    if (!currently_holdingP1 && !logic.get_latest_checkpoint().player_1_data.m_isDashing) {
+                    if (logic.record_player_1 && !currently_holdingP1 && !logic.get_latest_checkpoint().player_1_data.m_isDashing) {
                         logic.add_input({ logic.get_latest_checkpoint().number, false, false });
                     }
 
-                    if (!currently_holdingP2 && self->m_level->twoPlayerMode && (!logic.get_latest_checkpoint().player_1_data.m_isDashing || !logic.get_latest_checkpoint().player_2_data.m_isDashing)) {
+                    if (logic.record_player_2 && !currently_holdingP2 && self->m_level->twoPlayerMode && (!logic.get_latest_checkpoint().player_1_data.m_isDashing || !logic.get_latest_checkpoint().player_2_data.m_isDashing)) {
                         logic.add_input({ logic.get_latest_checkpoint().number, false, true });
                     }
                 }
@@ -583,45 +607,57 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
                     bool currently_holdingP1 = self->m_player1->m_isHolding;
                     bool currently_holdingP2 = self->m_player2->m_isHolding;
 
-                    if (currently_holdingP1 && !logic.get_latest_checkpoint().player_1_data.m_isDashing) {
+                    if (logic.record_player_1 && currently_holdingP1 && !logic.get_latest_checkpoint().player_1_data.m_isDashing) {
                         logic.add_input({ logic.get_latest_checkpoint().number, true, false });
                     }
 
-                    if (currently_holdingP2 && self->m_level->twoPlayerMode && (!logic.get_latest_checkpoint().player_1_data.m_isDashing || !logic.get_latest_checkpoint().player_2_data.m_isDashing)) {
+                    if (logic.record_player_2 && currently_holdingP2 && self->m_level->twoPlayerMode && (!logic.get_latest_checkpoint().player_1_data.m_isDashing || !logic.get_latest_checkpoint().player_2_data.m_isDashing)) {
                         logic.add_input({ logic.get_latest_checkpoint().number, true, true });
                     }
                 }
             }
         }
         else {
-            if (!logic.no_overwrite)
-                logic.remove_inputs(0);
+            if (!logic.no_overwrite) {
+                if (logic.record_player_1)
+                    logic.remove_inputs(logic.get_frame(), true);
+                if (logic.record_player_2)
+                    logic.remove_inputs(logic.get_frame(), false);
+            }
 
             logic.set_removed(0);
             self->m_time = 0;
         }
 
-        if (self->m_player1->m_isHolding && logic.checkpoints.empty())
+        if (logic.record_player_1 && self->m_player1->m_isHolding && logic.checkpoints.empty())
             logic.record_input(true, true);
+        if (logic.record_player_2 && self->m_player2->m_isHolding && logic.checkpoints.empty())
+            logic.record_input(true, false);
     }
 
     return ret;
 }
 
 void __fastcall Hooks::PlayerObject_ringJump_h(gd::PlayerObject* self, int, gd::GameObject* ring) {
-    PlayerObject_ringJump(self, ring);
     auto& logic = Logic::get();
-    if (logic.is_recording() && *reinterpret_cast<bool*>(reinterpret_cast<uintptr_t>(ring) + 0x2ca)) {
-        logic.activated_objects.push_back(ring);
+
+    if (std::find(logic.activated_objects.begin(), logic.activated_objects.end(), self) == logic.activated_objects.end()) {
+        PlayerObject_ringJump(self, ring);
+        if (logic.is_recording() && *reinterpret_cast<bool*>(reinterpret_cast<uintptr_t>(self) + 0x2ca)) {
+            logic.activated_objects.push_back(ring);
+        }
     }
 }
 
 
 void __fastcall Hooks::GameObject_activateObject_h(gd::GameObject* self, int, gd::PlayerObject* player) {
-    GameObject_activateObject(self, player);
     auto& logic = Logic::get();
-    if (logic.is_recording() && *reinterpret_cast<bool*>(reinterpret_cast<uintptr_t>(self) + 0x2ca)) {
-        logic.activated_objects.push_back(self);
+
+    if (std::find(logic.activated_objects.begin(), logic.activated_objects.end(), self) == logic.activated_objects.end()) {
+        GameObject_activateObject(self, player);
+        if (logic.is_recording() && *reinterpret_cast<bool*>(reinterpret_cast<uintptr_t>(self) + 0x2ca)) {
+            logic.activated_objects.push_back(self);
+        }
     }
 }
 
