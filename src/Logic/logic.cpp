@@ -52,6 +52,11 @@ void Logic::play_input(Frame& input) {
         printf("MISMATCH X VELOCITY %f:%f\n", PLAYLAYER->m_player1->m_xAccel, input.xVelocity);
     }
 
+    if (!input.isPlayer2 ^ gamevar && !play_player_1)
+        return;
+    if (!(!input.isPlayer2 ^ gamevar) && !play_player_2)
+        return;
+
     if (PLAYLAYER) {
         live_inputs.push_back(input);
         if (input.pressingDown) {
