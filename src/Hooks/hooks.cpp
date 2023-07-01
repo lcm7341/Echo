@@ -51,8 +51,15 @@ float g_left_over = 0.f;
 bool __fastcall Hooks::PlayLayer::death_h(void* self, void*, void* go, void* thingy) {
     auto& logic = Logic::get();
 
-    if (gd::GameManager::sharedState()->m_pPlayLayer->m_player1 == go && logic.noclip_player1 == true) { return 0; }
-    if (gd::GameManager::sharedState()->m_pPlayLayer->m_player2 == go && logic.noclip_player2 == true) { return 0; }
+    if (gd::GameManager::sharedState()->getPlayLayer()->m_player1 == go && logic.noclip_player1) {
+        return 0; 
+    }
+
+    if (gd::GameManager::sharedState()->getPlayLayer()->m_isDualMode) {
+        if (gd::GameManager::sharedState()->getPlayLayer()->m_player2 == go && logic.noclip_player2) {
+            return 0;
+        }
+    }
 
     return Hooks::PlayLayer::death(self, go, thingy);
 
@@ -64,6 +71,15 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
     auto play_layer = gd::GameManager::sharedState()->getPlayLayer();
 
     if (logic.frame_advance) return;
+
+    if (logic.real_time_mode) {
+        Speedhack::SetSpeed(1.f);
+        gd::GameManager::sharedState()->getScheduler()->setTimeScale(logic.speedhack);
+    }
+    else {
+        gd::GameManager::sharedState()->getScheduler()->setTimeScale(1.f);
+        Speedhack::SetSpeed(logic.speedhack);
+    }
 
     if (GUI::get().change_display_fps)
         CCDirector::sharedDirector()->setAnimationInterval(1.f / GUI::get().input_fps);
@@ -98,15 +114,6 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
         }
     }
 
-    if (logic.real_time_mode) {
-        Speedhack::SetSpeed(1);
-        self->setTimeScale(logic.speedhack);
-    }
-    else {
-        self->setTimeScale(1);
-        Speedhack::SetSpeed(logic.speedhack);
-    }
-
     auto& audiospeedhack = AudiopitchHack::getInstance();
     bool isEnabled = audiospeedhack.isEnabled();
     if (isEnabled) {
@@ -126,9 +133,9 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
         }
 
         if (logic.real_time_mode) {
-            mtx.lock();
+            //mtx.lock();
             float speedhack = logic.speedhack;
-            mtx.unlock();
+            //mtx.unlock();
 
             const float target_dt = 1.f / logic.fps / speedhack;
             g_disable_render = true;
@@ -433,7 +440,9 @@ int __fastcall Hooks::PlayLayer::pushButton_h(gd::PlayLayer* self, int, int idk,
     auto& logic = Logic::get();
 
     if (logic.is_playing()) {
-        if (logic.ignore_actions_at_playback) return 0;
+        if (logic.ignore_actions_at_playback) {
+            return 0;
+        }
     }
 
     if (button && self->m_player1->m_isDashing) {
@@ -451,10 +460,12 @@ int __fastcall Hooks::PlayLayer::pushButton_h(gd::PlayLayer* self, int, int idk,
 
     if (logic.swap_player_input) button = !button;
 
-    if (button && !logic.record_player_1)
-        return 0;
-    if (!button && !logic.record_player_2)
-        return 0;
+    if (logic.is_recording()) {
+        if (button && !logic.record_player_1)
+            return 0;
+        if (!button && !logic.record_player_2)
+            return 0;
+    }
 
     logic.record_input(true, button);
 
@@ -464,7 +475,11 @@ int __fastcall Hooks::PlayLayer::pushButton_h(gd::PlayLayer* self, int, int idk,
 int __fastcall Hooks::PlayLayer::releaseButton_h(gd::PlayLayer* self, int, int idk, bool button) {
     auto& logic = Logic::get();
 
-    if (logic.is_playing() && logic.ignore_actions_at_playback) return 0;
+    if (logic.is_playing()) {
+        if (logic.ignore_actions_at_playback) {
+            return 0;
+        }
+    }
 
     if (logic.click_both_players && self->m_level->twoPlayerMode) {
         logic.record_input(false, !button);
@@ -473,10 +488,12 @@ int __fastcall Hooks::PlayLayer::releaseButton_h(gd::PlayLayer* self, int, int i
 
     if (logic.swap_player_input) button = !button;
 
-    if (button && !logic.record_player_1)
-        return 0;
-    if (!button && !logic.record_player_2)
-        return 0;
+    if (logic.is_recording()) {
+        if (button && !logic.record_player_1)
+            return 0;
+        if (!button && !logic.record_player_2)
+            return 0;
+    }
 
     logic.record_input(false, button);
 
@@ -499,10 +516,10 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
     //logic.calculated_xpos = logic.xpos_calculation();
     logic.previous_xpos = logic.xpos_calculation();
 
-    if (logic.is_playing()) {
+   /* if (logic.is_playing()) {
         releaseButton(self, 0, true);
         releaseButton(self, 0, false);
-    }
+    }*/
 
     logic.live_inputs.clear();
     logic.over_max_cps = false;
@@ -581,12 +598,10 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
         if (!logic.checkpoints.empty()) {
             logic.set_removed(logic.get_removed() + (logic.get_frame() - logic.get_latest_checkpoint().number));
 
-            if (!logic.no_overwrite) {
-                if (logic.record_player_1)
-                    logic.remove_inputs(logic.get_frame(), true);
-                if (logic.record_player_2)
-                    logic.remove_inputs(logic.get_frame(), false);
-            }
+            if (logic.record_player_1)
+                logic.remove_inputs(logic.get_frame(), true);
+            if (logic.record_player_2)
+                logic.remove_inputs(logic.get_frame(), false);
 
             printf("%i", logic.get_frame());
 
@@ -619,12 +634,10 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
             }
         }
         else {
-            if (!logic.no_overwrite) {
-                if (logic.record_player_1)
-                    logic.remove_inputs(logic.get_frame(), true);
-                if (logic.record_player_2)
-                    logic.remove_inputs(logic.get_frame(), false);
-            }
+            if (logic.record_player_1)
+                logic.remove_inputs(logic.get_frame(), true);
+            if (logic.record_player_2)
+                logic.remove_inputs(logic.get_frame(), false);
 
             logic.set_removed(0);
             self->m_time = 0;
@@ -640,35 +653,18 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
 }
 
 void __fastcall Hooks::PlayerObject_ringJump_h(gd::PlayerObject* self, int, gd::GameObject* ring) {
+    PlayerObject_ringJump(self, ring);
     auto& logic = Logic::get();
-
-    if (std::find(logic.activated_objects.begin(), logic.activated_objects.end(), self) == logic.activated_objects.end()) {
-        PlayerObject_ringJump(self, ring);
-        if (logic.is_recording() && *reinterpret_cast<bool*>(reinterpret_cast<uintptr_t>(self) + 0x2ca)) {
-            logic.activated_objects.push_back(ring);
-        }
-    }
-    else {
-        self->m_hasBeenActivated = true;
-        self->m_hasBeenActivatedP2 = true;
-        return;
+    if (logic.is_recording() && *reinterpret_cast<bool*>(reinterpret_cast<uintptr_t>(ring) + 0x2ca)) {
+        logic.activated_objects.push_back(ring);
     }
 }
 
-
 void __fastcall Hooks::GameObject_activateObject_h(gd::GameObject* self, int, gd::PlayerObject* player) {
+    GameObject_activateObject(self, player);
     auto& logic = Logic::get();
-
-    if (std::find(logic.activated_objects.begin(), logic.activated_objects.end(), self) == logic.activated_objects.end()) {
-        GameObject_activateObject(self, player);
-        if (logic.is_recording() && *reinterpret_cast<bool*>(reinterpret_cast<uintptr_t>(self) + 0x2ca)) {
-            logic.activated_objects.push_back(self);
-        }
-    }
-    else {
-        self->m_hasBeenActivated = true;
-        self->m_hasBeenActivatedP2 = true;
-        return;
+    if (logic.is_recording() && *reinterpret_cast<bool*>(reinterpret_cast<uintptr_t>(self) + 0x2ca)) {
+        logic.activated_objects.push_back(self);
     }
 }
 

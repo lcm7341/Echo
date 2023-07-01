@@ -5,6 +5,7 @@
 #include <fstream>
 #include <algorithm>  // for std::sort and std::min_element
 #include <cmath>      // for std::abs
+#include <random>
 
 using json = nlohmann::json;
 
@@ -198,6 +199,30 @@ int Logic::find_closest_input() {
     return std::distance(inputs.begin(), closest_it);
 }
 
+namespace fs = std::filesystem;
+
+std::vector<std::string> getWavFilesInDirectory(const std::string& directoryPath) {
+    std::vector<std::string> wavFiles;
+
+    for (const auto& entry : fs::directory_iterator(directoryPath)) {
+        if (entry.is_regular_file() && entry.path().extension() == ".wav") {
+            wavFiles.push_back(entry.path().string());
+        }
+    }
+
+    return wavFiles;
+}
+
+std::string getRandomWavFile(const std::vector<std::string>& wavFiles) {
+    std::random_device rd;
+    std::mt19937 gen(rd()); // this shit dawg
+
+    std::uniform_int_distribution<> dis(0, wavFiles.size() - 1);
+    int randomIndex = dis(gen);
+
+    return wavFiles[randomIndex];
+}
+
 bool Logic::play_macro(int& offset) {
     if (is_playing()) {
         auto& inputs = get_inputs();
@@ -206,17 +231,25 @@ bool Logic::play_macro(int& offset) {
 
         while (inputs[replay_pos].number <= current_frame && replay_pos < inputs.size()) {
             auto& input = inputs[replay_pos];
-            gd::GameSoundManager soundmanager;
 
-            auto oldSFX = gd::FMODAudioEngine::sharedEngine()->m_fEffectsVolume;
-            gd::FMODAudioEngine::sharedEngine()->m_fEffectsVolume = clickbot_volume;
-            if (input.pressingDown) {
-                soundmanager.playSound(".echo\\clickbot\\clicks\\1.wav");
+            if (clickbot_enabled) {
+
+                std::vector<std::string> reg_clicks = getWavFilesInDirectory(".echo\\clickbot\\clicks");
+                std::vector<std::string> reg_releases = getWavFilesInDirectory(".echo\\clickbot\\releases");
+
+                auto oldSFX = gd::FMODAudioEngine::sharedEngine()->m_fEffectsVolume;
+                gd::FMODAudioEngine::sharedEngine()->m_fEffectsVolume = clickbot_volume;
+                if (input.pressingDown) {
+                    gd::GameSoundManager soundmanager;
+                    soundmanager.playSound(getRandomWavFile(reg_clicks));
+                }
+                else {
+                    gd::GameSoundManager soundmanager;
+                    soundmanager.playSound(getRandomWavFile(reg_releases));
+                }
+                gd::FMODAudioEngine::sharedEngine()->m_fEffectsVolume = oldSFX;
             }
-            else {
-                soundmanager.playSound(".echo\\clickbot\\releases\\1.wav");
-            }
-            gd::FMODAudioEngine::sharedEngine()->m_fEffectsVolume = oldSFX;
+
             play_input(inputs[replay_pos]);
             replay_pos += 1;
             ret = true;
@@ -356,7 +389,7 @@ void Logic::read_file(const std::string& filename, bool is_path = false) {
 void Logic::remove_inputs(unsigned frame, bool player_1) {
     auto it = std::remove_if(inputs.begin(), inputs.end(),
         [frame, player_1](const Frame& input) {
-            if (!input.isPlayer2 && player_1)
+            if (!input.isPlayer2 == player_1)
                 return input.number >= frame;
             else
                 return false;

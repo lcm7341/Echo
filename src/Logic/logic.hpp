@@ -153,6 +153,7 @@ public:
 	std::vector<gd::GameObject*> activated_objects_p2;
 	std::vector<std::pair<float, std::string>> cps_over_percents;
 
+	bool clickbot_enabled = false;
 	float clickbot_volume = 1.f;
 
 	float fps = 60.f;

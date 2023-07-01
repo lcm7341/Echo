@@ -114,6 +114,9 @@ void writeConfig() {
 	j["style_pos_x"] = GUI::get().style_pos.x;
 	j["style_pos_y"] = GUI::get().style_pos.y;
 
+	j["clickbot_volume"] = logic.clickbot_volume;
+	j["clickbot_enabled"] = logic.clickbot_enabled;
+
 	for (const auto& binding : logic.keybinds.bindings) {
 		const std::string& action = binding.first;
 		const Keybind& keybind = binding.second.first;
@@ -151,7 +154,7 @@ void readConfig() {
 
 	std::ifstream file(".echo\\settings\\settings.json");
 	if (!file.is_open()) {
-		logic.error = "Error: Failed to open config file";
+		logic.error = "Failed to open settings file.\nIt either doesn't exist, or Echo can't access it.";
 		return;
 	}
 	json j;
@@ -236,6 +239,7 @@ void readConfig() {
 	GUI::get().style_pos.y = getOrDefault(j, "style_pos_y", 35);
 
 	logic.clickbot_volume = getOrDefault(j, "clickbot_volume", 1);
+	logic.clickbot_enabled = getOrDefault(j, "clickbot_enabled", false);
 
 	CCDirector::sharedDirector()->setAnimationInterval(1.f / logic.fps);
 
@@ -266,7 +270,7 @@ DWORD WINAPI my_thread(void* hModule) {
 	
 	MH_Initialize();
 	readConfig();
-	//Speedhack::Setup();
+	Speedhack::Setup();
 	// UnfullscreenGame();
 	Hooks::init_hooks();
 	auto& instance = GUI::get();
@@ -280,7 +284,7 @@ DWORD WINAPI my_thread(void* hModule) {
 		});
 	MH_STATUS status = MH_EnableHook(MH_ALL_HOOKS);
 	if (status != MH_OK) {
-		Logic::get().error = "Could not hook MH";
+		Logic::get().error = "Could not load MinHook! Restart your game!";
 	}
 
 	//ImGuiHook::setKeybind(VK_SHIFT);

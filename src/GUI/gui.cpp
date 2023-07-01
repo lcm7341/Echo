@@ -31,6 +31,7 @@
 #include "../Hooks/hooks.hpp"
 #include <imgui_demo.cpp>
 #include <format>
+#include "../Logic/speedhack.h"
 
 std::string echo_version = "Echo v0.8b";
 
@@ -129,7 +130,7 @@ void GUI::draw() {
 		if (Logic::get().error != "") {
 			ImGui::OpenPopup("Error");
 
-			if (ImGui::BeginPopupModal("Error", &open_modal, ImGuiWindowFlags_NoResize)) {
+			if (ImGui::BeginPopupModal("Error", &open_modal, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize)) {
 
 				ImGui::Text("%s", Logic::get().error);
 
@@ -141,12 +142,28 @@ void GUI::draw() {
 			}
 		}
 
+
+		if (ImGuiFileDialog::Instance()->Display("ThemeImport", ImGuiWindowFlags_NoCollapse, ImVec2(500, 200)))
+		{
+			// action if OK
+			if (ImGuiFileDialog::Instance()->IsOk())
+			{
+				try {
+					import_theme(ImGuiFileDialog::Instance()->GetFilePathName());
+				}
+				catch (std::runtime_error& e) {
+					printf("%s", e.what());
+				}
+			}
+			ImGuiFileDialog::Instance()->Close();
+		}
+
 		//io.FontGlobalScale = io.DisplaySize.x / 2000; // wee bit bigger than 1920
 
 		if (docked) {
-			ImGui::Begin(full_title.str().c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize);
+			ImGui::Begin(full_title.str().c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoFocusOnAppearing);
 
-			if (ImGui::BeginTabBar("TabBar", ImGuiTabBarFlags_Reorderable)) {
+			if (ImGui::BeginTabBar("TabBar", ImGuiTabBarFlags_Reorderable | ImGuiTabBarFlags_SaveSettings)) {
 				main();
 				tools();
 				editor();
@@ -184,8 +201,6 @@ void GUI::draw() {
 				ui_editor();
 				clickbot();
 			}
-
-			ImGui::End();
 		}
 	}
 
@@ -456,22 +471,6 @@ void GUI::ui_editor() {
 
 		ImGui::Separator();
 
-		if (ImGuiFileDialog::Instance()->Display("ThemeImport", ImGuiWindowFlags_NoCollapse, ImVec2(300, 500)))
-		{
-			// action if OK
-			if (ImGuiFileDialog::Instance()->IsOk())
-			{
-				try {
-					import_theme(ImGuiFileDialog::Instance()->GetFilePathName());
-				}
-				catch (std::runtime_error& e) {
-					printf("%s", e.what());
-				}
-			}
-
-			ImGuiFileDialog::Instance()->Close();
-		}
-
 		ImFontAtlas* atlas = io.Fonts;
 		//HelpMarker("Read FAQ and docs/FONTS.md for details on font loading.");
 		//ImGui::ShowFontAtlas(atlas);
@@ -729,7 +728,7 @@ void GUI::editor() {
 
 		// Modify the style settings
 
-		ImGui::BeginChild("##List", ImVec2(0, (firstChildHeight - ImGui::GetFrameHeightWithSpacing() + 1) * ImGui::GetIO().FontGlobalScale), true);
+		ImGui::BeginChild("##List", ImVec2(0, (firstChildHeight - ImGui::GetFrameHeightWithSpacing() + 1) * ImGui::GetIO().FontGlobalScale), true, ImGuiWindowFlags_AlwaysUseWindowPadding);
 		if (!inputs.empty()) {
 			int closestFrameDiff = INT_MAX;
 			int closestInputIndex = -1;
@@ -795,7 +794,7 @@ void GUI::editor() {
 		ImGui::EndChild();
 		ImGui::NextColumn();
 
-		ImGui::BeginChild("##EditArea", ImVec2(0, (firstChildHeight - ImGui::GetFrameHeightWithSpacing() + 1) * ImGui::GetIO().FontGlobalScale), true);
+		ImGui::BeginChild("##EditArea", ImVec2(0, (firstChildHeight - ImGui::GetFrameHeightWithSpacing() + 1) * ImGui::GetIO().FontGlobalScale), true, ImGuiWindowFlags_AlwaysUseWindowPadding);
 
 		if (selectedInput >= 0 && selectedInput < inputs.size()) {
 			ImGui::Text("Editing Input %d", selectedInput + 1); ImGui::SameLine();
@@ -1361,25 +1360,26 @@ void GUI::tools() {
 					ImGui::SetItemDefaultFocus();
 
 					const char* selected = noclip_options[selected_noclip];
-					if (selected == "Off") {
-						logic.noclip_player1 = false;
-						logic.noclip_player2 = false;
-					}
-					else if (selected == "Player 1") {
-						logic.noclip_player1 = true;
-						logic.noclip_player2 = false;
-					}
-					else if (selected == "Player 2") {
-						logic.noclip_player1 = false;
-						logic.noclip_player2 = true;
-					}
-					else if (selected == "Both") {
-						logic.noclip_player1 = true;
-						logic.noclip_player2 = true;
-					}
 				}
 			}
 			ImGui::EndCombo();
+		}
+
+		if (selected_noclip == 0) {
+			logic.noclip_player1 = false;
+			logic.noclip_player2 = false;
+		}
+		else if (selected_noclip == 1) {
+			logic.noclip_player1 = true;
+			logic.noclip_player2 = false;
+		}
+		else if (selected_noclip == 2) {
+			logic.noclip_player1 = false;
+			logic.noclip_player2 = true;
+		}
+		else if (selected_noclip == 3) {
+			logic.noclip_player1 = true;
+			logic.noclip_player2 = true;
 		}
 
 		ImGui::PopItemWidth();
@@ -1592,6 +1592,8 @@ void GUI::clickbot() {
 
 		}
 
+		ImGui::Checkbox("Enabled###enable_clickbot", &logic.clickbot_enabled);
+
 		ImGui::DragFloat("Volume###clickbot_volume", &logic.clickbot_volume, 0.01, 0.01, 25);
 
 		if (docked)
@@ -1701,10 +1703,8 @@ void GUI::main() {
 	const ImVec2 buttonSize = { get_width(48), 0 };
 
 	float tabWidth = ImGui::GetWindowContentRegionWidth() / 6.0f;
-	if (docked) {
+	if (docked)
 		ImGui::SetNextItemWidth(tabWidth);
-		ImGui::SetNextWindowContentSize(ImVec2(tabWidth, -1));
-	}
 	if (ImGui::BeginTabItem("Main") || !docked) {
 		if (!docked) {
 			ImGui::Begin(echo_version.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize);
@@ -1731,8 +1731,11 @@ void GUI::main() {
 			style.Colors[ImGuiCol_ButtonActive] = style.Colors[ImGuiCol_FrameBgHovered];
 		}
 
-		if (ImGui::Button(logic.is_recording() ? "Stop Recording" : "Start Recording", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.35f, 0))) {
+		if (ImGui::Button(logic.is_recording() ? "Stop Recording" : "Start Recording", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.5f, 0))) {
 			bool change = true;
+			if (logic.is_playing() && (logic.play_player_1 && logic.record_player_1) && (logic.play_player_2 && logic.record_player_2)) {
+				logic.toggle_playing();
+			}
 			if (logic.is_playing()) {
 				if ((logic.play_player_1 && logic.record_player_1) || (logic.play_player_2 && logic.record_player_2)) {
 					change = false;
@@ -1757,15 +1760,6 @@ void GUI::main() {
 
 		ImGui::SameLine();
 
-		if (logic.is_recording() || logic.is_playing())
-			ImGui::BeginDisabled();
-		if (ImGui::Checkbox("Record Player 1", &logic.record_player_1));
-		ImGui::SameLine();
-		ImGui::SetCursorPosX(ImGui::GetWindowContentRegionWidth() * 0.7);;
-		if (ImGui::Checkbox("Record Player 2", &logic.record_player_2));
-		if (logic.is_recording() || logic.is_playing())
-			ImGui::EndDisabled();
-
 		if (logic.is_playing()) {
 			ImVec4 tempColor = style.Colors[ImGuiCol_Button];
 			ImVec4 tempColor2 = style.Colors[ImGuiCol_ButtonHovered];
@@ -1775,8 +1769,11 @@ void GUI::main() {
 			style.Colors[ImGuiCol_ButtonActive] = style.Colors[ImGuiCol_FrameBgHovered];
 		}
 
-		if (ImGui::Button(logic.is_playing() ? "Stop Playing" : "Start Playing", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.35f, 0))) {
+		if (ImGui::Button(logic.is_playing() ? "Stop Playing" : "Start Playing", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
 			bool change = true;
+			if (logic.is_recording() && (logic.play_player_1 && logic.record_player_1) && (logic.play_player_2 && logic.record_player_2)) {
+				logic.toggle_recording();
+			}
 			if (logic.is_recording()) {
 				if ((logic.play_player_1 && logic.record_player_1) || (logic.play_player_2 && logic.record_player_2)) {
 					change = false;
@@ -1804,16 +1801,84 @@ void GUI::main() {
 		style.Colors[ImGuiCol_ButtonHovered] = tempColor2;
 		style.Colors[ImGuiCol_ButtonActive] = tempColor3;
 
+		const char* recording_player_options[] = { "Both", "Player 1", "Player 2" };
 
-		ImGui::SameLine();
 		if (logic.is_recording() || logic.is_playing())
 			ImGui::BeginDisabled();
-		if (ImGui::Checkbox("Play Player 1", &logic.play_player_1));
-		ImGui::SameLine();
-		ImGui::SetCursorPosX(ImGui::GetWindowContentRegionWidth() * 0.7);;
-		if (ImGui::Checkbox("Play Player 2", &logic.play_player_2));
+		ImGui::PushItemWidth(ImGui::GetWindowContentRegionWidth() * 0.5);
+		if (ImGui::BeginCombo("###dropdown_recording_player", recording_player_options[selected_recording]))
+		{
+			for (int i = 0; i < IM_ARRAYSIZE(recording_player_options); i++)
+			{
+				const bool isSelected = (selected_recording == i);
+				if (ImGui::Selectable(recording_player_options[i], isSelected))
+					selected_recording = i;
+
+				if (isSelected) {
+					ImGui::SetItemDefaultFocus();
+
+					const char* selected = recording_player_options[selected_recording];
+				}
+			}
+			ImGui::EndCombo();
+		}
+
 		if (logic.is_recording() || logic.is_playing())
 			ImGui::EndDisabled();
+
+		if (selected_recording == 0) {
+			logic.record_player_1 = true;
+			logic.record_player_2 = true;
+		}
+		else if (selected_recording == 1) {
+			logic.record_player_1 = true;
+			logic.record_player_2 = false;
+		}
+		else if (selected_recording == 2) {
+			logic.record_player_1 = false;
+			logic.record_player_2 = true;
+		}
+
+		ImGui::SameLine();
+
+		const char* playing_player_options[] = { "Both", "Player 1", "Player 2" };
+
+		if (logic.is_recording() || logic.is_playing())
+			ImGui::BeginDisabled();
+
+		ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x);
+		if (ImGui::BeginCombo("###dropdown_playing_player", playing_player_options[selected_playback]))
+		{
+			for (int i = 0; i < IM_ARRAYSIZE(playing_player_options); i++)
+			{
+				const bool isSelected = (selected_playback == i);
+				if (ImGui::Selectable(playing_player_options[i], isSelected))
+					selected_playback = i;
+
+				if (isSelected) {
+					ImGui::SetItemDefaultFocus();
+
+					const char* selected = playing_player_options[selected_playback];
+				}
+			}
+			ImGui::EndCombo();
+		}
+
+		if (logic.is_recording() || logic.is_playing())
+			ImGui::EndDisabled();
+
+		if (selected_playback == 0) {
+			logic.play_player_1 = true;
+			logic.play_player_2 = true;
+		}
+		else if (selected_playback == 1) {
+			logic.play_player_1 = true;
+			logic.play_player_2 = false;
+		}
+		else if (selected_playback == 2) {
+			logic.play_player_1 = false;
+			logic.play_player_2 = true;
+		}
 
 		ImGui::Spacing();
 
@@ -1868,9 +1933,18 @@ void GUI::main() {
 
 		ImGui::SameLine();
 
-		if (ImGui::DragFloat("Speed", &speed, 0.01, 0.01f, 100.f, "%.2f")) {
+		if (ImGui::DragFloat("Speed", &speed, 0.01, 0.01f, 10.f, "%.2f")) {
 			if (speed < 0.01) speed = 0.01f;
 			logic.speedhack = speed;
+
+			if (logic.real_time_mode) {
+				Speedhack::SetSpeed(1.f);
+				gd::GameManager::sharedState()->getScheduler()->setTimeScale(speed);
+			}
+			else {
+				gd::GameManager::sharedState()->getScheduler()->setTimeScale(1.f);
+				Speedhack::SetSpeed(speed);
+			}
 			/*if (logic.respawn_time_modified) {
 				Opcode opcode(Cheat::AntiCheatBypass);
 				opcode.ModifyFloatAtOffset(0x20A677, logic.speedhack);
@@ -1898,7 +1972,16 @@ void GUI::main() {
 			ImGui::BeginDisabled();
 			logic.real_time_mode = false;
 		}
-		ImGui::Checkbox("Real Time Mode", &logic.real_time_mode);
+		if (ImGui::Checkbox("Real Time Mode", &logic.real_time_mode)) {
+			if (logic.real_time_mode) {
+				Speedhack::SetSpeed(1.f);
+				gd::GameManager::sharedState()->getScheduler()->setTimeScale(logic.speedhack);
+			}
+			else {
+				gd::GameManager::sharedState()->getScheduler()->setTimeScale(1.f);
+				Speedhack::SetSpeed(logic.speedhack);
+			}
+		}
 		if (logic.recorder.m_recording && !logic.recorder.real_time_rendering) ImGui::EndDisabled();
 
 		CHECK_KEYBIND("realTimeMode");
@@ -2105,7 +2188,7 @@ void GUI::main() {
 
 		ImGui::SetNextItemWidth(get_width(50.f));
 
-		if (ImGui::Button("Load File", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.48f, 0))) {
+		if (ImGui::Button("Load File", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
 			if (!logic.file_dialog) {
 				if (logic.use_json_for_files) {
 					logic.read_file_json(logic.macro_name, false);
@@ -2124,16 +2207,15 @@ void GUI::main() {
 
 		if (ImGuiFileDialog::Instance()->Display("ImportNormal", ImGuiWindowFlags_NoCollapse, ImVec2(500, 200)))
 		{
-			// action if OK
 			if (ImGuiFileDialog::Instance()->IsOk())
 			{
-				// Find the position of the last dot in the filename
-				size_t dotPosition = ImGuiFileDialog::Instance()->GetFilePathName().find_last_of(".");
-
-				// Extract the substring from the beginning of the filename till the dot
-				std::string nameWithoutExtension = ImGuiFileDialog::Instance()->GetFilePathName().substr(0, dotPosition);
-
 				std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
+
+				size_t dotPosition = filePathName.find_last_of(".");
+
+				std::filesystem::path path(filePathName);
+				std::string nameWithoutExtension = path.stem().string(); // blud
+
 				std::string suffix = ".bin";
 				if (filePathName.size() >= suffix.size() && filePathName.rfind(suffix) == (filePathName.size() - suffix.size()))
 					logic.read_file(filePathName, true);
@@ -2147,6 +2229,7 @@ void GUI::main() {
 			}
 			ImGuiFileDialog::Instance()->Close();
 		}
+
 
 		if (ImGui::Button("Close Menu", ImVec2(ImGui::GetWindowContentRegionWidth(), 0))) {
 			show_window = false;
@@ -2172,7 +2255,7 @@ void readBinds() {
 
 	std::ifstream file(".echo\\settings\\settings.json");
 	if (!file.is_open()) {
-		logic.error = "Error: Failed to open config file";
+		// no error message, it should have already popped up on game start
 		return;
 	}
 	json j;
