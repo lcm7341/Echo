@@ -780,6 +780,7 @@ void GUI::editor() {
 						int firstVisibleIndex = max(0, selectedIndex - visibleInputs / 2);
 						int scrollY = firstVisibleIndex * ImGui::GetItemRectSize().y + (ImGui::GetStyle().ItemSpacing.y * closestInputIndex); // DO NOT FUCK WITH THIS MATH DAWG IT TOOK ME 2 HOURS
 
+						if (editor_auto_scroll)
 						ImGui::SetScrollY(scrollY);
 					}
 				}
@@ -798,7 +799,7 @@ void GUI::editor() {
 
 		if (selectedInput >= 0 && selectedInput < inputs.size()) {
 			ImGui::Text("Editing Input %d", selectedInput + 1); ImGui::SameLine();
-			if (ImGui::Button("Delete")) {
+			if (ImGui::Button("Delete", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
 				inputs.erase(inputs.begin() + selectedInput);
 				if (selectedInput >= inputs.size()) selectedInput = inputs.size() - 1;
 				newInput = inputs[selectedInput];
@@ -808,23 +809,25 @@ void GUI::editor() {
 			ImGui::PopItemWidth();
 			ImGui::Checkbox("Down", &newInput.pressingDown);
 			ImGui::SameLine();
-			if (ImGui::Button("Move Up") && selectedInput > 0) {
+			if (ImGui::Button("Move Up", ImVec2(ImGui::GetContentRegionAvail().x, 0)) && selectedInput > 0) {
 				std::swap(inputs[selectedInput], inputs[selectedInput - 1]);
 				selectedInput--;
 			}
 			ImGui::Checkbox("Player 2", &newInput.isPlayer2);
 			ImGui::SameLine();
-			if (ImGui::Button("Move Down") && selectedInput < inputs.size() - 1) {
+			if (ImGui::Button("Move Down", ImVec2(ImGui::GetContentRegionAvail().x, 0)) && selectedInput < inputs.size() - 1) {
 				std::swap(inputs[selectedInput], inputs[selectedInput + 1]);
 				selectedInput++;
 			}
+			ImGui::Separator();
 			ImGui::Text("Current Frame: %i", logic.get_frame());
+			ImGui::Checkbox("Auto Scroll To Frame", &editor_auto_scroll);
 			inputs[selectedInput] = newInput;
 		}
 		else {
 			ImGui::BeginDisabled();
 			ImGui::Text("Editing Input %d", selectedInput + 1); ImGui::SameLine();
-			if (ImGui::Button("Delete")) {
+			if (ImGui::Button("Delete", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
 				inputs.erase(inputs.begin() + selectedInput);
 				if (selectedInput >= inputs.size()) selectedInput = inputs.size() - 1;
 				newInput = inputs[selectedInput];
@@ -837,17 +840,19 @@ void GUI::editor() {
 			ImGui::PopItemWidth();
 			ImGui::Checkbox("Down", &fake_down_edit_value);
 			ImGui::SameLine();
-			if (ImGui::Button("Move Up") && selectedInput > 0) {
+			if (ImGui::Button("Move Up", ImVec2(ImGui::GetContentRegionAvail().x, 0)) && selectedInput > 0) {
 				std::swap(inputs[selectedInput], inputs[selectedInput - 1]);
 				selectedInput--;
 			}
 			ImGui::Checkbox("Player 2", &fake_player_edit_value);
 			ImGui::SameLine();
-			if (ImGui::Button("Move Down") && selectedInput < inputs.size() - 1) {
+			if (ImGui::Button("Move Down", ImVec2(ImGui::GetContentRegionAvail().x, 0)) && selectedInput < inputs.size() - 1) {
 				std::swap(inputs[selectedInput], inputs[selectedInput + 1]);
 				selectedInput++;
 			}
+			ImGui::Separator();
 			ImGui::Text("Current Frame: %i", logic.get_frame());
+			ImGui::Checkbox("Auto Scroll To Frame", &editor_auto_scroll);
 			ImGui::EndDisabled();
 		}
 

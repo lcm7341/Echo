@@ -51,6 +51,8 @@ public:
 
 	bool change_display_fps = false; // so it doesnt change when ur typing lol
 
+	bool editor_auto_scroll = true;
+
 	std::string keybind_prompt = "";
 	std::string keybind_prompt_cache = "";
 	ImVec4 popup_bg_color = { 0, 0, 0, 60 };
