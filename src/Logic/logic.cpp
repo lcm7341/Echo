@@ -249,11 +249,6 @@ bool Logic::play_macro(int& offset) {
                 gd::FMODAudioEngine::sharedEngine()->m_fEffectsVolume = oldSFX;
             }
 
-            if (replay_pos != find_closest_input()) {
-                replay_pos += 1;
-                continue;
-            }
-
             play_input(inputs[replay_pos]);
             replay_pos += 1;
             ret = true;
