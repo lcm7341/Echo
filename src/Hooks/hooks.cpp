@@ -72,15 +72,6 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
 
     if (logic.frame_advance) return;
 
-    if (logic.real_time_mode) {
-        Speedhack::SetSpeed(1.f);
-        gd::GameManager::sharedState()->getScheduler()->setTimeScale(logic.speedhack);
-    }
-    else {
-        gd::GameManager::sharedState()->getScheduler()->setTimeScale(1.f);
-        Speedhack::SetSpeed(logic.speedhack);
-    }
-
     if (GUI::get().change_display_fps)
         CCDirector::sharedDirector()->setAnimationInterval(1.f / GUI::get().input_fps);
 
@@ -131,17 +122,17 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
                 return CCScheduler_update(self, dt);
             }
         }
+        const float target_dt = 1.f / logic.fps / logic.speedhack;
 
         if (logic.real_time_mode) {
             //mtx.lock();
             float speedhack = logic.speedhack;
             //mtx.unlock();
 
-            const float target_dt = 1.f / logic.fps / speedhack;
             g_disable_render = true;
 
             const unsigned int times = min(round((dt + g_left_over) / target_dt), 150);
-            GUI::get().scheduler_dt = times;
+            if (dt == 0.f) return CCScheduler_update(self, target_dt);
 
             for (unsigned i = 0; i < times; i++) {
                 if (i == times - 1) {
@@ -152,10 +143,6 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
 
             g_left_over += dt - target_dt * times;
             return;
-        }
-        else {
-            g_disable_render = false;
-            dt = 1.f / logic.fps;
         }
     }
     return CCScheduler_update(self, dt);
@@ -171,8 +158,8 @@ void __fastcall Hooks::CCKeyboardDispatcher_dispatchKeyboardMSG_h(CCKeyboardDisp
                 Logic::get().start = std::chrono::steady_clock::now();
                 Logic::get().frame_advance = false;
                 bool old_real_time = Logic::get().real_time_mode;
-                Logic::get().real_time_mode = false;
-                Hooks::CCScheduler_update_h(gd::GameManager::sharedState()->getScheduler(), 0, 1.f / Logic::get().fps / Logic::get().speedhack);
+                Logic::get().real_time_mode = false;			
+                Hooks::CCScheduler_update_h(gd::GameManager::sharedState()->getScheduler(), 0, 1.f / logic.fps);
                 Logic::get().frame_advance = true;
                 Logic::get().real_time_mode = old_real_time;
             }
@@ -238,6 +225,10 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
     auto& logic = Logic::get();
 
     static int offset = rand();
+
+    if (self->m_hasCompletedLevel) {
+        if (logic.is_recording()) logic.toggle_recording();
+    }
 
     logic.player_acceleration = self->m_player1->m_xAccel;
     logic.player_speed = self->m_player1->m_playerSpeed;
@@ -313,7 +304,6 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
         self->addChild(frame_counter2, 999, FRAME_LABEL_ID);
     }
 
-    /*
     auto recording_label = (cocos2d::CCLabelBMFont*)self->getChildByTag(RECORDING_LABEL_ID);
     if (recording_label) {
         if (logic.is_recording()) {
@@ -335,8 +325,7 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
         recording_label2->setOpacity(70);
 
         self->addChild(recording_label2, 999, RECORDING_LABEL_ID);
-    }*/
-
+    }
 
     auto cps_counter = (cocos2d::CCLabelBMFont*)self->getChildByTag(CPS_LABEL_ID);
 
@@ -374,7 +363,7 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
         if (logic.show_percent) {
             char out[24];
             std::stringstream stream;
-            float percent = (self->timeForXPos2(self->m_player1->getPositionX(), true) / self->timeForXPos2(self->m_endPortal->getPositionX(), true)) * 100.f;
+            float percent = min(100.f, (self->m_player1->getPositionX() / self->m_endPortal->getPositionX()) * 100.f);
             if (logic.percent_accuracy > 0) {
                 stream << "%." << logic.percent_accuracy << "f%%";
                 sprintf_s(out, stream.str().c_str(), percent);
@@ -554,8 +543,9 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
         logic.recorder.video_name = logic.macro_name;
     }
 
-    if (logic.is_playing())
+    if (logic.is_playing()) {
         logic.set_replay_pos(logic.find_closest_input());
+    }
 
     if (!self->m_isPracticeMode)
         logic.checkpoints.clear();

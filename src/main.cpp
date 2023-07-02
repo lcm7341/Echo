@@ -245,8 +245,6 @@ void readConfig() {
 	logic.clickbot_volume = getOrDefault(j, "clickbot_volume", 1);
 	logic.clickbot_enabled = getOrDefault(j, "clickbot_enabled", false);
 
-	CCDirector::sharedDirector()->setAnimationInterval(1.f / logic.fps);
-
 	file.close();
 }
 

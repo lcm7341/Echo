@@ -185,10 +185,9 @@ std::string Logic::highest_cps() {
 
 }
 
-
 int Logic::find_closest_input() {
     if (inputs.empty()) {
-        return -1;
+        return 0;
     }
 
     unsigned current_frame = get_frame();
@@ -248,6 +247,11 @@ bool Logic::play_macro(int& offset) {
                     soundmanager.playSound(getRandomWavFile(reg_releases));
                 }
                 gd::FMODAudioEngine::sharedEngine()->m_fEffectsVolume = oldSFX;
+            }
+
+            if (replay_pos != find_closest_input()) {
+                replay_pos += 1;
+                continue;
             }
 
             play_input(inputs[replay_pos]);
@@ -345,6 +349,9 @@ void Logic::read_file(const std::string& filename, bool is_path = false) {
         return;
     }
     error = "";
+
+    if (is_recording()) toggle_recording();
+    if (!is_playing()) toggle_playing();
 
     if (!is_path)
         inputs.clear();
@@ -474,6 +481,9 @@ void Logic::read_file_json(const std::string& filename, bool is_path = false) {
         format = SIMPLE;
     }
 
+    if (is_recording()) toggle_recording();
+    if (!is_playing()) toggle_playing();
+
     // Extract the state data from the JSON object
     fps = state["fps"].get<double>();
     
@@ -564,7 +574,6 @@ void Logic::sort_inputs() {
         }
         return a.number < b.number;
         });
-
 }
 
 

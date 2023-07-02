@@ -94,20 +94,33 @@ void GUI::draw() {
 
 	if (g_font) ImGui::PushFont(g_font);
 
-
 	auto end = std::chrono::steady_clock::now();
 	auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - Logic::get().start);
 
-	if (duration.count() >= Logic::get().frame_advance_hold_duration && Logic::get().start != std::chrono::steady_clock::time_point()) {
+	if (duration.count() >= Logic::get().frame_advance_hold_duration * Logic::get().speedhack && Logic::get().start != std::chrono::steady_clock::time_point()) {
 		Logic::get().frame_advance = false;
+		bool old_real_time = Logic::get().real_time_mode;
+		Logic::get().real_time_mode = false;
 		Hooks::CCScheduler_update_h(gd::GameManager::sharedState()->getScheduler(), 0, 1.f / Logic::get().fps);
 		Logic::get().frame_advance = true;
+		Logic::get().real_time_mode = old_real_time;
 		delay(Logic::get().frame_advance_delay);
 		Logic::get().holding_frame_advance = true;
 	}
 	else {
 		Logic::get().holding_frame_advance = false;
 	}
+
+	/*Speedhack::SetSpeed(1.f);
+	gd::GameManager::sharedState()->getScheduler()->setTimeScale(Logic::get().speedhack);*/
+	/*if (!Logic::get().is_recording() && !Logic::get().is_playing()) {
+		Speedhack::SetSpeed(1.f);
+		gd::GameManager::sharedState()->getScheduler()->setTimeScale(Logic::get().speedhack);
+	}
+	else {
+		gd::GameManager::sharedState()->getScheduler()->setTimeScale(1.f);
+		Speedhack::SetSpeed(Logic::get().speedhack);
+	}*/
 
 	if (show_window) {
 		std::stringstream full_title;
@@ -141,7 +154,6 @@ void GUI::draw() {
 				ImGui::EndPopup();
 			}
 		}
-
 
 		if (ImGuiFileDialog::Instance()->Display("ThemeImport", ImGuiWindowFlags_NoCollapse, ImVec2(500, 200)))
 		{
@@ -294,7 +306,7 @@ void GUI::import_theme(std::string path) {
 	style.AntiAliasedFill = json["AntiAliasedFill"];
 	style.CurveTessellationTol = json["CurveTessellationTol"];
 	style.CircleTessellationMaxError = json["CircleTessellationMaxError"];
-	style.Alpha = json["Alpha"];
+	style.Alpha = min(15, json["Alpha"]);
 	style.DisabledAlpha = json["DisabledAlpha"];
 
 	if (json.contains("player_1_button_color")) {
@@ -375,7 +387,7 @@ void GUI::export_theme(std::string path, bool custom_path) {
 	json["AntiAliasedFill"] = style.AntiAliasedFill;
 	json["CurveTessellationTol"] = style.CurveTessellationTol;
 	json["CircleTessellationMaxError"] = style.CircleTessellationMaxError;
-	json["Alpha"] = style.Alpha;
+	json["Alpha"] = min(15, style.Alpha);
 	json["DisabledAlpha"] = style.DisabledAlpha;
 
 	for (int i = 0; i < ImGuiCol_COUNT; i++)
@@ -763,13 +775,13 @@ void GUI::editor() {
 				std::sprintf(buffer, "%s at %d##Input", inputs[i].pressingDown ? "Click" : "Release", inputs[i].number);
 				std::string text = buffer;
 
-				if (ImGui::Button(text.c_str())) {
+				if (ImGui::Button(text.c_str(), ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
 					selectedInput = i;
 					newInput = inputs[i];
 				}
 
 				// Automatically select the closest input to the current frame
-				if (PLAYLAYER && !PLAYLAYER->m_isPaused && (!logic.frame_advance || !logic.holding_frame_advance)) {
+				if (PLAYLAYER && !PLAYLAYER->m_isPaused && (!logic.frame_advance || !logic.holding_frame_advance) && editor_auto_scroll) {
 					if (closestInputIndex != -1) {
 						selectedInput = closestInputIndex;
 						newInput = inputs[closestInputIndex];
@@ -779,8 +791,7 @@ void GUI::editor() {
 						int visibleInputs = ImGui::GetWindowHeight() / ImGui::GetItemRectSize().y;
 						int firstVisibleIndex = max(0, selectedIndex - visibleInputs / 2);
 						int scrollY = firstVisibleIndex * ImGui::GetItemRectSize().y + (ImGui::GetStyle().ItemSpacing.y * closestInputIndex); // DO NOT FUCK WITH THIS MATH DAWG IT TOOK ME 2 HOURS
-
-						if (editor_auto_scroll)
+						
 						ImGui::SetScrollY(scrollY);
 					}
 				}
@@ -852,8 +863,8 @@ void GUI::editor() {
 			}
 			ImGui::Separator();
 			ImGui::Text("Current Frame: %i", logic.get_frame());
-			ImGui::Checkbox("Auto Scroll To Frame", &editor_auto_scroll);
 			ImGui::EndDisabled();
+			ImGui::Checkbox("Auto Scroll To Frame", &editor_auto_scroll);
 		}
 
 		ImGui::EndChild();
@@ -966,7 +977,7 @@ void GUI::renderer() {
 
 		ImGui::SameLine();
 
-		if (ImGui::Button("Set To Window Size")) {
+		if (ImGui::Button("Set To Window Size", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
 			auto windowSize = ImGui::GetIO().DisplaySize;
 			auto windowX = windowSize.x;
 			auto windowY = windowSize.y;
@@ -986,7 +997,7 @@ void GUI::renderer() {
 
 		ImGui::SameLine();
 
-		if (ImGui::Button("Extra Settings", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.48f, 0))) {
+		if (ImGui::Button("Extra Settings", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
 			ImGui::OpenPopup("Extra Render Settings");
 		}
 
@@ -1064,19 +1075,19 @@ void GUI::renderer() {
 
 		if (PLAYLAYER) {
 			if (!logic.recorder.m_recording) {
-				if (ImGui::Button("Start Rendering")) {
+				if (ImGui::Button("Start Rendering", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
 					logic.recorder.start(logic.recorder.directory + logic.recorder.video_name + logic.recorder.extension);
 				}
 			}
 			else {
-				if (ImGui::Button("Stop Rendering")) {
+				if (ImGui::Button("Stop Rendering", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
 					logic.recorder.stop();
 				}
 			}
 		}
 		else {
 			ImGui::BeginDisabled();
-			ImGui::Button("Start Recording");
+			ImGui::Button("Start Recording", ImVec2(ImGui::GetContentRegionAvail().x, 0));
 			ImGui::EndDisabled();
 		}
 
@@ -1531,7 +1542,7 @@ void GUI::tools() {
 			if (logic.start == std::chrono::steady_clock::time_point())
 				logic.start = std::chrono::steady_clock::now();
 			logic.frame_advance = false;
-			Hooks::CCScheduler_update_h(gd::GameManager::sharedState()->getScheduler(), 0, 1.f / logic.fps / logic.speedhack);
+			Hooks::CCScheduler_update_h(gd::GameManager::sharedState()->getScheduler(), 0, 1.f / logic.fps);
 			logic.frame_advance = true;
 		} else logic.start = std::chrono::steady_clock::time_point();
 
@@ -1789,7 +1800,6 @@ void GUI::main() {
 
 			if (change) {
 				logic.toggle_playing();
-				logic.sort_inputs();
 			}
 		}
 
@@ -1941,15 +1951,7 @@ void GUI::main() {
 		if (ImGui::DragFloat("Speed", &speed, 0.01, 0.01f, 10.f, "%.2f")) {
 			if (speed < 0.01) speed = 0.01f;
 			logic.speedhack = speed;
-
-			if (logic.real_time_mode) {
-				Speedhack::SetSpeed(1.f);
-				gd::GameManager::sharedState()->getScheduler()->setTimeScale(speed);
-			}
-			else {
-				gd::GameManager::sharedState()->getScheduler()->setTimeScale(1.f);
-				Speedhack::SetSpeed(speed);
-			}
+			gd::GameManager::sharedState()->getScheduler()->setTimeScale(logic.speedhack);
 			/*if (logic.respawn_time_modified) {
 				Opcode opcode(Cheat::AntiCheatBypass);
 				opcode.ModifyFloatAtOffset(0x20A677, logic.speedhack);
@@ -1960,7 +1962,7 @@ void GUI::main() {
 		auto& audiospeedhack = AudiopitchHack::getInstance();
 		bool isEnabled = audiospeedhack.isEnabled();
 
-		if (ImGui::Checkbox("Audio Speedhack", &isEnabled)) {
+		if (ImGui::Checkbox("Audio Speed", &isEnabled)) {
 			if (isEnabled) {
 				audiospeedhack.setEnabled(true);
 			}
@@ -1970,32 +1972,35 @@ void GUI::main() {
 		}
 
 		CHECK_KEYBIND("audioHack");
-		
+
+		ImGui::SameLine();
+		HelpMarker("Changes the pitch and speed of the audio of the game according to the speedhack.");
+
 		ImGui::SameLine();
 
-		if (logic.recorder.m_recording && !logic.recorder.real_time_rendering) {
-			ImGui::BeginDisabled();
-			logic.real_time_mode = false;
-		}
-		if (ImGui::Checkbox("Real Time Mode", &logic.real_time_mode)) {
-			if (logic.real_time_mode) {
-				Speedhack::SetSpeed(1.f);
-				gd::GameManager::sharedState()->getScheduler()->setTimeScale(logic.speedhack);
-			}
-			else {
-				gd::GameManager::sharedState()->getScheduler()->setTimeScale(1.f);
-				Speedhack::SetSpeed(logic.speedhack);
-			}
-		}
-		if (logic.recorder.m_recording && !logic.recorder.real_time_rendering) ImGui::EndDisabled();
+		//if (logic.recorder.m_recording && !logic.recorder.real_time_rendering) {
+		//	ImGui::BeginDisabled();
+		//	logic.real_time_mode = false;
+		//}
 
-		CHECK_KEYBIND("realTimeMode");
+		////ImGui::Checkbox("Real Time Mode", &logic.real_time_mode); cant be fucked
 
-		ImGui::Checkbox("No Input Overwrite", &logic.no_overwrite); ImGui::SameLine();
+		//if (logic.recorder.m_recording && !logic.recorder.real_time_rendering) ImGui::EndDisabled();
+
+		//CHECK_KEYBIND("realTimeMode");
+
+		ImGui::Checkbox("No Overwrite", &logic.no_overwrite);
 		CHECK_KEYBIND("noOverwrite");
+		
+		ImGui::SameLine();
+		HelpMarker("Allows you to replay from the beginning of the level without losing your progress.");
+		ImGui::SameLine();
 
-		ImGui::Checkbox("Ignore actions during playback", &logic.ignore_actions_at_playback);
+		ImGui::Checkbox("Ignore Actions", &logic.ignore_actions_at_playback);
 		CHECK_KEYBIND("ignoreActions");
+
+		ImGui::SameLine();
+		HelpMarker("Ignores inputs from player while replaying.");
 
 		ImGui::Separator();
 
@@ -2127,10 +2132,21 @@ void GUI::main() {
 
 		ImGui::Separator();
 
+
+		ImGui::Checkbox("Use JSON", &logic.use_json_for_files);
+
+		CHECK_KEYBIND("useJSON");
+
+		ImGui::SameLine();
+
+		ImGui::Checkbox("Use File Dialog", &logic.file_dialog);
+
+		CHECK_KEYBIND("useDialog");
+		ImGui::SameLine();
+
 		bool open_modal = true;
 
-
-		if (ImGui::Button("Reset Macro")) {
+		if (ImGui::Button("Reset Macro", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
 			if (!logic.inputs.empty()) {
 				ImGui::OpenPopup("Confirm Reset");
 
@@ -2162,25 +2178,16 @@ void GUI::main() {
 			ImGui::EndPopup();
 		}
 
-		ImGui::SameLine();
-
-		ImGui::Checkbox("Use JSON", &logic.use_json_for_files);
-
-		CHECK_KEYBIND("useJSON");
-
-		ImGui::SameLine();
-
-		ImGui::Checkbox("Use File Dialog", &logic.file_dialog);
-
-		CHECK_KEYBIND("useDialog");
 
 		ImGui::PushItemFlag(ImGuiItemFlags_NoTabStop, true);
-		ImGui::SetNextItemWidth(get_width(75.f));
-		ImGui::InputText("Macro Name", logic.macro_name, MAX_PATH);
+		ImGui::SetNextItemWidth(175);
+		ImGui::InputText("Name", logic.macro_name, MAX_PATH);
 		ImGui::PopItemFlag();
 
+		ImGui::SameLine();
+
 		ImGui::SetNextItemWidth((ImGui::GetWindowContentRegionWidth() - ImGui::GetStyle().ItemSpacing.x) * (50.f / 100.f));
-		if (ImGui::Button("Save File", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.5f, 0))) {
+		if (ImGui::Button("Save File", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.24f, 0))) {
 			if (logic.use_json_for_files) {
 				logic.write_file_json(logic.macro_name);
 			}
@@ -2236,11 +2243,18 @@ void GUI::main() {
 		}
 
 
-		if (ImGui::Button("Close Menu", ImVec2(ImGui::GetWindowContentRegionWidth(), 0))) {
+		if (ImGui::Button("Close Menu", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.5, 0))) {
 			show_window = false;
 		}
-
 		CHECK_KEYBIND("menuBind");
+		ImGui::SameLine();
+		if (ImGui::Button("Reset Level", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
+			if (PLAYLAYER) {
+				Hooks::PlayLayer::resetLevel_h(PLAYLAYER, 0);
+			}
+		}
+
+		CHECK_KEYBIND("resetLevel");
 
 		const ImVec2 main_size = ImGui::GetWindowSize();
 
@@ -2384,6 +2398,12 @@ void GUI::init() {
 		}
 	}));
 
+	std::unique_ptr<KeybindableBase> resetAction = std::unique_ptr<KeybindableBase>(new Keybindable([this]() {
+		if (PLAYLAYER) {
+			Hooks::PlayLayer::resetLevel_h(PLAYLAYER, 0);
+		}
+		}));
+
 	Logic::get().keybinds.SetAction("audioHack", std::move(audioSpeedHackAction));
 
 	Logic::get().keybinds.SetAction("anticheat", std::move(anticheatAction));
@@ -2395,6 +2415,7 @@ void GUI::init() {
 	Logic::get().keybinds.SetAction("toggleRecording", std::move(recordingAction));
 	Logic::get().keybinds.SetAction("togglePlaying", std::move(playingAction));
 	Logic::get().keybinds.SetAction("advancing", std::move(advanceAction));
+	Logic::get().keybinds.SetAction("resetLevel", std::move(resetAction));
 
 	SET_BIND(realTimeMode, Logic::get().real_time_mode);
 	
