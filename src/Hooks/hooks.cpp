@@ -77,8 +77,11 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
 
     if (logic.recorder.m_recording && !logic.recorder.real_time_rendering) {
         dt = 1.f / logic.fps;
+        Speedhack::SetSpeed(0.5);
         return CCScheduler_update(self, dt);
-    }
+    } 
+
+    Speedhack::SetSpeed(1);
 
     if (logic.autoclicker && play_layer && !play_layer->m_isPaused) {
         Autoclicker::get().update(logic.get_frame());
