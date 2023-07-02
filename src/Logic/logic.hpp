@@ -134,9 +134,10 @@ public:
 	enum FORMATS {
 		SIMPLE, // saves like 3 shits
 		DEBUG, // saves all debug info
+		META, // saves metadata
 	};
 
-	FORMATS format = SIMPLE;
+	FORMATS format = META;
 
 	bool record_player_1 = true;
 	bool record_player_2 = true;
@@ -144,6 +145,9 @@ public:
 	bool play_player_2 = true;
 
 	bool save_debug_info = false;
+
+	std::chrono::duration<double> total_recording_time = std::chrono::duration<double>::zero();
+	int total_attempt_count = 1;
 
 	Recorder recorder;
 	std::vector<Frame> inputs;

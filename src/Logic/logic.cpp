@@ -286,7 +286,7 @@ void Logic::set_replay_pos(unsigned idx) {
 
 void Logic::write_file(const std::string& filename) {
     std::string dir = ".echo\\";
-    std::string ext = ".bin";
+    std::string ext = ".echo";
 
     std::string full_filename = dir + filename + ext;
 
@@ -297,12 +297,26 @@ void Logic::write_file(const std::string& filename) {
     }
     error = "";
 
-    std::string file_format = format == SIMPLE ? "SIMPLE" : "DEBUG";
+    std::string file_format = "";
+    if (format == SIMPLE)
+        file_format = "SIMPLE";
+    else if (format == DEBUG)
+        file_format = "DEBUG";
+    else if (format == META)
+        file_format = "META";
 
     w_b(file_format);
 
     w_b(fps);
     w_b(end_portal_position);
+
+    double total_seconds = total_recording_time.count();
+    w_b(total_seconds);
+
+    int clicks_amt = 0;
+    for (auto& input : inputs)  if (input.pressingDown) clicks_amt++;
+    w_b(clicks_amt);
+    w_b(total_attempt_count);
 
     for (auto& input : inputs) {
         w_b(input.number);
@@ -323,7 +337,7 @@ void Logic::write_file(const std::string& filename) {
 
 void Logic::read_file(const std::string& filename, bool is_path = false) {
     std::string dir = ".echo\\";
-    std::string ext = ".bin";
+    std::string ext = ".echo";
     
     std::string full_filename = is_path ? filename : dir + filename + ext;
 
@@ -333,9 +347,9 @@ void Logic::read_file(const std::string& filename, bool is_path = false) {
         return;
     }
 
-    std::string file_format = "SIMPLE";
+    std::string file_format = "META";
 
-    temp_file.read(reinterpret_cast<char*>(&file_format), file_format.size());
+    temp_file.read(reinterpret_cast<char*>(&file_format), 18);
     temp_file.close();
 
     std::ifstream file(full_filename, std::ios::binary);
@@ -360,9 +374,25 @@ void Logic::read_file(const std::string& filename, bool is_path = false) {
         r_b(file_format);
         format = SIMPLE;
     }
+    else if (file_format == "META") {
+        r_b(file_format);
+        format = META;
+    }
 
     r_b(fps);
     r_b(end_portal_position);
+
+    if (format == META) {
+        double total_seconds = 0.f;
+        r_b(total_seconds);
+
+        // Assign the read value to total_time
+        total_recording_time = std::chrono::duration<double>(total_seconds);
+
+        int total_clicks = 0;
+        r_b(total_clicks);
+        r_b(total_attempt_count);
+    }
 
     while (true) {
         Frame input;
@@ -401,7 +431,7 @@ void Logic::remove_inputs(unsigned frame, bool player_1) {
 
 void Logic::write_file_json(const std::string& filename) {
     std::string dir = ".echo\\";
-    std::string ext = ".echo";
+    std::string ext = ".echo.json";
 
     std::string full_filename = dir + filename + ext;
 
@@ -415,10 +445,38 @@ void Logic::write_file_json(const std::string& filename) {
     // Create a JSON object to store the state data
     json state;
 
-    state["version"] = format == SIMPLE ? "SIMPLE" : "DEBUG";
+    if (format == SIMPLE)
+        state["version"] = "SIMPLE";
+    else if (format == DEBUG)
+        state["version"] = "DEBUG";
+    else if (format == META)
+        state["version"] = "META";
 
     state["fps"] = fps;
     state["end_xpos"] = end_portal_position;
+
+    double total_seconds = total_recording_time.count();
+
+    int hours = static_cast<int>(total_seconds / 3600);
+    int minutes = static_cast<int>((total_seconds - hours * 3600) / 60);
+    int seconds = static_cast<int>(total_seconds - hours * 3600 - minutes * 60);
+
+    // Format the time as HH:MM:SS
+    std::ostringstream oss;
+    oss << std::setfill('0');
+    oss << std::setw(2) << hours << ":"
+        << std::setw(2) << minutes << ":"
+        << std::setw(2) << seconds;
+
+    std::string time_str = oss.str();
+
+    state["metadata"]["recording_time_formatted"] = time_str;
+    state["metadata"]["recording_time"] = total_seconds;
+    state["metadata"]["total_attempts"] = total_attempt_count;
+    int clicks_amt = 0;
+    for (auto& input : inputs)  if (input.pressingDown) clicks_amt++;
+    state["metadata"]["clicks_count"] = clicks_amt;
+
 
     // Create a JSON array to store the input data
     json json_inputs = json::array();
@@ -452,7 +510,7 @@ void Logic::write_file_json(const std::string& filename) {
 
 void Logic::read_file_json(const std::string& filename, bool is_path = false) {
     std::string dir = ".echo\\";
-    std::string ext = ".echo";
+    std::string ext = ".echo.json";
 
     std::string full_filename = is_path ? filename : dir + filename + ext;
 
@@ -469,11 +527,12 @@ void Logic::read_file_json(const std::string& filename, bool is_path = false) {
 
     if (state.contains("version") && !state["version"].is_null()) {
         std::string version = state["version"];
-        if (version == "ECHO_V1") format = SIMPLE;
+        if (version == "SIMPLE") format = SIMPLE;
         if (version == "DEBUG") format = DEBUG;
+        if (version == "META") format = META;
     }
     else {
-        format = SIMPLE;
+        format = META;
     }
 
     if (is_recording()) toggle_recording();
@@ -483,6 +542,14 @@ void Logic::read_file_json(const std::string& filename, bool is_path = false) {
     fps = state["fps"].get<double>();
     
     end_portal_position = state["end_xpos"].get<double>();
+
+    if (format == META) {
+        double total_seconds = 0.f;
+        total_seconds = state["metadata"]["recording_time"];
+        total_attempt_count = state["metadata"]["total_attempts"];
+
+        total_recording_time = std::chrono::duration<double>(total_seconds);
+    }
 
     inputs.clear();
     // Extract the input data from the JSON object

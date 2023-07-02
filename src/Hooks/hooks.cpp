@@ -495,6 +495,8 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
 
     printf("\n");
 
+    if (logic.is_recording()) logic.total_attempt_count++;
+
     logic.calculated_xpos = self->m_player1->getPositionX();
     logic.calculated_frame = round(logic.get_frame() + (self->m_player1->getPositionX() - logic.calculated_xpos));
     logic.previous_xpos = self->m_player1->getPositionX();

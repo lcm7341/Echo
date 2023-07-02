@@ -33,7 +33,7 @@
 #include <format>
 #include "../Logic/speedhack.h"
 
-std::string echo_version = "Echo v0.8b";
+std::string echo_version = "Echo v0.9b";
 
 int getRandomInt(int N) {
 	// Seed the random number generator with current time
@@ -93,6 +93,11 @@ void GUI::draw() {
 	g_has_imported = true;
 
 	if (g_font) ImGui::PushFont(g_font);
+
+	if (PLAYLAYER && Logic::get().is_recording()) {
+		double frame_time = CCDirector::sharedDirector()->getAnimationInterval();
+		Logic::get().total_recording_time += std::chrono::duration<double>(frame_time);
+	}
 
 	auto end = std::chrono::steady_clock::now();
 	auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - Logic::get().start);
@@ -1565,14 +1570,14 @@ void GUI::tools() {
 				logic.format = logic.DEBUG;
 			}
 			else {
-				logic.format = logic.SIMPLE;
+				logic.format = logic.META;
 			}
 		} ImGui::SameLine();
 		HelpMarker("Saving debug information allows for bugfixing and checking accuracy in the replay.");
 
 		ImGui::SameLine();
 
-		if (logic.format == logic.SIMPLE) ImGui::BeginDisabled();
+		if (logic.format != logic.DEBUG) ImGui::BeginDisabled();
 
 		if (ImGui::Button("Open Debug Console")) {
 			// Allows for debugging, can be removed later
@@ -1581,7 +1586,7 @@ void GUI::tools() {
 			std::printf("Opened Debugging Console");
 		}
 
-		if (logic.format == logic.SIMPLE) ImGui::EndDisabled();
+		if (logic.format != logic.DEBUG) ImGui::EndDisabled();
 
 		if (docked)
 			ImGui::EndTabItem();
@@ -2167,6 +2172,8 @@ void GUI::main() {
 
 			if (ImGui::Button("Yes", buttonSize)) {
 				logic.get_inputs().clear();
+				logic.total_recording_time = std::chrono::duration<double>::zero();
+				logic.total_attempt_count = 0;
 				ImGui::CloseCurrentPopup();
 			}
 
@@ -2210,7 +2217,7 @@ void GUI::main() {
 				}
 			}
 			else {
-				ImGuiFileDialog::Instance()->OpenDialog("ImportNormal", "Choose File", ".echo,.bin", ".echo/");
+				ImGuiFileDialog::Instance()->OpenDialog("ImportNormal", "Choose File", ".echo,.json", ".echo/");
 			}
 			input_fps = logic.fps;
 			CCDirector::sharedDirector()->setAnimationInterval(1.f / GUI::get().input_fps);
@@ -2226,13 +2233,14 @@ void GUI::main() {
 				size_t dotPosition = filePathName.find_last_of(".");
 
 				std::filesystem::path path(filePathName);
-				std::string nameWithoutExtension = path.stem().string(); // blud
+				std::string nameWithoutExtension = path.stem().stem().string(); // blud
 
-				std::string suffix = ".bin";
+
+				std::string suffix = ".json";
 				if (filePathName.size() >= suffix.size() && filePathName.rfind(suffix) == (filePathName.size() - suffix.size()))
-					logic.read_file(filePathName, true);
-				else
 					logic.read_file_json(filePathName, true);
+				else
+					logic.read_file(filePathName, true);
 
 				input_fps = logic.fps;
 				CCDirector::sharedDirector()->setAnimationInterval(1.f / GUI::get().input_fps);
