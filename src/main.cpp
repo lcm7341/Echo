@@ -116,7 +116,6 @@ void writeConfig() {
 
 	j["editor_auto_scroll"] = GUI::get().editor_auto_scroll;
 
-	j["clickbot_volume"] = logic.clickbot_volume;
 	j["clickbot_enabled"] = logic.clickbot_enabled;
 
 	for (const auto& binding : logic.keybinds.bindings) {
@@ -242,7 +241,6 @@ void readConfig() {
 
 	GUI::get().editor_auto_scroll = getOrDefault(j, "editor_auto_scroll", true);
 
-	logic.clickbot_volume = getOrDefault(j, "clickbot_volume", 1);
 	logic.clickbot_enabled = getOrDefault(j, "clickbot_enabled", false);
 
 	file.close();
@@ -291,23 +289,32 @@ DWORD WINAPI my_thread(void* hModule) {
 
 	//ImGuiHook::setKeybind(VK_SHIFT);
 
-	std::filesystem::path echoDirectory = ".echo";
-	std::filesystem::path videoDirectory = ".echo/renders";
-	std::filesystem::path configDirectory = ".echo/settings";
-	std::filesystem::path themesDirectory = ".echo/themes";
-	std::filesystem::path osuDirectory = ".echo/osu";
-	std::filesystem::path clickbot = ".echo/clickbot";
-	std::filesystem::path clicks = ".echo/clickbot/clicks";
-	std::filesystem::path releases = ".echo/clickbot/releases";
+	std::vector<std::string> paths = {
+		".echo",
+		".echo/renders",
+		".echo/settings",
+		".echo/themes",
+		".echo/osu",
+		".echo/clickbot",
+		".echo/clickbot/player_1",
+		".echo/clickbot/player_2",
+		".echo/clickbot/player_1/clicks",
+		".echo/clickbot/player_1/releases",
+		".echo/clickbot/player_1/soft_clicks",
+		".echo/clickbot/player_1/soft_releases",
+		".echo/clickbot/player_1/hard_clicks",
+		".echo/clickbot/player_1/hard_releases",
+		".echo/clickbot/player_2/clicks",
+		".echo/clickbot/player_2/releases",
+		".echo/clickbot/player_2/soft_clicks",
+		".echo/clickbot/player_2/soft_releases",
+		".echo/clickbot/player_2/hard_clicks",
+		".echo/clickbot/player_2/hard_releases"
+	};
 
-	std::filesystem::create_directory(echoDirectory);
-	std::filesystem::create_directory(videoDirectory);
-	std::filesystem::create_directory(configDirectory);
-	std::filesystem::create_directory(themesDirectory);
-	std::filesystem::create_directory(osuDirectory);
-	std::filesystem::create_directory(clickbot);
-	std::filesystem::create_directory(clicks);
-	std::filesystem::create_directory(releases);
+	for (auto& path : paths) {
+		std::filesystem::create_directory(path);
+	}
 
 	return 0;
 }

@@ -19,6 +19,7 @@ enum State {
 #include <chrono>
 #include <conio.h>
 #include "../GUI/keybinds.h"
+#include "../Clickbot/clickbot.hpp"
 
 using namespace cocos2d;
 
@@ -139,6 +140,26 @@ public:
 
 	FORMATS format = META;
 
+	bool clickbot_enabled = false;
+	float player_1_volume = 1.f;
+	float player_2_volume = 1.f;
+
+	bool player_1_softs = true;
+	float player_1_softs_time = 150;
+	float player_1_softs_volume = 1.f;
+
+	bool player_1_hards = true;
+	float player_1_hards_time = 2.f;
+	float player_1_hards_volume = 1.f;
+
+	bool player_2_softs = true;
+	float player_2_softs_time = 150;
+	float player_2_softs_volume = 1.f;
+
+	bool player_2_hards = true;
+	float player_2_hards_time = 2.f;
+	float player_2_hards_volume = 1.f;
+
 	bool record_player_1 = true;
 	bool record_player_2 = true;
 	bool play_player_1 = true;
@@ -157,8 +178,6 @@ public:
 	std::vector<gd::GameObject*> activated_objects_p2;
 	std::vector<std::pair<float, std::string>> cps_over_percents;
 
-	bool clickbot_enabled = false;
-	float clickbot_volume = 1.f;
 
 	float fps = 60.f;
 	char macro_name[1000] = "output";

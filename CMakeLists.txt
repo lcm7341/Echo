@@ -20,7 +20,7 @@ file(
   src/*.hpp
 )
 
-add_library(Echo SHARED ${SOURCE_FILES}  "src/Logic/speedhack.h" "src/Logic/speedhack.cpp")
+add_library(Echo SHARED ${SOURCE_FILES}  "src/Logic/speedhack.h" "src/Logic/speedhack.cpp" "src/Clickbot/clickbot.hpp" "src/Clickbot/clickbot.cpp")
 
 add_dependencies(Echo
     increment_version_number
@@ -45,6 +45,7 @@ target_include_directories(Echo PRIVATE
 
 add_subdirectory(libraries/imgui-hook)
 add_subdirectory(libraries/imguifiledialog)
+add_subdirectory(libraries/fmod-headers)
 
 target_link_libraries(Echo 
   cocos2d
@@ -54,6 +55,7 @@ target_link_libraries(Echo
   opengl32
   nlohmann_json::nlohmann_json
   ${CMAKE_SOURCE_DIR}/libraries/glew32.lib
+  fmod
 )
 
 set_target_properties(Echo PROPERTIES DEBUG_POSTFIX "")

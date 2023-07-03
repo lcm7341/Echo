@@ -60,11 +60,14 @@ void Logic::play_input(Frame& input) {
 
     if (PLAYLAYER) {
         live_inputs.push_back(input);
+
         if (input.pressingDown) {
             Hooks::PlayLayer::pushButton(PLAYLAYER, 0, !input.isPlayer2 ^ gamevar);
+            Hooks::PlayLayer::pushButton_h(PLAYLAYER, 0, !input.isPlayer2 ^ gamevar, input.isPlayer2);
         }
         else {
             Hooks::PlayLayer::releaseButton(PLAYLAYER, 0, !input.isPlayer2 ^ gamevar);
+            Hooks::PlayLayer::releaseButton_h(PLAYLAYER, 0, !input.isPlayer2 ^ gamevar, input.isPlayer2);
         }
     }
 }
@@ -230,24 +233,6 @@ bool Logic::play_macro(int& offset) {
 
         while (inputs[replay_pos].number <= current_frame && replay_pos < inputs.size()) {
             auto& input = inputs[replay_pos];
-
-            if (clickbot_enabled) {
-
-                std::vector<std::string> reg_clicks = getWavFilesInDirectory(".echo\\clickbot\\clicks");
-                std::vector<std::string> reg_releases = getWavFilesInDirectory(".echo\\clickbot\\releases");
-
-                auto oldSFX = gd::FMODAudioEngine::sharedEngine()->m_fEffectsVolume;
-                gd::FMODAudioEngine::sharedEngine()->m_fEffectsVolume = clickbot_volume;
-                if (input.pressingDown) {
-                    gd::GameSoundManager soundmanager;
-                    soundmanager.playSound(getRandomWavFile(reg_clicks));
-                }
-                else {
-                    gd::GameSoundManager soundmanager;
-                    soundmanager.playSound(getRandomWavFile(reg_releases));
-                }
-                gd::FMODAudioEngine::sharedEngine()->m_fEffectsVolume = oldSFX;
-            }
 
             play_input(inputs[replay_pos]);
             replay_pos += 1;
@@ -560,6 +545,8 @@ void Logic::read_file_json(const std::string& filename, bool is_path = false) {
 
         if (json_input.contains("player_2"))
             input.isPlayer2 = json_input["player_2"].get<bool>();
+        else
+            input.isPlayer2 = false;
 
         if (format == FORMATS::DEBUG) {
             input.xPosition = json_input["x_position"].get<float>();

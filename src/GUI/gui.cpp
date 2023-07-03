@@ -1596,6 +1596,8 @@ void GUI::tools() {
 
 }
 
+static int selected_clickbot_player = 0; // Index of "Both" option (auto selected)
+
 void GUI::clickbot() {
 	auto& logic = Logic::get();
 
@@ -1613,9 +1615,77 @@ void GUI::clickbot() {
 
 		}
 
-		ImGui::Checkbox("Enabled###enable_clickbot", &logic.clickbot_enabled);
+		ImGui::Checkbox("Enabled###enable_clickbot", &logic.clickbot_enabled); ImGui::SameLine();
 
-		ImGui::DragFloat("Volume###clickbot_volume", &logic.clickbot_volume, 0.01, 0.01, 25);
+		const char* player_options[] = { "Player 1", "Player 2" };
+
+		ImGui::PushItemWidth(200);
+		if (ImGui::BeginCombo("##dropdown_autoclicker", player_options[selected_clickbot_player]))
+		{
+			for (int i = 0; i < IM_ARRAYSIZE(player_options); i++)
+			{
+				const bool isSelected = (selected_clickbot_player == i);
+				if (ImGui::Selectable(player_options[i], isSelected))
+					selected_clickbot_player = i;
+			}
+			ImGui::EndCombo();
+		}
+		ImGui::PopItemWidth();
+
+		if (selected_clickbot_player == 0) {
+			ImGui::PushItemWidth(200);
+			ImGui::DragFloat("Regular Volume###player1_reg_vol", &logic.player_1_volume, 0.01, 0.01, 25);
+			ImGui::PopItemWidth();
+
+			ImGui::Checkbox("Soft Clicks###player1_soft_clicks", &logic.player_1_softs);
+			ImGui::SameLine();
+			ImGui::PushItemWidth(200);
+			ImGui::DragFloat("Softs Time (ms)###player1_soft_time", &logic.player_1_softs_time);
+			ImGui::PopItemWidth();
+
+			ImGui::PushItemWidth(200);
+			ImGui::DragFloat("Softs Volume###player1_softs_vol", &logic.player_1_softs_volume, 0.01, 0.01, 25);
+			ImGui::PopItemWidth();
+
+			ImGui::Separator();
+
+			ImGui::Checkbox("Hard Clicks###player1_hard_clicks", &logic.player_1_hards);
+			ImGui::SameLine();
+			ImGui::PushItemWidth(200);
+			ImGui::DragFloat("Hards Time (sec)###player1_hard_time", &logic.player_1_hards_time);
+			ImGui::PopItemWidth();
+
+			ImGui::PushItemWidth(200);
+			ImGui::DragFloat("Hards Volume###player1_hards_vol", &logic.player_1_hards_volume, 0.01, 0.01, 25);
+			ImGui::PopItemWidth();
+		}
+		else {
+			ImGui::PushItemWidth(200);
+			ImGui::DragFloat("Regular Volume###player2_reg_vol", &logic.player_2_volume, 0.01, 0.01, 25);
+			ImGui::PopItemWidth();
+			
+			ImGui::Checkbox("Soft Clicks###player2_soft_clicks", &logic.player_2_softs);
+			ImGui::SameLine();
+			ImGui::PushItemWidth(200);
+			ImGui::DragFloat("Softs Time (ms)###player21_soft_time", &logic.player_2_softs_time);
+			ImGui::PopItemWidth();
+
+			ImGui::PushItemWidth(200);
+			ImGui::DragFloat("Softs Volume###player2_softs_vol", &logic.player_2_softs_volume, 0.01, 0.01, 25);
+			ImGui::PopItemWidth();
+
+			ImGui::Separator();
+
+			ImGui::Checkbox("Hard Clicks###player2_hard_clicks", &logic.player_2_hards);
+			ImGui::SameLine();
+			ImGui::PushItemWidth(200);
+			ImGui::DragFloat("Hards Time (sec)###player2_hard_time", &logic.player_2_hards_time);
+			ImGui::PopItemWidth();
+
+			ImGui::PushItemWidth(200);
+			ImGui::DragFloat("Hards Volume###player2_hards_vol", &logic.player_2_hards_volume, 0.01, 0.01, 25);
+			ImGui::PopItemWidth();
+		}
 
 		if (docked)
 			ImGui::EndTabItem();
@@ -2063,8 +2133,6 @@ void GUI::main() {
 			ImGui::OpenPopup("Label Settings");
 		}
 
-		if (logic.inputs.empty()) ImGui::EndDisabled();
-
 		if (ImGui::BeginPopupModal("Label Settings", &open_label_modal, ImGuiWindowFlags_AlwaysAutoResize)) {
 
 			ImGui::Checkbox("Show CPS", &logic.show_cps);
@@ -2136,7 +2204,6 @@ void GUI::main() {
 		}
 
 		ImGui::Separator();
-
 
 		ImGui::Checkbox("Use JSON", &logic.use_json_for_files);
 
@@ -2215,6 +2282,7 @@ void GUI::main() {
 				else {
 					logic.read_file(logic.macro_name, false);
 				}
+				logic.format = logic.META;
 			}
 			else {
 				ImGuiFileDialog::Instance()->OpenDialog("ImportNormal", "Choose File", ".echo,.json", ".echo/");
