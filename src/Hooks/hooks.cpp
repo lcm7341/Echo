@@ -429,62 +429,38 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
     update(self, dt);
 }
 
-
-void play_sound(bool click, bool button) {
-    auto& logic = Logic::get();
-
-    if (!Clickbot::inited) {
-        FMOD::System_Create(&Clickbot::system);
-        Clickbot::system->init(1024 * 2, FMOD_INIT_NORMAL, nullptr);
-        Clickbot::inited = true;
-    }
-
-    Clickbot::now = std::chrono::system_clock::now();
-    Clickbot::cycleTime = Clickbot::now - Clickbot::start;
-
-    std::string path = "";
-    float volume = button ? logic.player_1_volume : logic.player_2_volume;
-    bool softs = button ? logic.player_1_softs : logic.player_2_softs;
-    bool hards = button ? logic.player_1_hards : logic.player_2_hards;
-    std::string type = click ? "clicks" : "releases";
-    auto channel = Clickbot::clickChannel;//click ? (button ? Clickbot::clickChannel : Clickbot::clickChannel2) : (button ? Clickbot::releaseChannel : Clickbot::releaseChannel2);
-    auto sound = Clickbot::clickSound;//click ? (button ? Clickbot::clickSound : Clickbot::clickSound2) : (button ? Clickbot::releaseSound : Clickbot::releaseSound2);
-    std::string folder = "";
-
-    float softs_time = button ? logic.player_1_softs_time : logic.player_2_softs_time;
-    float hards_time = button ? logic.player_1_hards_time : logic.player_2_hards_time;
-
-    if (Clickbot::cycleTime.count() < (softs_time / 1000.f) && softs)
-    {
-        folder = "soft_" + type;
-        volume = button ? logic.player_1_softs_volume : logic.player_2_softs_volume;
-    }
-    else if (Clickbot::cycleTime.count() > hards_time && hards) {
-        folder = "hard_" + type;
-        volume = button ? logic.player_1_hards_volume : logic.player_2_hards_volume;
-    }
-    else {
-        folder = type;
-    }
-
-    path = Clickbot::pickRandomFile(folder, button);
-    Clickbot::start = std::chrono::system_clock::now();
-
-    if (!path.empty()) {
-        Clickbot::system->createSound(path.c_str(), FMOD_DEFAULT, nullptr, &sound);
-        Clickbot::system->playSound(sound, nullptr, true, &channel);
-        channel->setVolume((float)(volume));
-        channel->setPaused(false);
-    }
-
-    Clickbot::system->update();
-}
-
 int __fastcall Hooks::PlayLayer::pushButton_h(gd::PlayLayer* self, int, int idk, bool button) {
     auto& logic = Logic::get();
 
     if (logic.clickbot_enabled) {
-        play_sound(true, button);
+        if (!Clickbot::inited)
+        {
+            FMOD::System_Create(&Clickbot::system);
+            Clickbot::system->init(1024 * 2, FMOD_INIT_NORMAL, nullptr);
+            Clickbot::inited = true;
+        }
+
+        Clickbot::now = std::chrono::system_clock::now();
+        Clickbot::cycleTime = Clickbot::now - Clickbot::start;
+        if (Clickbot::cycleTime.count() < 0.5f)
+        {
+            std::string path = Clickbot::pickRandomFile("soft_clicks", button);
+            Clickbot::start = std::chrono::system_clock::now();
+            std::cout << Clickbot::system->createSound(path.c_str(), FMOD_DEFAULT, nullptr, &Clickbot::clickSound);
+        }
+        else {
+            std::string path = Clickbot::pickRandomFile("hard_clicks", button);
+            Clickbot::start = std::chrono::system_clock::now();
+            Clickbot::system->createSound(path.c_str(), FMOD_DEFAULT, nullptr, &Clickbot::clickSound);
+        }
+
+        Clickbot::system->playSound(Clickbot::clickSound, nullptr, true, &Clickbot::clickChannel);
+        if (button)
+            Clickbot::clickChannel->setVolume((float)(logic.player_1_volume * 7));
+        else
+            Clickbot::clickChannel->setVolume((float)(logic.player_2_volume * 7));
+        Clickbot::clickChannel->setPaused(false);
+        Clickbot::system->update();
     }
 
     if (logic.is_playing()) {
@@ -524,7 +500,36 @@ int __fastcall Hooks::PlayLayer::releaseButton_h(gd::PlayLayer* self, int, int i
     auto& logic = Logic::get();
 
     if (logic.clickbot_enabled) {
-        play_sound(false, button);
+        if (logic.clickbot_enabled) {
+            if (!Clickbot::inited)
+            {
+                FMOD::System_Create(&Clickbot::system);
+                Clickbot::system->init(1024 * 2, FMOD_INIT_NORMAL, nullptr);
+                Clickbot::inited = true;
+            }
+
+            Clickbot::now = std::chrono::system_clock::now();
+            Clickbot::cycleTime = Clickbot::now - Clickbot::start;
+            if (Clickbot::cycleTime.count() < 0.5f)
+            {
+                std::string path = Clickbot::pickRandomFile("soft_releases", !button);
+                Clickbot::start = std::chrono::system_clock::now();
+                std::cout << Clickbot::system->createSound(path.c_str(), FMOD_DEFAULT, nullptr, &Clickbot::clickSound);
+            }
+            else {
+                std::string path = Clickbot::pickRandomFile("hard_releases", !button);
+                Clickbot::start = std::chrono::system_clock::now();
+                Clickbot::system->createSound(path.c_str(), FMOD_DEFAULT, nullptr, &Clickbot::clickSound);
+            }
+
+            Clickbot::system->playSound(Clickbot::clickSound, nullptr, true, &Clickbot::clickChannel);
+            if (!button)
+                Clickbot::clickChannel->setVolume((float)(logic.player_1_volume * 4));
+            else
+                Clickbot::clickChannel->setVolume((float)(logic.player_2_volume * 4));
+            Clickbot::clickChannel->setPaused(false);
+            Clickbot::system->update();
+        }
     }
 
     if (logic.is_playing()) {

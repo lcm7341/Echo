@@ -69,6 +69,7 @@ struct Frame {
 	FIELD(cocos2d::CCSprite*, unk504) \
 	FIELD(cocos2d::CCSprite*, unk508) \
 	FIELD(cocos2d::CCSprite*, unk50C) \
+	FIELD(gd::HardStreak*, m_waveTrail) \
 	FIELD(bool, unk630) \
 	FIELD(bool, unk631) \
 	FIELD(float, unk634) \
@@ -81,24 +82,24 @@ struct Frame {
 
 struct CheckpointData {
 	#define FIELD(type, name) type name;
-	PLAYER_FIELDS
-#undef FIELD
+		PLAYER_FIELDS
+	#undef FIELD
 	float m_rotation;
 
 	static CheckpointData create(gd::PlayerObject* player) {
 		CheckpointData data;
 		#define FIELD(type, name) data.name = player->name;
-		PLAYER_FIELDS
-#undef FIELD
-			data.m_rotation = player->getRotation();
+			PLAYER_FIELDS
+		#undef FIELD
+		data.m_rotation = player->getRotation();
 		return data;
 	}
 
 	void apply(gd::PlayerObject* player) {
 		#define FIELD(type, name) player->name = name;
-		PLAYER_FIELDS
-#undef FIELD
-			player->setRotation(m_rotation);
+			PLAYER_FIELDS
+		#undef FIELD
+		player->setRotation(m_rotation);
 	}
 };
 
