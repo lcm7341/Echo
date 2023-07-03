@@ -18,7 +18,6 @@
 #include "../Logic/logic.hpp"
 #include "../Logic/autoclicker.hpp"
 #include <imgui_internal.h>
-#include "../version.h"
 #include <sstream>
 #include <optional>
 #include <random>
