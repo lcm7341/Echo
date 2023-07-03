@@ -1615,11 +1615,16 @@ void GUI::clickbot() {
 
 		}
 
-		ImGui::Checkbox("Enabled###enable_clickbot", &logic.clickbot_enabled); ImGui::SameLine();
+		ImGui::Checkbox("Enabled###enable_clickbot", &logic.clickbot_enabled);
+		
+		ImGui::Separator();
 
-		const char* player_options[] = { "Player 1", "Player 2" };
+		if (!logic.clickbot_enabled)
+			ImGui::BeginDisabled();
 
-		ImGui::PushItemWidth(200);
+		const char* player_options[] = { "Settings For Player 1", "Settings For Player 2" };
+
+		ImGui::PushItemWidth(get_width(100));
 		if (ImGui::BeginCombo("##dropdown_autoclicker", player_options[selected_clickbot_player]))
 		{
 			for (int i = 0; i < IM_ARRAYSIZE(player_options); i++)
@@ -1633,31 +1638,61 @@ void GUI::clickbot() {
 		ImGui::PopItemWidth();
 
 		if (selected_clickbot_player == 0) {
-			ImGui::PushItemWidth(200);
-			ImGui::DragFloat("Regular Volume###player1_reg_vol", &logic.player_1_volume, 0.01, 0.01, 25);
-			ImGui::PopItemWidth();
-
-			ImGui::Checkbox("Soft Clicks###player1_soft_clicks", &logic.player_1_softs);
+			std::string frame_text = "Regular Clicks";
+			float fps_text_width = ImGui::CalcTextSize(frame_text.c_str()).x;
+			float cursor_pos_x = (ImGui::GetWindowContentRegionWidth() - fps_text_width) * 0.10;
+			ImGui::SetCursorPosX(cursor_pos_x);
+			ImGui::Checkbox("Regular Clicks", &logic.clickbot_enabled);
 			ImGui::SameLine();
-			ImGui::PushItemWidth(200);
-			ImGui::DragFloat("Softs Time (ms)###player1_soft_time", &logic.player_1_softs_time);
-			ImGui::PopItemWidth();
 
-			ImGui::PushItemWidth(200);
-			ImGui::DragFloat("Softs Volume###player1_softs_vol", &logic.player_1_softs_volume, 0.01, 0.01, 25);
-			ImGui::PopItemWidth();
-
-			ImGui::Separator();
-
-			ImGui::Checkbox("Hard Clicks###player1_hard_clicks", &logic.player_1_hards);
+			frame_text = "Soft Clicks";
+			fps_text_width = ImGui::CalcTextSize(frame_text.c_str()).x;
+			cursor_pos_x = (ImGui::GetWindowContentRegionWidth() - fps_text_width) * 0.5;
+			ImGui::SetCursorPosX(cursor_pos_x);
+			ImGui::Checkbox("Soft Clicks", &logic.player_1_softs);
 			ImGui::SameLine();
-			ImGui::PushItemWidth(200);
-			ImGui::DragFloat("Hards Time (sec)###player1_hard_time", &logic.player_1_hards_time);
-			ImGui::PopItemWidth();
 
-			ImGui::PushItemWidth(200);
-			ImGui::DragFloat("Hards Volume###player1_hards_vol", &logic.player_1_hards_volume, 0.01, 0.01, 25);
-			ImGui::PopItemWidth();
+			frame_text = "Hard Clicks";
+			fps_text_width = ImGui::CalcTextSize(frame_text.c_str()).x;
+			cursor_pos_x = (ImGui::GetWindowContentRegionWidth() - fps_text_width) * 0.87;
+			ImGui::SetCursorPosX(cursor_pos_x);
+			ImGui::Checkbox("Hard Clicks", &logic.player_1_hards);
+
+			std::string frame_text_2 = "Volume";
+			float fps_text_width_2 = ImGui::CalcTextSize(frame_text_2.c_str()).x;
+			float cursor_pos_x_2 = (ImGui::GetWindowContentRegionWidth() - fps_text_width_2) * 0.15;
+			ImGui::SetCursorPosX(cursor_pos_x_2);
+			if (ImGui::Button("Volume")) {
+
+			}
+			ImGui::SameLine();
+
+			cursor_pos_x_2 = (ImGui::GetWindowContentRegionWidth() - fps_text_width_2) * 0.5;
+			ImGui::SetCursorPosX(cursor_pos_x_2);
+			if (ImGui::Button("Volume")) {
+
+			}
+			ImGui::SameLine();
+
+			cursor_pos_x_2 = (ImGui::GetWindowContentRegionWidth() - fps_text_width_2);
+			ImGui::SetCursorPosX(cursor_pos_x_2 * 0.86);
+			if (ImGui::Button("Volume")) {
+
+			}
+
+			ImGui::Spacing();
+
+			ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 0.8f), "Soft Times");
+			ImGui::SameLine();
+			ImGui::Text("0 to %.3f", logic.player_1_softs_time);
+
+			ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 0.8f), "Regular Times");
+			ImGui::SameLine();
+			ImGui::Text("%.3f to %.3f", logic.player_1_softs_time, logic.player_1_hards_time);
+
+			ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 0.8f), "Hard Times");
+			ImGui::SameLine();
+			ImGui::Text("%.3f to beyond", logic.player_1_hards_time);
 		}
 		else {
 			ImGui::PushItemWidth(200);
@@ -1686,6 +1721,9 @@ void GUI::clickbot() {
 			ImGui::DragFloat("Hards Volume###player2_hards_vol", &logic.player_2_hards_volume, 0.01, 0.01, 25);
 			ImGui::PopItemWidth();
 		}
+
+		if (!logic.clickbot_enabled)
+			ImGui::EndDisabled();
 
 		if (docked)
 			ImGui::EndTabItem();
