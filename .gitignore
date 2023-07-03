@@ -39,3 +39,6 @@ version.h
 version.txt
 /src/version.h
 /src/version.txt
+
+build.sh
+.cache

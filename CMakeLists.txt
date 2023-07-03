@@ -8,12 +8,6 @@ set(Echo_VERSION_MINOR 9)
 
 set(CMAKE_SHARED_LIBRARY_SUFFIX " v${Echo_VERSION_MAJOR}.${Echo_VERSION_MINOR}.dll")
 
-add_custom_target(
-    increment_version_number
-    COMMAND py ${CMAKE_CURRENT_SOURCE_DIR}/src/increment_version.py
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-)
-
 file(
   GLOB_RECURSE SOURCE_FILES
   src/*.cpp
@@ -21,10 +15,6 @@ file(
 )
 
 add_library(Echo SHARED ${SOURCE_FILES}  "src/Logic/speedhack.h" "src/Logic/speedhack.cpp" "src/Clickbot/clickbot.hpp" "src/Clickbot/clickbot.cpp")
-
-add_dependencies(Echo
-    increment_version_number
-)
 
 add_compile_definitions(Echo PRIVATE _CRT_SECURE_NO_WARNINGS)
 
