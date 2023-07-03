@@ -14,7 +14,7 @@ file(
   src/*.hpp
 )
 
-add_library(Echo SHARED ${SOURCE_FILES}  "src/Logic/speedhack.h" "src/Logic/speedhack.cpp" "src/Clickbot/clickbot.hpp" "src/Clickbot/clickbot.cpp")
+add_library(Echo SHARED ${SOURCE_FILES} "src/Logic/speedhack.h" "src/Logic/speedhack.cpp" "src/Clickbot/clickbot.hpp" "src/Clickbot/clickbot.cpp")
 
 add_compile_definitions(Echo PRIVATE _CRT_SECURE_NO_WARNINGS)
 
