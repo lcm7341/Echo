@@ -137,6 +137,7 @@ public:
 		SIMPLE, // saves like 3 shits
 		DEBUG, // saves all debug info
 		META, // saves metadata
+		META_DBG, // saves metadata and debug
 	};
 
 	FORMATS format = META;

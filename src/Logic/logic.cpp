@@ -6,6 +6,7 @@
 #include <algorithm>  // for std::sort and std::min_element
 #include <cmath>      // for std::abs
 #include <random>
+#include <cctype>
 
 using json = nlohmann::json;
 
@@ -289,6 +290,8 @@ void Logic::write_file(const std::string& filename) {
         file_format = "DEBUG";
     else if (format == META)
         file_format = "META";
+    else if (format == META_DBG)
+        file_format = "META_DBG";
 
     w_b(file_format);
 
@@ -308,7 +311,7 @@ void Logic::write_file(const std::string& filename) {
         w_b(input.pressingDown);
         w_b(input.isPlayer2);
 
-        if (format == DEBUG) {
+        if (format == DEBUG || format == META_DBG) {
             w_b(input.xPosition);
             w_b(input.yVelocity);
             w_b(input.xVelocity);
@@ -332,10 +335,14 @@ void Logic::read_file(const std::string& filename, bool is_path = false) {
         return;
     }
 
-    std::string file_format = "META";
-
-    temp_file.read(reinterpret_cast<char*>(&file_format), 18);
-    temp_file.close();
+    std::string file_format;
+    char ch;
+    while (temp_file.get(ch)) {
+        if (!std::isalpha(ch)) {
+            break;
+        }
+        file_format += ch;
+    }
 
     std::ifstream file(full_filename, std::ios::binary);
     if (!file.is_open()) {
@@ -363,11 +370,15 @@ void Logic::read_file(const std::string& filename, bool is_path = false) {
         r_b(file_format);
         format = META;
     }
+    else if (file_format == "META_DBG") {
+        r_b(file_format);
+        format = META_DBG;
+    }
 
     r_b(fps);
     r_b(end_portal_position);
 
-    if (format == META) {
+    if (format == META || format == META_DBG) {
         double total_seconds = 0.f;
         r_b(total_seconds);
 
@@ -385,7 +396,7 @@ void Logic::read_file(const std::string& filename, bool is_path = false) {
         r_b(input.pressingDown);
         r_b(input.isPlayer2);
 
-        if (format == DEBUG) {
+        if (format == DEBUG || format == META_DBG) {
             r_b(input.xPosition);
             r_b(input.yVelocity);
             r_b(input.xVelocity);
@@ -436,6 +447,8 @@ void Logic::write_file_json(const std::string& filename) {
         state["version"] = "DEBUG";
     else if (format == META)
         state["version"] = "META";
+    else if (format == META_DBG)
+        state["version"] = "META_DBG";
 
     state["fps"] = fps;
     state["end_xpos"] = end_portal_position;
@@ -474,7 +487,7 @@ void Logic::write_file_json(const std::string& filename) {
         if (input.isPlayer2)
             json_input["player_2"] = input.isPlayer2;
 
-        if (format == DEBUG) {
+        if (format == DEBUG || format == META_DBG) {
             json_input["x_position"] = input.xPosition;
             json_input["y_vel"] = input.yVelocity;
             json_input["x_vel"] = input.xVelocity;
@@ -515,6 +528,7 @@ void Logic::read_file_json(const std::string& filename, bool is_path = false) {
         if (version == "SIMPLE") format = SIMPLE;
         if (version == "DEBUG") format = DEBUG;
         if (version == "META") format = META;
+        if (version == "META_DBG") format = META_DBG;
     }
     else {
         format = META;
@@ -528,7 +542,7 @@ void Logic::read_file_json(const std::string& filename, bool is_path = false) {
     
     end_portal_position = state["end_xpos"].get<double>();
 
-    if (format == META) {
+    if (format == META || format == META_DBG) {
         double total_seconds = 0.f;
         total_seconds = state["metadata"]["recording_time"];
         total_attempt_count = state["metadata"]["total_attempts"];
@@ -548,7 +562,7 @@ void Logic::read_file_json(const std::string& filename, bool is_path = false) {
         else
             input.isPlayer2 = false;
 
-        if (format == FORMATS::DEBUG) {
+        if (format == DEBUG || format == META_DBG) {
             input.xPosition = json_input["x_position"].get<float>();
             input.yVelocity = json_input["y_vel"].get<double>();
             input.xVelocity = json_input["x_vel"].get<double>();
