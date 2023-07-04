@@ -820,7 +820,7 @@ void GUI::editor() {
 				if (selectedInput >= inputs.size()) selectedInput = inputs.size() - 1;
 				newInput = inputs[selectedInput];
 			}
-			ImGui::PushItemWidth(125);
+			ImGui::PushItemWidth(150);
 			ImGui::InputInt("Frame", (int*)&newInput.number);
 			ImGui::PopItemWidth();
 			ImGui::Checkbox("Down", &newInput.pressingDown);
@@ -848,9 +848,9 @@ void GUI::editor() {
 				if (selectedInput >= inputs.size()) selectedInput = inputs.size() - 1;
 				newInput = inputs[selectedInput];
 			}
-			ImGui::PushItemWidth(125);
+			ImGui::PushItemWidth(150);
 			int fake_frame_edit_value = 0;
-			bool fake_down_edit_value = true;
+			bool fake_down_edit_value = false;
 			bool fake_player_edit_value = false;
 			ImGui::InputInt("Frame", &fake_frame_edit_value);
 			ImGui::PopItemWidth();
@@ -1242,7 +1242,7 @@ static int selected_autoclicker_player = 2; // Index of "Both" option (auto sele
 std::map<std::string, std::shared_ptr<Convertible>> options = {
 	{"TASBot", std::make_shared<TASBot>()},
 	{"Osu", std::make_shared<Osu>()},
-	{"MHR", std::make_shared<MHR>()},
+	{"Mega Hack Replay JSON", std::make_shared<MHR>()},
 	{"Plain Text", std::make_shared<PlainText>()}
 };
 
@@ -1265,7 +1265,7 @@ void GUI::tools() {
 			ImGui::BeginDisabled();
 
 		static std::string current_option = "Plain Text";
-		ImGui::PushItemWidth(200);
+		ImGui::PushItemWidth(225);
 		if (ImGui::BeginCombo("Convert", current_option.c_str())) {
 			for (auto& option : options) {
 				bool is_selected = (current_option == option.first);
@@ -1477,33 +1477,29 @@ void GUI::tools() {
 				const bool isSelected = (selected_autoclicker_player == i);
 				if (ImGui::Selectable(autoclicker_options[i], isSelected))
 					selected_autoclicker_player = i;
-
-				if (isSelected) {
-					ImGui::SetItemDefaultFocus();
-
-					const char* selected = autoclicker_options[selected_autoclicker_player];
-					if (selected == "Player 1") {
-						logic.autoclicker_player_1 = true;
-						logic.autoclicker_player_2 = false;
-					}
-					else if (selected == "Player 2") {
-						logic.autoclicker_player_1 = false;
-						logic.autoclicker_player_2 = true;
-					}
-					else if (selected == "Both") {
-						logic.autoclicker_player_1 = true;
-						logic.autoclicker_player_2 = true;
-					}
-				}
 			}
 			ImGui::EndCombo();
 		}
 		ImGui::PopItemWidth();
+
+		const char* selected = autoclicker_options[selected_autoclicker_player];
+		if (selected == "Player 1") {
+			logic.autoclicker_player_1 = true;
+			logic.autoclicker_player_2 = false;
+		}
+		else if (selected == "Player 2") {
+			logic.autoclicker_player_1 = false;
+			logic.autoclicker_player_2 = true;
+		}
+		else if (selected == "Both") {
+			logic.autoclicker_player_1 = true;
+			logic.autoclicker_player_2 = true;
+		}
 		
 		ImGui::PushItemWidth(75);
 
 		int framesBetweenPresses = Autoclicker::get().getFramesBetweenPresses();
-		if (ImGui::DragInt("Click Length", &framesBetweenPresses, 1.0f, 0, 10000)) {
+		if (ImGui::DragInt("Click Length", &framesBetweenPresses, 1.0f, 1, 10000)) {
 			Autoclicker::get().setFramesBetweenPresses(framesBetweenPresses);
 		}
 
@@ -1511,7 +1507,7 @@ void GUI::tools() {
 
 		//ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 0.8f), "Frames Between Releases");
 		int framesBetweenReleases = Autoclicker::get().getFramesBetweenReleases();
-		if (ImGui::DragInt("Release Length", &framesBetweenReleases, 1.0f, 0, 10000)) {
+		if (ImGui::DragInt("Release Length", &framesBetweenReleases, 1.0f, 1, 10000)) {
 			Autoclicker::get().setFramesBetweenReleases(framesBetweenReleases);
 		}
 
@@ -1567,7 +1563,7 @@ void GUI::tools() {
 
 		if (ImGui::Checkbox("Replay Debug Info", &logic.save_debug_info)) {
 			if (logic.save_debug_info) {
-				logic.format = logic.DEBUG;
+				logic.format = logic.META_DBG;
 			}
 			else {
 				logic.format = logic.META;
@@ -1577,7 +1573,7 @@ void GUI::tools() {
 
 		ImGui::SameLine();
 
-		if (logic.format != logic.DEBUG) ImGui::BeginDisabled();
+		if (logic.format != logic.DEBUG && logic.format != logic.META_DBG) ImGui::BeginDisabled();
 
 		if (ImGui::Button("Open Debug Console")) {
 			// Allows for debugging, can be removed later
@@ -1586,7 +1582,7 @@ void GUI::tools() {
 			std::printf("Opened Debugging Console");
 		}
 
-		if (logic.format != logic.DEBUG) ImGui::EndDisabled();
+		if (logic.format != logic.DEBUG && logic.format != logic.META_DBG) ImGui::EndDisabled();
 
 		if (docked)
 			ImGui::EndTabItem();
@@ -1616,16 +1612,15 @@ void GUI::clickbot() {
 		}
 
 		ImGui::Checkbox("Enabled###enable_clickbot", &logic.clickbot_enabled);
-		
-		ImGui::Separator();
 
 		if (!logic.clickbot_enabled)
 			ImGui::BeginDisabled();
 
 		const char* player_options[] = { "Settings For Player 1", "Settings For Player 2" };
 
-		ImGui::PushItemWidth(get_width(100));
-		if (ImGui::BeginCombo("##dropdown_autoclicker", player_options[selected_clickbot_player]))
+		ImGui::SameLine();
+		ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x);
+		if (ImGui::BeginCombo("##dropdown_clickbot", player_options[selected_clickbot_player]))
 		{
 			for (int i = 0; i < IM_ARRAYSIZE(player_options); i++)
 			{
@@ -1637,89 +1632,78 @@ void GUI::clickbot() {
 		}
 		ImGui::PopItemWidth();
 
-		if (selected_clickbot_player == 0) {
-			std::string frame_text = "Regular Clicks";
-			float fps_text_width = ImGui::CalcTextSize(frame_text.c_str()).x;
-			float cursor_pos_x = (ImGui::GetWindowContentRegionWidth() - fps_text_width) * 0.10;
-			ImGui::SetCursorPosX(cursor_pos_x);
-			ImGui::Checkbox("Regular Clicks", &logic.clickbot_enabled);
-			ImGui::SameLine();
+		ImGui::Separator();
 
-			frame_text = "Soft Clicks";
-			fps_text_width = ImGui::CalcTextSize(frame_text.c_str()).x;
-			cursor_pos_x = (ImGui::GetWindowContentRegionWidth() - fps_text_width) * 0.5;
-			ImGui::SetCursorPosX(cursor_pos_x);
-			ImGui::Checkbox("Soft Clicks", &logic.player_1_softs);
-			ImGui::SameLine();
+		if (ImGui::BeginTabBar("ClickbotTabs")) {
+			if (ImGui::BeginTabItem("General", nullptr)) {
+				if (selected_clickbot_player == 0) {
+					ImGui::Checkbox("Soft Clicks###soft_clicks_p1", &logic.player_1_softs); ImGui::SameLine();
+					ImGui::Checkbox("Hard Clicks###hard_clicks_p1", &logic.player_1_hards);
 
-			frame_text = "Hard Clicks";
-			fps_text_width = ImGui::CalcTextSize(frame_text.c_str()).x;
-			cursor_pos_x = (ImGui::GetWindowContentRegionWidth() - fps_text_width) * 0.87;
-			ImGui::SetCursorPosX(cursor_pos_x);
-			ImGui::Checkbox("Hard Clicks", &logic.player_1_hards);
+					ImGui::Checkbox("Micro Clicks###micro_clicks_p1", &logic.player_1_softs); ImGui::SameLine();
+					ImGui::Checkbox("Double Clicks###dbl_clicks_p1", &logic.player_1_hards);
+				}
+				else {
+					ImGui::Checkbox("Soft Clicks###soft_clicks_p2", &logic.player_2_softs); ImGui::SameLine();
+					ImGui::Checkbox("Hard Clicks###hard_clicks_p2", &logic.player_2_hards);
 
-			std::string frame_text_2 = "Volume";
-			float fps_text_width_2 = ImGui::CalcTextSize(frame_text_2.c_str()).x;
-			float cursor_pos_x_2 = (ImGui::GetWindowContentRegionWidth() - fps_text_width_2) * 0.15;
-			ImGui::SetCursorPosX(cursor_pos_x_2);
-			if (ImGui::Button("Volume")) {
-
+					ImGui::Checkbox("Micro Clicks###micro_clicks_p2", &logic.player_1_softs); ImGui::SameLine();
+					ImGui::Checkbox("Double Clicks###dbl_clicks_p2", &logic.player_1_hards);
+				}
+				ImGui::EndTabItem();
 			}
-			ImGui::SameLine();
+			if (ImGui::BeginTabItem("Volume", nullptr)) {
+				if (selected_clickbot_player == 0) {
+					ImGui::PushItemWidth(200);
+					ImGui::DragFloat("Softs###soft_clicks_vol_p1", &logic.player_1_softs_volume, 0.01, 0, 500);
 
-			cursor_pos_x_2 = (ImGui::GetWindowContentRegionWidth() - fps_text_width_2) * 0.5;
-			ImGui::SetCursorPosX(cursor_pos_x_2);
-			if (ImGui::Button("Volume")) {
+					ImGui::DragFloat("Regulars###reg_clicks_vol_p1", &logic.player_1_volume, 0.01, 0, 500);
 
+					ImGui::DragFloat("Hards###hard_clicks_vol_p1", &logic.player_1_hards_volume, 0.01, 0, 500);
+					ImGui::PopItemWidth();
+				}
+				else {
+					ImGui::PushItemWidth(200);
+					ImGui::DragFloat("Softs###soft_clicks_vol_p2", &logic.player_2_softs_volume, 0.01, 0, 500);
+
+					ImGui::DragFloat("Regulars###reg_clicks_vol_p2", &logic.player_2_volume, 0.01, 0, 500);
+
+					ImGui::DragFloat("Hards###hard_clicks_vol_p2", &logic.player_2_hards_volume, 0.01, 0, 500);
+					ImGui::PopItemWidth();
+				}
+				ImGui::EndTabItem();
 			}
-			ImGui::SameLine();
+			if (ImGui::BeginTabItem("Times", nullptr)) {
 
-			cursor_pos_x_2 = (ImGui::GetWindowContentRegionWidth() - fps_text_width_2);
-			ImGui::SetCursorPosX(cursor_pos_x_2 * 0.86);
-			if (ImGui::Button("Volume")) {
+				if (selected_clickbot_player == 0) {
+					ImGui::Text("Soft Times:");
+					ImGui::SameLine();
+					ImGui::Text("0 to %.3f", logic.player_1_softs_time);
 
+					ImGui::Text("Regular Times:");
+					ImGui::SameLine();
+					ImGui::Text("%.3f to %.3f", logic.player_1_softs_time, logic.player_1_hards_time);
+
+					ImGui::Text("Hard Times:");
+					ImGui::SameLine();
+					ImGui::Text("%.3f and up", logic.player_1_hards_time);
+				}
+				else {
+					ImGui::Text("Soft Times:");
+					ImGui::SameLine();
+					ImGui::Text("0 to %.3f", logic.player_2_softs_time);
+
+					ImGui::Text("Regular Times:");
+					ImGui::SameLine();
+					ImGui::Text("%.3f to %.3f", logic.player_2_softs_time, logic.player_2_hards_time);
+
+					ImGui::Text("Hard Times:");
+					ImGui::SameLine();
+					ImGui::Text("%.3f and up", logic.player_2_hards_time);
+				}
+				ImGui::EndTabItem();
 			}
-
-			ImGui::Spacing();
-
-			ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 0.8f), "Soft Times");
-			ImGui::SameLine();
-			ImGui::Text("0ms to %.3fms", logic.player_1_softs_time);
-
-			ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 0.8f), "Regular Times");
-			ImGui::SameLine();
-			ImGui::Text("%.3fms to %.3fs", logic.player_1_softs_time, logic.player_1_hards_time);
-
-			ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 0.8f), "Hard Times");
-			ImGui::SameLine();
-			ImGui::Text("%.3fs to beyond", logic.player_1_hards_time);
-		}
-		else {
-			ImGui::PushItemWidth(200);
-			ImGui::DragFloat("Regular Volume###player2_reg_vol", &logic.player_2_volume, 0.01, 0.01, 25);
-			ImGui::PopItemWidth();
-			
-			ImGui::Checkbox("Soft Clicks###player2_soft_clicks", &logic.player_2_softs);
-			ImGui::SameLine();
-			ImGui::PushItemWidth(200);
-			ImGui::DragFloat("Softs Time (ms)###player21_soft_time", &logic.player_2_softs_time);
-			ImGui::PopItemWidth();
-
-			ImGui::PushItemWidth(200);
-			ImGui::DragFloat("Softs Volume###player2_softs_vol", &logic.player_2_softs_volume, 0.01, 0.01, 25);
-			ImGui::PopItemWidth();
-
-			ImGui::Separator();
-
-			ImGui::Checkbox("Hard Clicks###player2_hard_clicks", &logic.player_2_hards);
-			ImGui::SameLine();
-			ImGui::PushItemWidth(200);
-			ImGui::DragFloat("Hards Time (sec)###player2_hard_time", &logic.player_2_hards_time);
-			ImGui::PopItemWidth();
-
-			ImGui::PushItemWidth(200);
-			ImGui::DragFloat("Hards Volume###player2_hards_vol", &logic.player_2_hards_volume, 0.01, 0.01, 25);
-			ImGui::PopItemWidth();
+			ImGui::EndTabBar();
 		}
 
 		if (!logic.clickbot_enabled)
@@ -2320,7 +2304,6 @@ void GUI::main() {
 				else {
 					logic.read_file(logic.macro_name, false);
 				}
-				logic.format = logic.META;
 			}
 			else {
 				ImGuiFileDialog::Instance()->OpenDialog("ImportNormal", "Choose File", ".echo,.json", ".echo/");
@@ -2328,6 +2311,7 @@ void GUI::main() {
 			input_fps = logic.fps;
 			CCDirector::sharedDirector()->setAnimationInterval(1.f / GUI::get().input_fps);
 			logic.sort_inputs();
+			logic.format = logic.META;
 		}
 
 		if (ImGuiFileDialog::Instance()->Display("ImportNormal", ImGuiWindowFlags_NoCollapse, ImVec2(500, 200)))
@@ -2352,6 +2336,7 @@ void GUI::main() {
 				CCDirector::sharedDirector()->setAnimationInterval(1.f / GUI::get().input_fps);
 
 				strcpy(logic.macro_name, nameWithoutExtension.c_str());
+				logic.format = logic.META;
 			}
 			ImGuiFileDialog::Instance()->Close();
 		}
