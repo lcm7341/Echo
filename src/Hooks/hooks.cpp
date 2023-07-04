@@ -72,8 +72,10 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
 
     if (logic.frame_advance) return;
 
-    if (GUI::get().change_display_fps)
+    if (GUI::get().change_display_fps) {
         CCDirector::sharedDirector()->setAnimationInterval(1.f / GUI::get().input_fps);
+        GUI::get().change_display_fps = false;
+    }
 
     if (logic.recorder.m_recording && !logic.recorder.real_time_rendering) {
         dt = 1.f / logic.fps;
