@@ -25,8 +25,9 @@ public:
 
     // Call this method every frame
     bool shouldPress() {
-        if ((current_frame % frames_between_presses == 0) && !is_pressed) {
+        if (!is_pressed && frames_since_release >= frames_between_releases) {
             is_pressed = true;
+            frames_since_release = 0;
             return true; // it's time to press
         }
         return false; // no need to press this frame
@@ -34,23 +35,30 @@ public:
 
     // Call this method every frame
     bool shouldRelease() {
-        if (is_pressed && (current_frame % (frames_between_presses + frames_between_releases) == 0)) {
+        if (is_pressed && frames_since_press >= frames_between_presses) {
             is_pressed = false;
+            frames_since_press = 0;
             return true; // it's time to release
         }
         return false; // no need to release this frame
     }
 
-    // Call this method every frame to update internal counter
-    void update(int frame) {
-        current_frame = frame;
+    // Call this method every frame to update internal counters
+    void update() {
+        if (is_pressed) {
+            frames_since_press++;
+        }
+        else {
+            frames_since_release++;
+        }
     }
 
 private:
     Autoclicker()
-        : frames_between_presses(50),
-        current_frame(0),
-        frames_between_releases(50),
+        : frames_between_presses(10),
+        frames_between_releases(10),
+        frames_since_press(0),
+        frames_since_release(0),
         is_pressed(false)
     {}
 
@@ -60,6 +68,7 @@ private:
 
     int frames_between_presses;
     int frames_between_releases;
-    int current_frame;
+    int frames_since_press;
+    int frames_since_release;
     bool is_pressed;
 };

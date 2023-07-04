@@ -1684,15 +1684,15 @@ void GUI::clickbot() {
 
 			ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 0.8f), "Soft Times");
 			ImGui::SameLine();
-			ImGui::Text("0 to %.3f", logic.player_1_softs_time);
+			ImGui::Text("0ms to %.3fms", logic.player_1_softs_time);
 
 			ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 0.8f), "Regular Times");
 			ImGui::SameLine();
-			ImGui::Text("%.3f to %.3f", logic.player_1_softs_time, logic.player_1_hards_time);
+			ImGui::Text("%.3fms to %.3fs", logic.player_1_softs_time, logic.player_1_hards_time);
 
 			ImGui::TextColored(ImVec4(1.0f, 1.0f, 1.0f, 0.8f), "Hard Times");
 			ImGui::SameLine();
-			ImGui::Text("%.3f to beyond", logic.player_1_hards_time);
+			ImGui::Text("%.3fs to beyond", logic.player_1_hards_time);
 		}
 		else {
 			ImGui::PushItemWidth(200);

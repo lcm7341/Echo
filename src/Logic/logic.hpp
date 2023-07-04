@@ -36,6 +36,16 @@ struct Frame {
 	double xVelocity;
 };
 
+struct ObjectData {
+	int tag;
+	float posX;
+	float posY;
+	float rotX;
+	float rotY;
+	float velX;
+	float velY;
+};
+
 #define PLAYER_FIELDS \
 	FIELD(double, m_xAccel) \
 	FIELD(double, m_yAccel) \
@@ -109,6 +119,8 @@ struct Checkpoint {
 	CheckpointData player_2_data;
 	size_t activated_objects_size;
 	size_t activated_objects_p2_size;
+	std::map<int, ObjectData> objects;
+	cocos2d::CCPoint camera;
 	double calculated_xpos;
 };
 
