@@ -237,6 +237,10 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
 
     static int offset = rand();
 
+    if (self->m_isDead && logic.recorder.m_recording) {
+        self->m_time += dt;
+    }
+
     if (self->m_hasCompletedLevel) {
         if (logic.is_recording()) logic.toggle_recording();
     }

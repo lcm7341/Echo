@@ -209,6 +209,7 @@ void Recorder::handle_recording(gd::PlayLayer* play_layer, float dt) {
     if (Logic::get().tfx2_calculated == 0 || !Logic::get().completed_level) Logic::get().tfx2_calculated = tfx2;
 
     if (!Logic::get().completed_level || m_after_end_extra_time < m_after_end_duration + 3.5) {
+
         if (Logic::get().completed_level) {
             m_after_end_extra_time += dt;
             m_finished_level = true;
