@@ -86,7 +86,7 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
     Speedhack::SetSpeed(1);
 
     if (logic.autoclicker && play_layer && !play_layer->m_isPaused) {
-        Autoclicker::get().update(logic.get_frame());
+        Autoclicker::get().update();
 
         if (Autoclicker::get().shouldPress()) {
             if (logic.autoclicker_player_1)
@@ -772,7 +772,27 @@ int __fastcall Hooks::createCheckpoint_h(gd::PlayLayer* self) {
     CheckpointData checkpointData1 = CheckpointData::create(self->m_player1);
     CheckpointData checkpointData2 = CheckpointData::create(self->m_player2);
 
-    logic.save_checkpoint({ logic.get_frame(), checkpointData1, checkpointData2, logic.activated_objects.size(), logic.activated_objects_p2.size(), logic.calculated_xpos });
+    std::map<int, ObjectData> childData;
+    cocos2d::CCArray* children = self->getChildren();
+    CCObject* it = NULL;
+    CCARRAY_FOREACH(children, it)
+    {
+        CCNode* child = dynamic_cast<CCNode*>(it);
+        if (child)
+        {
+            ObjectData data;
+            data.tag = child->getTag();
+            data.posX = child->getPositionX();
+            data.posY = child->getPositionY();
+            data.rotX = child->getRotationX();
+            data.rotY = child->getRotationY();
+            data.velX = child->getSkewX();
+            data.velY = child->getSkewY();
+            childData[data.tag] = data;
+        }
+    }
+
+    logic.save_checkpoint({ logic.get_frame(), checkpointData1, checkpointData2, logic.activated_objects.size(), logic.activated_objects_p2.size(), childData, self->m_cameraPos, logic.calculated_xpos });
 
     return createCheckpoint(self);
 }

@@ -644,6 +644,22 @@ void Logic::handle_checkpoint_data() {
     if (PLAYLAYER) {
         if (checkpoints.size() > 0) {
             Checkpoint& data = checkpoints.back();
+
+            // PLAYLAYER->m_cameraPos = data.camera;
+
+            for (const auto& pair : data.objects) {
+                const ObjectData& nodeData = pair.second;
+                CCNode* child = PLAYLAYER->getChildByTag(nodeData.tag);
+                if (child) {
+                    child->setPositionX(nodeData.posX);
+                    child->setPositionY(nodeData.posY);
+                    child->setRotationX(nodeData.rotX);
+                    child->setRotationY(nodeData.rotY);
+                    child->setSkewX(nodeData.velX);
+                    child->setSkewY(nodeData.velY);
+                }
+            }
+
             data.player_1_data.apply(PLAYLAYER->m_player1);
             data.player_2_data.apply(PLAYLAYER->m_player2);
         }
