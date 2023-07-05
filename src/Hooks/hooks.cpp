@@ -65,10 +65,11 @@ bool __fastcall Hooks::PlayLayer::death_h(void* self, void*, void* go, void* thi
 
 }
 
-std::mutex mtx;
 void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
     auto& logic = Logic::get();
     auto play_layer = gd::GameManager::sharedState()->getPlayLayer();
+
+    if (logic.frame_advance && !play_layer) logic.frame_advance = false;
 
     if (logic.frame_advance) return;
 
@@ -78,12 +79,14 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
     }
 
     if (logic.recorder.m_recording && !logic.recorder.real_time_rendering) {
+        CCDirector::sharedDirector()->setAnimationInterval(1.f / logic.fps);
         dt = 1.f / logic.fps;
         Speedhack::SetSpeed(0.5);
         return CCScheduler_update(self, dt);
-    } 
-
-    Speedhack::SetSpeed(1);
+    }
+    else {
+        Speedhack::SetSpeed(1);
+    }
 
     if (logic.autoclicker && play_layer && !play_layer->m_isPaused) {
         Autoclicker::get().update(logic.get_frame());
@@ -123,11 +126,12 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
 
         if (logic.recorder.m_recording) { // prevent screen tearing from lag in the first bits of lvl
             if ((logic.get_frame() / logic.fps) < 1.f || (1.f / dt) < logic.recorder.m_fps || !logic.recorder.real_time_rendering) {
+                CCDirector::sharedDirector()->setAnimationInterval(1.f / logic.fps);
                 dt = 1.f / logic.fps;
                 return CCScheduler_update(self, dt);
             }
         }
-        const float target_dt = 1.f / logic.fps / logic.speedhack;
+        const float target_dt = 1.f / logic.get_fps() / logic.speedhack;
 
         if (logic.real_time_mode) {
             //mtx.lock();
@@ -136,8 +140,8 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
 
             g_disable_render = true;
 
-            const unsigned int times = min(static_cast<int>((dt + g_left_over) / target_dt), 150);
-            if (dt == 0.f) return CCScheduler_update(self, target_dt);
+            // min(static_cast<int>(g_left_over / target_dt), 50) <- super fast but i think its inaccurate
+            const unsigned int times = min(round(g_left_over / target_dt), 50);
 
             for (unsigned i = 0; i < times; i++) {
                 if (i == times - 1) {
@@ -147,16 +151,17 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
             }
 
             g_left_over += dt - target_dt * times;
-            return;
         }
     }
-    return CCScheduler_update(self, dt);
+    else {
+        return CCScheduler_update(self, dt);
+    }
 }
 
 void __fastcall Hooks::CCKeyboardDispatcher_dispatchKeyboardMSG_h(CCKeyboardDispatcher* self, int, int key, bool down) {
     auto& logic = Logic::get();
 
-    if (down) {
+    if (down && gd::GameManager::sharedState()->getPlayLayer()) {
         auto advancing_key = Logic::get().keybinds.GetKeybind("advancing").key;
         if (advancing_key.has_value()) {
             if (ImGui::IsKeyPressed(advancing_key.value())) {
@@ -439,6 +444,7 @@ int __fastcall Hooks::PlayLayer::pushButton_h(gd::PlayLayer* self, int, int idk,
     }
 
     if (logic.clickbot_enabled) {
+        button = !button; // i fucked up before and done wanna care
         if (!Clickbot::inited)
         {
             FMOD::System_Create(&Clickbot::system);
@@ -476,6 +482,7 @@ int __fastcall Hooks::PlayLayer::pushButton_h(gd::PlayLayer* self, int, int idk,
             Clickbot::clickChannel2->setVolume((float)(logic.player_2_volume * 5));
             Clickbot::clickChannel2->setPaused(false);
         }
+        button = !button; // i fucked up before and done wanna care
     }
 
     if (logic.is_playing()) {
@@ -519,6 +526,7 @@ int __fastcall Hooks::PlayLayer::releaseButton_h(gd::PlayLayer* self, int, int i
     }
 
     if (logic.clickbot_enabled) {
+        button = !button; // i fucked up before and done wanna care
         if (!Clickbot::inited)
         {
             FMOD::System_Create(&Clickbot::system);
@@ -557,6 +565,7 @@ int __fastcall Hooks::PlayLayer::releaseButton_h(gd::PlayLayer* self, int, int i
             Clickbot::releaseChannel2->setPaused(false);
         }
         Clickbot::system->update();
+        button = !button; // i fucked up before and done wanna care
     }
 
     if (logic.is_playing()) {

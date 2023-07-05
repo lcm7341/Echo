@@ -39,3 +39,4 @@ version.h
 version.txt
 /src/version.h
 /src/version.txt
+.vscode/c_cpp_properties.json

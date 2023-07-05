@@ -1293,7 +1293,7 @@ void GUI::tools() {
 			ImGui::BeginDisabled();
 
 			if (ImGui::Button("Import"))
-				ImGuiFileDialog::Instance()->OpenDialog("ConversionImport", "Choose File", options[current_option]->get_type_filter().c_str(), options[current_option]->get_directory().c_str());
+				ImGuiFileDialog::Instance()->OpenDialog("ConversionImport", "Choose File", options[current_option]->get_type_filter().c_str(), options[current_option]->get_directory().c_str(), 1, nullptr, ImGuiFileDialogFlags_HideColumnType);
 
 			ImGui::EndDisabled();
 		}
@@ -2134,9 +2134,9 @@ void GUI::main() {
 
 						printf("%s\n", rule.c_str());
 
-						ImGui::Text("%s percent", percent.c_str());
+						ImGui::Text("%s%%", percent.c_str());
 						ImGui::SameLine();
-						ImGui::Text("#%s", rule.c_str());
+						ImGui::Text("#%s%%", rule.c_str());
 					}
 				}
 			}
