@@ -774,6 +774,8 @@ void* __fastcall Hooks::PlayLayer::exitLevel_h(gd::PlayLayer* self, int) {
     logic.autoclicker = false;
     logic.checkpoints.clear();
     logic.set_removed(0);
+    if (logic.recorder.m_recording)
+        logic.recorder.stop();
 
     return exitLevel(self);
 }
@@ -786,15 +788,15 @@ int __fastcall Hooks::createCheckpoint_h(gd::PlayLayer* self) {
     CheckpointData checkpointData2 = CheckpointData::create(self->m_player2);
 
     std::map<int, ObjectData> childData;
-    cocos2d::CCArray* children = self->getChildren();
+    cocos2d::CCArray* children = self->m_objects;
     CCObject* it = NULL;
-    CCARRAY_FOREACH(children, it)
+    /*CCARRAY_FOREACH(children, it)
     {
-        CCNode* child = dynamic_cast<CCNode*>(it);
+        auto child = dynamic_cast<gd::GameObject*>(it);
         if (child)
         {
             ObjectData data;
-            data.tag = child->getTag();
+            data.tag = child->m_uID;
             data.posX = child->getPositionX();
             data.posY = child->getPositionY();
             data.rotX = child->getRotationX();
@@ -803,7 +805,7 @@ int __fastcall Hooks::createCheckpoint_h(gd::PlayLayer* self) {
             data.velY = child->getSkewY();
             childData[data.tag] = data;
         }
-    }
+    }*/
 
     logic.save_checkpoint({ logic.get_frame(), checkpointData1, checkpointData2, logic.activated_objects.size(), logic.activated_objects_p2.size(), childData, self->m_cameraPos, logic.calculated_xpos });
 

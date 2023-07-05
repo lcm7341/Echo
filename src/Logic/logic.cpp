@@ -647,8 +647,8 @@ void Logic::handle_checkpoint_data() {
 
             for (const auto& pair : data.objects) {
                 const ObjectData& nodeData = pair.second;
-                CCNode* child = PLAYLAYER->getChildByTag(nodeData.tag);
-                if (child) {
+                gd::GameObject* child = (gd::GameObject*)PLAYLAYER->m_objects->objectAtIndex(nodeData.tag);
+                if (child && child->m_objectType) {
                     child->setPositionX(nodeData.posX);
                     child->setPositionY(nodeData.posY);
                     child->setRotationX(nodeData.rotX);
