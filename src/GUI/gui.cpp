@@ -2034,7 +2034,7 @@ void GUI::main() {
 			else {
 				CCDirector::sharedDirector()->setAnimationInterval(1.f / input_fps);
 			}
-			change_display_fps = true ;
+			change_display_fps = true;
 		}
 
 		ImGui::SameLine();
