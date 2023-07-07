@@ -1,10 +1,10 @@
 #include "Hooks.hpp"
-#include "../Logic/logic.hpp"
 #include <chrono>
 #include "../Hack/audiopitchHack.hpp"
 #include "../Logic/autoclicker.hpp"
 #include "../GUI/gui.hpp"
 #include "../Logic/speedhack.h"
+#include "../Hack/trajectorysimulation.hpp"
 
 #define FRAME_LABEL_ID 82369 + 1 //random value :P
 #define CPS_LABEL_ID 82369 + 2 //random value :P
@@ -18,6 +18,8 @@
 
 #define HOOK_COCOS(o, f) MH_CreateHook(GetProcAddress(GetModuleHandleA("libcocos2d.dll"), o), f##_h, reinterpret_cast<void**>(&f));
 
+HitboxNode* drawer;
+
 void Hooks::init_hooks() {
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x1fb780), PlayLayer::init_h, reinterpret_cast<void**>(&PlayLayer::init));
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x2029C0), PlayLayer::update_h, reinterpret_cast<void**>(&PlayLayer::update));
@@ -27,6 +29,19 @@ void Hooks::init_hooks() {
 
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x20DDD0), createCheckpoint_h, reinterpret_cast<void**>(&createCheckpoint));
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x20b830), removeCheckpoint_h, reinterpret_cast<void**>(&removeCheckpoint));
+
+    MH_CreateHook(reinterpret_cast<void*>(gd::base + 0xe5d60), powerOffObject_h, reinterpret_cast<void**>(&powerOffObject));
+    MH_CreateHook(reinterpret_cast<void*>(gd::base + 0xeab20), playShineEffect_h, reinterpret_cast<void**>(&playShineEffect));
+    MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x1e9a20), incrementJumps_h, reinterpret_cast<void**>(&incrementJumps));
+    MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x10ed50), bumpPlayer_h, reinterpret_cast<void**>(&bumpPlayer));
+    MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x1f62c0), toggleDartMode_h, reinterpret_cast<void**>(&toggleDartMode));
+    MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x14ebc0), addPoint_h, reinterpret_cast<void**>(&addPoint));
+    MH_CreateHook(reinterpret_cast<void*>(gd::base + 0xd1790), triggerObject_h, reinterpret_cast<void**>(&triggerObject));
+    MH_CreateHook(reinterpret_cast<void*>(gd::base + 0xEF110), hasBeenActivatedByPlayer_h, reinterpret_cast<void**>(&hasBeenActivatedByPlayer));
+    MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x20d810), PlayLayer::onQuit_h, reinterpret_cast<void**>(&PlayLayer::onQuit));
+    MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x207d30), PlayLayer::flipGravity_h, reinterpret_cast<void**>(&PlayLayer::flipGravity));
+    MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x207e00), PlayLayer::playGravityEffect_h, reinterpret_cast<void**>(&PlayLayer::playGravityEffect));
+    MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x20a1a0), PlayLayer::destroyPlayer_h, reinterpret_cast<void**>(&PlayLayer::destroyPlayer));
 
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x1E4570), PauseLayer::init_h, reinterpret_cast<void**>(&PauseLayer::init));
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x20D810), PlayLayer::exitLevel_h, reinterpret_cast<void**>(&PlayLayer::exitLevel));
@@ -51,12 +66,12 @@ float g_left_over = 0.f;
 bool __fastcall Hooks::PlayLayer::death_h(void* self, void*, void* go, void* thingy) {
     auto& logic = Logic::get();
 
-    if (gd::GameManager::sharedState()->getPlayLayer()->m_player1 == go && logic.noclip_player1) {
+    if (gd::GameManager::sharedState()->getPlayLayer()->m_pPlayer1 == go && logic.noclip_player1) {
         return 0; 
     }
 
-    if (gd::GameManager::sharedState()->getPlayLayer()->m_isDualMode) {
-        if (gd::GameManager::sharedState()->getPlayLayer()->m_player2 == go && logic.noclip_player2) {
+    if (gd::GameManager::sharedState()->getPlayLayer()->m_bIsDualMode) {
+        if (gd::GameManager::sharedState()->getPlayLayer()->m_pPlayer2 == go && logic.noclip_player2) {
             return 0;
         }
     }
@@ -88,7 +103,7 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
         Speedhack::SetSpeed(1);
     }
 
-    if (logic.autoclicker && play_layer && !play_layer->m_isPaused) {
+    if (logic.autoclicker && play_layer && !play_layer->m_bIsPaused) {
         Autoclicker::get().update();
 
         if (Autoclicker::get().shouldPress()) {
@@ -188,7 +203,11 @@ bool __fastcall Hooks::PlayLayer::init_h(gd::PlayLayer* self, void* edx, gd::GJG
     logic.replay_index = 0;
     Clickbot::start = std::chrono::system_clock::now();
 
+    drawer = HitboxNode::getInstance();
+
     bool ret = Hooks::PlayLayer::init(self, level);
+
+    TrajectorySimulation::getInstance()->createSimulation();
 
     return ret;
 }
@@ -196,6 +215,15 @@ bool __fastcall Hooks::PlayLayer::init_h(gd::PlayLayer* self, void* edx, gd::GJG
 void __fastcall Hooks::PlayLayer::updateVisibility_h(gd::PlayLayer* self) {
     if (!g_disable_render)
         updateVisibility(self);
+}
+
+void __fastcall Hooks::PlayLayer::destroyPlayer_h(gd::PlayLayer* self, gd::PlayerObject* one, gd::GameObject* two) {
+    if (Logic::get().hacks.trajectory && TrajectorySimulation::getInstance()->shouldInterrumpHooksWithPlayer(one))
+    {
+        TrajectorySimulation::getInstance()->m_pDieInSimulation = true;
+        return;
+    }
+    destroyPlayer(self, one, two);
 }
 
 bool __fastcall Hooks::PauseLayer::init_h(gd::PauseLayer* self) {
@@ -245,31 +273,34 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
         if (logic.is_recording()) logic.toggle_recording();
     }
 
-    logic.player_acceleration = self->m_player1->m_xAccel;
-    logic.player_speed = self->m_player1->m_playerSpeed;
+    if (drawer && !Logic::get().hacks.trajectory)
+        drawer->clear();
+
+    logic.player_acceleration = self->m_pPlayer1->m_xAccel;
+    logic.player_speed = self->m_pPlayer1->m_playerSpeed;
 
     if (logic.recorder.m_recording)
         logic.recorder.handle_recording(self, dt);
 
-    logic.previous_real_xpos = self->m_player1->getPositionX();
+    logic.previous_real_xpos = self->m_pPlayer1->getPositionX();
 
     if (!logic.player_x_positions.empty()) {
-        if (!self->m_isDead && (self->m_player1->m_position.x != logic.player_x_positions.back() || self->m_hasCompletedLevel)) {
+        if (!self->m_isDead && (self->m_pPlayer1->m_position.x != logic.player_x_positions.back() || self->m_hasCompletedLevel)) {
             if (self->m_hasCompletedLevel) {
-                logic.calculated_xpos = self->m_player1->getPositionX();
+                logic.calculated_xpos = self->m_pPlayer1->getPositionX();
                 logic.calculated_frame = logic.get_frame();
             }
             else {
 
                 logic.calculated_xpos = logic.xpos_calculation();
-                logic.calculated_frame = round(logic.get_frame() + (self->m_player1->getPositionX() - logic.calculated_xpos));//round((logic.calculated_xpos / (logic.player_speed * logic.player_acceleration) * (1.f / logic.fps)) * logic.fps); // doesnt work when changing speeds, fucjk
+                logic.calculated_frame = round(logic.get_frame() + (self->m_pPlayer1->getPositionX() - logic.calculated_xpos));//round((logic.calculated_xpos / (logic.player_speed * logic.player_acceleration) * (1.f / logic.fps)) * logic.fps); // doesnt work when changing speeds, fucjk
 
                 logic.previous_xpos = logic.calculated_xpos;
             }
         }
     }
 
-    logic.player_x_positions.push_back(self->m_player1->m_position.x);
+    logic.player_x_positions.push_back(self->m_pPlayer1->m_position.x);
 
     if (logic.is_playing() && !logic.get_inputs().empty()) {
         if (logic.sequence_enabled) {
@@ -288,7 +319,7 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
         }
     }
 
-    logic.recorder.m_song_start_offset = self->m_levelSettings->m_songStartOffset;
+    logic.recorder.m_song_start_offset = self->m_pLevelSettings->m_songStartOffset;
 
     // Check if the frame counter label exists
     auto frame_counter = (cocos2d::CCLabelBMFont*)self->getChildByTag(FRAME_LABEL_ID);
@@ -378,7 +409,7 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
         if (logic.show_percent) {
             char out[24];
             std::stringstream stream;
-            float percent = min(100.f, (self->m_player1->getPositionX() / self->m_endPortal->getPositionX()) * 100.f);
+            float percent = min(100.f, (self->m_pPlayer1->getPositionX() / self->m_endPortal->getPositionX()) * 100.f);
             if (logic.percent_accuracy > 0) {
                 stream << "%." << logic.percent_accuracy << "f%%";
                 sprintf_s(out, stream.str().c_str(), percent);
@@ -436,6 +467,10 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
 
         self->addChild(time_label2, 999, TIME_LABEL_ID);
     }
+
+
+    if (Logic::get().hacks.trajectory)
+        TrajectorySimulation::getInstance()->processMainSimulation(dt);
 
     update(self, dt);
 }
@@ -495,11 +530,11 @@ int __fastcall Hooks::PlayLayer::pushButton_h(gd::PlayLayer* self, int, int idk,
         }
     }
 
-    if (button && self->m_player1->m_isDashing) {
+    if (button && self->m_pPlayer1->m_isDashing) {
         return 0;
     }
 
-    if (!button && self->m_player2->m_isDashing) {
+    if (!button && self->m_pPlayer2->m_isDashing) {
         return 0;
     }
 
@@ -597,6 +632,29 @@ int __fastcall Hooks::PlayLayer::releaseButton_h(gd::PlayLayer* self, int, int i
     return releaseButton(self, idk, button);
 }
 
+void __fastcall Hooks::incrementJumps_h(gd::PlayerObject* self) {
+    incrementJumps(self);
+
+    if (gd::GameManager::sharedState()->getPlayLayer() && gd::GameManager::sharedState()->getPlayLayer()->m_pPlayer1 == self) {}
+    else if (gd::GameManager::sharedState()->getPlayLayer() && gd::GameManager::sharedState()->getPlayLayer()->m_pPlayer2 == self) {}
+    else
+    {
+        self->stopActionByTag(0);
+        self->runNormalRotation();
+    }
+}
+
+void __fastcall Hooks::triggerObject_h(gd::GameObject* self, gd::GJBaseGameLayer* layer)
+{
+    if (Logic::get().hacks.trajectory && TrajectorySimulation::getInstance()->shouldInterrumpHooks())
+        return;
+    auto id = self->m_nObjectID;
+    /*if (hacks.layoutMode && (id == 899 || id == 1006 || id == 1007 || id == 105 || id == 29 || id == 56 || id == 915 ||
+        id == 30 || id == 58))
+        return;*/
+    triggerObject(self, layer);
+}
+
 int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
     int ret = resetLevel(self); // calling the original function
     auto& logic = Logic::get();
@@ -605,12 +663,12 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
 
     if (logic.is_recording()) logic.total_attempt_count++;
 
-    logic.calculated_xpos = self->m_player1->getPositionX();
-    logic.calculated_frame = round(logic.get_frame() + (self->m_player1->getPositionX() - logic.calculated_xpos));
-    logic.previous_xpos = self->m_player1->getPositionX();
+    logic.calculated_xpos = self->m_pPlayer1->getPositionX();
+    logic.calculated_frame = round(logic.get_frame() + (self->m_pPlayer1->getPositionX() - logic.calculated_xpos));
+    logic.previous_xpos = self->m_pPlayer1->getPositionX();
     logic.player_x_positions.clear();
 
-    logic.player_x_positions.push_back(self->m_player1->getPositionX());
+    logic.player_x_positions.push_back(self->m_pPlayer1->getPositionX());
 
     //logic.calculated_xpos = logic.xpos_calculation();
     logic.previous_xpos = logic.xpos_calculation();
@@ -626,6 +684,9 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
     logic.end_portal_position = self->m_endPortal->getPositionX();
 
     auto cps_counter = (cocos2d::CCLabelBMFont*)self->getChildByTag(CPS_LABEL_ID);
+
+    TrajectorySimulation::getInstance()->m_pDieInSimulation = false;
+    TrajectorySimulation::getInstance()->m_pIsSimulation = false;
 
     if (cps_counter) {
         cps_counter->setColor({ 255, 255, 255 });
@@ -677,9 +738,9 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
 
         if (logic.is_recording()) {
             for (const auto& object : logic.activated_objects)
-                object->m_hasBeenActivated = true;
+                object->m_bHasBeenActivated = true;
             for (const auto& object : logic.activated_objects_p2)
-                object->m_hasBeenActivatedP2 = true;
+                object->m_bHasBeenActivatedP2 = true;
         }
     }
     else {
@@ -709,9 +770,9 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
         }
 
         // Handle inputs for player 1 and player 2 separately
-        logic.handlePlayerInputs(self->m_player1, logic.record_player_1, logic.get_latest_checkpoint().player_1_data.m_isDashing, false);
+        logic.handlePlayerInputs(self->m_pPlayer1, logic.record_player_1, logic.get_latest_checkpoint().player_1_data.m_isDashing, false);
         if (self->m_level->twoPlayerMode)
-            logic.handlePlayerInputs(self->m_player2, logic.record_player_2, logic.get_latest_checkpoint().player_2_data.m_isDashing, true);
+            logic.handlePlayerInputs(self->m_pPlayer1, logic.record_player_2, logic.get_latest_checkpoint().player_2_data.m_isDashing, true);
     }
 
 
@@ -719,6 +780,9 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
 }
 
 void __fastcall Hooks::PlayerObject_ringJump_h(gd::PlayerObject* self, int, gd::GameObject* ring) {
+    if (Logic::get().hacks.trajectory && TrajectorySimulation::getInstance()->shouldInterrumpHooksWithPlayer(self))
+        return;
+
     PlayerObject_ringJump(self, ring);
     auto& logic = Logic::get();
     if (logic.is_recording() && *reinterpret_cast<bool*>(reinterpret_cast<uintptr_t>(ring) + 0x2ca)) {
@@ -726,7 +790,33 @@ void __fastcall Hooks::PlayerObject_ringJump_h(gd::PlayerObject* self, int, gd::
     }
 }
 
+void __fastcall Hooks::bumpPlayer_h(gd::GJBaseGameLayer* self, gd::PlayerObject* player, gd::GameObject* object)
+{
+    if (Logic::get().hacks.trajectory && TrajectorySimulation::getInstance()->shouldInterrumpHooks())
+        return;
+    bumpPlayer(self, player, object);
+}
+
+void __fastcall Hooks::PlayLayer::flipGravity_h(gd::PlayLayer* self, gd::PlayerObject* player, bool idk, bool idk2)
+{
+    if (Logic::get().hacks.trajectory && TrajectorySimulation::getInstance()->shouldInterrumpHooks())
+        return;
+
+    PlayLayer::flipGravity(self, player, idk, idk2);
+}
+
+void __fastcall Hooks::PlayLayer::playGravityEffect_h(gd::PlayLayer* self, bool toggle)
+{
+    if (Logic::get().hacks.trajectory && TrajectorySimulation::getInstance()->shouldInterrumpHooks())
+        return;
+
+    PlayLayer::playGravityEffect(self, toggle);
+}
+
 void __fastcall Hooks::GameObject_activateObject_h(gd::GameObject* self, int, gd::PlayerObject* player) {
+    if (Logic::get().hacks.trajectory && TrajectorySimulation::getInstance()->shouldInterrumpHooksWithPlayer(player))
+        return;
+
     GameObject_activateObject(self, player);
     auto& logic = Logic::get();
     if (logic.is_recording() && *reinterpret_cast<bool*>(reinterpret_cast<uintptr_t>(self) + 0x2ca)) {
@@ -762,18 +852,18 @@ int __fastcall Hooks::createCheckpoint_h(gd::PlayLayer* self) {
     auto& logic = Logic::get();
 
     logic.add_offset(self->m_time);
-    CheckpointData checkpointData1 = CheckpointData::create(self->m_player1);
-    CheckpointData checkpointData2 = CheckpointData::create(self->m_player2);
+    CheckpointData checkpointData1 = CheckpointData::create(self->m_pPlayer1);
+    CheckpointData checkpointData2 = CheckpointData::create(self->m_pPlayer2);
 
     std::map<int, ObjectData> childData;
-    cocos2d::CCArray* children = self->m_objects;
+    cocos2d::CCArray* children = self->unk4D4;
 
     cast_function caster = make_cast<gd::GameObject, CCObject>();
     CCObject* it = NULL;
     CCARRAY_FOREACH(children, it)
     {
         auto child = reinterpret_cast<gd::GameObject*>(caster(it));
-        if (child && child->m_objectType && child->m_objectType != gd::GameObjectType::kGameObjectTypeDecoration)
+        if (child && child->m_nObjectType && child->m_nObjectType != gd::GameObjectType::kGameObjectTypeDecoration)
         {
             ObjectData data;
             data.tag = child->m_uID;
@@ -792,7 +882,7 @@ int __fastcall Hooks::createCheckpoint_h(gd::PlayLayer* self) {
         }
     }
 
-    logic.save_checkpoint({ logic.get_frame(), checkpointData1, checkpointData2, logic.activated_objects.size(), logic.activated_objects_p2.size(), childData, self->m_cameraPos, logic.calculated_xpos });
+    logic.save_checkpoint({ logic.get_frame(), checkpointData1, checkpointData2, logic.activated_objects.size(), logic.activated_objects_p2.size(), childData, logic.calculated_xpos });
 
     return createCheckpoint(self);
 }
@@ -806,4 +896,73 @@ int __fastcall Hooks::removeCheckpoint_h(gd::PlayLayer* self) {
     }
 
     return removeCheckpoint(self);
+}
+
+void __fastcall Hooks::addPoint_h(gd::HardStreak* self, CCPoint point) {
+    if (Logic::get().hacks.trajectory && TrajectorySimulation::getInstance()->shouldInterrumpHooks())
+        return;
+    addPoint(self, point);
+}
+
+
+gd::GameObject* __fastcall Hooks::powerOffObject_h(gd::GameObject* self)
+{
+    if (Logic::get().hacks.trajectory && TrajectorySimulation::getInstance()->shouldInterrumpHooks())
+        return self;
+    return powerOffObject(self);
+}
+
+gd::GameObject* __fastcall Hooks::playShineEffect_h(gd::GameObject* self)
+{
+    if (Logic::get().hacks.trajectory && TrajectorySimulation::getInstance()->shouldInterrumpHooks())
+        return self;
+    return playShineEffect(self);
+}
+
+void __fastcall Hooks::PlayLayer::onQuit_h(gd::PlayLayer* self)
+{
+    TrajectorySimulation::getInstance()->onQuitPlayLayer();
+    PlayLayer::onQuit(self);
+}
+
+void __fastcall Hooks::toggleDartMode_h(gd::PlayerObject* self, bool toggle)
+{
+    if (gd::GameManager::sharedState()->getPlayLayer() && Logic::get().hacks.trajectory && TrajectorySimulation::getInstance()->m_pPlayer1ForSimulation &&
+        TrajectorySimulation::getInstance()->m_pPlayer2ForSimulation)
+    {
+        TrajectorySimulation::getInstance()->m_pIsSimulation = true;
+        toggleDartMode(self == gd::GameManager::sharedState()->getPlayLayer()->m_pPlayer1
+            ? TrajectorySimulation::getInstance()->m_pPlayer1ForSimulation
+            : TrajectorySimulation::getInstance()->m_pPlayer2ForSimulation,
+            toggle);
+        TrajectorySimulation::getInstance()->m_pIsSimulation = false;
+    }
+    toggleDartMode(self, toggle);
+}
+
+gd::GameObject* __fastcall Hooks::hasBeenActivatedByPlayer_h(gd::GameObject* self, gd::GameObject* other)
+{
+    if (Logic::get().hacks.trajectory && TrajectorySimulation::getInstance()->shouldInterrumpHooks())
+    {
+        if (self->getType() != gd::GameObjectType::kGameObjectTypeSlope &&
+            self->getType() != gd::GameObjectType::kGameObjectTypeSolid &&
+            self->getType() != gd::GameObjectType::kGameObjectTypeGravityPad &&
+            self->getType() != gd::kGameObjectTypePinkJumpPad && self->getType() != gd::kGameObjectTypeRedJumpPad &&
+            self->getType() != gd::kGameObjectTypeYellowJumpPad && self->getType() != gd::kGameObjectTypeDashRing &&
+            self->getType() != gd::kGameObjectTypeDropRing && self->getType() != gd::kGameObjectTypeGravityDashRing &&
+            self->getType() != gd::kGameObjectTypeGravityRing && self->getType() != gd::kGameObjectTypeGreenRing &&
+            self->getType() != gd::kGameObjectTypePinkJumpRing && self->getType() != gd::kGameObjectTypeRedJumpRing &&
+            self->getType() != gd::kGameObjectTypeYellowJumpRing && self->getType() != gd::kGameObjectTypeSpecial &&
+            self->getType() != gd::kGameObjectTypeCollisionObject && self->getType() != gd::kGameObjectTypeHazard &&
+            self->getType() != gd::kGameObjectTypeInverseGravityPortal &&
+            self->getType() != gd::kGameObjectTypeNormalGravityPortal &&
+            self->getType() != gd::kGameObjectTypeTeleportPortal &&
+            self->getType() != gd::kGameObjectTypeMiniSizePortal &&
+            self->getType() != gd::kGameObjectTypeRegularSizePortal)
+        {
+            return other;
+        }
+    }
+
+    return hasBeenActivatedByPlayer(self, other);
 }

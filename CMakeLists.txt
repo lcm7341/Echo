@@ -33,7 +33,7 @@ include(cmake/CPM.cmake)
 CPMAddPackage("gh:nlohmann/json@3.10.5")
 CPMAddPackage("gh:HJfod/cocos-headers#bd2f1c0696255ed3455171f6042e04d99ad919e2")
 CPMAddPackage("gh:TsudaKageyu/minhook#423d1e45af2ed2719a5c31e990e935ef301ed9c3")
-CPMAddPackage("gh:matcool/gd.h#3b7e906c3ee32f3d718af67c11b9ddff9cf14896")
+CPMAddPackage("gh:maxnut/gd.h#244f3e193fcb708d6440bf2420b94fc384f48f08")
 
 target_include_directories(Echo PRIVATE
   libraries/imgui-hook

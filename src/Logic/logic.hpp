@@ -1,5 +1,3 @@
-
-
 #include "../Recorder/recorder.hpp"
 #include "../includes.hpp"
 
@@ -36,6 +34,21 @@ struct Frame {
 	double xVelocity;
 };
 
+struct HacksStr
+{
+	bool showHitboxes, showDecorations;
+	float hitboxThickness = 0.5f;
+	int hitboxOpacity = 200, borderOpacity = 255;
+
+	bool hitboxTrail = false, trajectory = false;
+	float hitboxTrailLength = 50.0f;
+	int trajectoryAccuracy = 10;
+
+	float solidHitboxColor[3] = { 0, 0, 1 }, slopeHitboxColor[3] = { 0, 0, 1 }, hazardHitboxColor[3] = { 1, 0, 0 }, portalHitboxColor[3] = { 1, 0.498f, 1 }, padHitboxColor[3] = { 0, 1, 1 },
+		ringHitboxColor[3] = { 0, 1, 1 }, collectibleHitboxColor[3] = { 0.87f, 0.87f, 0.87f }, modifierHitboxColor[3] = { 1, 1, 1 }, playerHitboxColor[3] = { 1, 0.247f, 0.247f },
+		rotatedHitboxColor[3] = { 0.498f, 0, 0 }, centerHitboxColor[3] = { 0, 1, 0 };
+};
+
 struct ObjectData {
 	int tag;
 	float posX;
@@ -55,9 +68,9 @@ struct ObjectData {
 #define PLAYER_FIELDS \
 	FIELD(double, m_xAccel) \
 	FIELD(double, m_yAccel) \
+	FIELD(double, m_unk558) \
 	FIELD(double, m_jumpAccel) \
-	FIELD(double, unk688) \
-	FIELD(bool, m_blackOrb) \
+	FIELD(bool, m_isDropping) \
 	FIELD(bool, m_isDashing) \
 	FIELD(bool, m_isUpsideDown) \
 	FIELD(bool, m_isOnGround) \
@@ -65,40 +78,29 @@ struct ObjectData {
 	FIELD(bool, m_isRising) \
 	FIELD(float, m_vehicleSize) \
 	FIELD(float, m_playerSpeed) \
-	FIELD(bool, unk480) \
-	FIELD(bool, unk4B0) \
-	FIELD(bool, unk4D4) \
-	FIELD(bool, unk4DC) \
-	FIELD(cocos2d::CCSprite*, unk4B4) \
-	FIELD(bool, unk53D) \
-	FIELD(bool, unk53E) \
-	FIELD(bool, unk5B0) \
-	FIELD(bool, unk5FC) \
-	FIELD(bool, unk5FD) \
-	FIELD(bool, unk53F) \
-	FIELD(bool, unk538) \
-	FIELD(bool, unk539) \
-	FIELD(bool, unk53A) \
-	FIELD(bool, unk53B) \
+	FIELD(bool, m_unk480) \
+	FIELD(bool, m_unk4B0) \
+	FIELD(bool, m_unk4D4) \
+	FIELD(bool, m_unk4DC) \
+	FIELD(cocos2d::CCSprite*, m_unk4B4) \
+	FIELD(bool, m_unk53D) \
+	FIELD(bool, m_unk53E) \
+	FIELD(bool, m_unk5B0) \
+	FIELD(bool, m_unk5FC) \
+	FIELD(bool, m_unk5FD) \
+	FIELD(bool, m_unk53F) \
+	FIELD(bool, m_unk538) \
+	FIELD(bool, m_unk539) \
+	FIELD(bool, m_unk53A) \
+	FIELD(bool, m_unk53B) \
 	FIELD(bool, m_canRobotJump) \
 	FIELD(float, m_groundHeight) \
-	FIELD(cocos2d::CCSprite*, unk4E8) \
-	FIELD(cocos2d::CCSprite*, unk4EC) \
-	FIELD(cocos2d::CCSprite*, unk4F0) \
-	FIELD(cocos2d::CCSprite*, unk4F4) \
-	FIELD(cocos2d::CCSprite*, unk4F8) \
-	FIELD(cocos2d::CCSprite*, unk4FC) \
-	FIELD(cocos2d::CCSprite*, unk500) \
-	FIELD(cocos2d::CCSprite*, unk504) \
-	FIELD(cocos2d::CCSprite*, unk508) \
-	FIELD(cocos2d::CCSprite*, unk50C) \
 	FIELD(gd::HardStreak*, m_waveTrail) \
-	FIELD(bool, unk630) \
-	FIELD(bool, unk631) \
-	FIELD(bool, unk610) \
-	FIELD(float, unk634) \
-	FIELD(float, unk584) \
-	FIELD(float, unk61C) \
+	FIELD(bool, m_isOnSlope) \
+	FIELD(bool, m_wasOnSlope) \
+	FIELD(float, m_unk634) \
+	FIELD(float, m_decelerationRate) \
+	FIELD(float, m_unk61C) \
 	FIELD(bool, m_isShip) \
 	FIELD(bool, m_isBird) \
 	FIELD(bool, m_isBall) \
@@ -111,13 +113,16 @@ struct CheckpointData {
 		PLAYER_FIELDS
 	#undef FIELD
 	float m_rotation;
+	gd::Gamemode gamemode;
 
 	static CheckpointData create(gd::PlayerObject* player) {
 		CheckpointData data;
 		#define FIELD(type, name) data.name = player->name;
 			PLAYER_FIELDS
 		#undef FIELD
+
 		data.m_rotation = player->getRotation();
+		data.gamemode = GetGamemode(player);
 		return data;
 	}
 
@@ -126,6 +131,38 @@ struct CheckpointData {
 			PLAYER_FIELDS
 		#undef FIELD
 		player->setRotation(m_rotation);
+	}
+
+	static gd::Gamemode GetGamemode(gd::PlayerObject* p)
+	{
+		if (p->m_isShip)
+		{
+			return gd::Gamemode::kGamemodeShip;
+		}
+		else if (p->m_isBird)
+		{
+			return gd::Gamemode::kGamemodeUfo;
+		}
+		else if (p->m_isBall)
+		{
+			return gd::Gamemode::kGamemodeBall;
+		}
+		else if (p->m_isDart)
+		{
+			return gd::Gamemode::kGamemodeWave;
+		}
+		else if (p->m_isRobot)
+		{
+			return gd::Gamemode::kGamemodeRobot;
+		}
+		else if (p->m_isSpider)
+		{
+			return gd::Gamemode::kGamemodeSpider;
+		}
+		else
+		{
+			return gd::Gamemode::kGamemodeCube;
+		}
 	}
 };
 
@@ -136,7 +173,6 @@ struct Checkpoint {
 	size_t activated_objects_size;
 	size_t activated_objects_p2_size;
 	std::map<int, ObjectData> objects;
-	cocos2d::CCPoint camera;
 	double calculated_xpos;
 };
 
@@ -169,6 +205,8 @@ public:
 	};
 
 	FORMATS format = META;
+
+	HacksStr hacks;
 
 	bool clickbot_enabled = false;
 	float player_1_volume = 1.f;
@@ -393,7 +431,7 @@ public:
 	}
 
 	void orbChecking(cocos2d::CCPoint playerPosition) { 
-		cocos2d::CCArray* children = gd::GameManager::sharedState()->getPlayLayer()->m_objects;
+		cocos2d::CCArray* children = gd::GameManager::sharedState()->getPlayLayer()->m_pObjects;
 		printf("Number of Children: %ld\n", children->count());
 		CCObject* it = NULL;
 		cast_function caster = make_cast<gd::GameObject, CCObject>();
@@ -401,8 +439,8 @@ public:
 		{
 			try {
 				auto child = reinterpret_cast<gd::GameObject*>(caster(it));
-				if (child && child->m_objectType) {
-					switch (child->m_objectType) {
+				if (child && child->m_nObjectType) {
+					switch (child->m_nObjectType) {
 					case gd::GameObjectType::kGameObjectTypeGravityRing:
 					case gd::GameObjectType::kGameObjectTypeYellowJumpRing:
 					case gd::GameObjectType::kGameObjectTypePinkJumpRing:
