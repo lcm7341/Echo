@@ -168,7 +168,7 @@ void __fastcall Hooks::CCKeyboardDispatcher_dispatchKeyboardMSG_h(CCKeyboardDisp
                 Logic::get().start = std::chrono::steady_clock::now();
                 Logic::get().frame_advance = false;
                 bool old_real_time = Logic::get().real_time_mode;
-                Logic::get().real_time_mode = false;			
+                Logic::get().real_time_mode = false;
                 Hooks::CCScheduler_update_h(gd::GameManager::sharedState()->getScheduler(), 0, 1.f / logic.fps);
                 Logic::get().frame_advance = true;
                 Logic::get().real_time_mode = old_real_time;
@@ -615,10 +615,10 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
     //logic.calculated_xpos = logic.xpos_calculation();
     logic.previous_xpos = logic.xpos_calculation();
 
-   /* if (logic.is_playing()) {
-        releaseButton(self, 0, true);
-        releaseButton(self, 0, false);
-    }*/
+    /* if (logic.is_playing()) {
+         releaseButton(self, 0, true);
+         releaseButton(self, 0, false);
+     }*/
 
     logic.live_inputs.clear();
     logic.over_max_cps = false;
