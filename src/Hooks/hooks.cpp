@@ -76,6 +76,12 @@ bool __fastcall Hooks::PlayLayer::death_h(void* self, void*, void* go, void* thi
         }
     }
 
+    if (Logic::get().hacks.trajectory && TrajectorySimulation::getInstance()->shouldInterrumpHooksWithPlayer((gd::PlayerObject*)go))
+    {
+        TrajectorySimulation::getInstance()->m_pDieInSimulation = true;
+        return 0;
+    }
+
     return Hooks::PlayLayer::death(self, go, thingy);
 
 }
@@ -83,6 +89,23 @@ bool __fastcall Hooks::PlayLayer::death_h(void* self, void*, void* go, void* thi
 void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
     auto& logic = Logic::get();
     auto play_layer = gd::GameManager::sharedState()->getPlayLayer();
+
+    if (logic.is_playing() && !logic.get_inputs().empty() && play_layer) {
+        if (logic.sequence_enabled) {
+            if (logic.replay_index - 1 < logic.replays.size()) {
+                Replay& selected_replay = logic.replays[logic.replay_index - 1];
+                static int offset = selected_replay.max_frame_offset > 0 ? (rand() % selected_replay.max_frame_offset / 2) - selected_replay.max_frame_offset : 0;
+
+                if (logic.play_macro(offset)) {
+                    offset = selected_replay.max_frame_offset > 0 ? (rand() % selected_replay.max_frame_offset / 2) - selected_replay.max_frame_offset : 0;
+                }
+            }
+        }
+        else {
+            int _ = 0;
+            logic.play_macro(_);
+        }
+    }
 
     if (logic.frame_advance && !play_layer) logic.frame_advance = false;
 
@@ -197,7 +220,6 @@ void __fastcall Hooks::CCKeyboardDispatcher_dispatchKeyboardMSG_h(CCKeyboardDisp
     CCKeyboardDispatcher_dispatchKeyboardMSG(self, key, down);
 }
 
-
 bool __fastcall Hooks::PlayLayer::init_h(gd::PlayLayer* self, void* edx, gd::GJGameLevel* level) {
     auto& logic = Logic::get();
     logic.replay_index = 0;
@@ -218,11 +240,23 @@ void __fastcall Hooks::PlayLayer::updateVisibility_h(gd::PlayLayer* self) {
 }
 
 void __fastcall Hooks::PlayLayer::destroyPlayer_h(gd::PlayLayer* self, gd::PlayerObject* one, gd::GameObject* two) {
+    /*auto& logic = Logic::get();
+
+    if (gd::GameManager::sharedState()->getPlayLayer()->m_pPlayer1 == one && logic.noclip_player1) {
+        return;
+    }
+
+    if (gd::GameManager::sharedState()->getPlayLayer()->m_bIsDualMode) {
+        if (gd::GameManager::sharedState()->getPlayLayer()->m_pPlayer2 == one && logic.noclip_player2) {
+            return;
+        }
+    }
+
     if (Logic::get().hacks.trajectory && TrajectorySimulation::getInstance()->shouldInterrumpHooksWithPlayer(one))
     {
         TrajectorySimulation::getInstance()->m_pDieInSimulation = true;
         return;
-    }
+    }*/
     destroyPlayer(self, one, two);
 }
 
@@ -260,10 +294,57 @@ std::string formatTime(float timeInSeconds) {
     return formattedTime.str();
 }
 
+typedef std::function<void* (void*)> cast_function;
+
+template <typename To, typename From>
+cast_function make_cast() {
+    std::unique_ptr<cast_function> caster(new cast_function([](void* from)->void* {
+        return static_cast<void*>(static_cast<To*>(static_cast<From*>(from)));
+        }));
+
+    auto result = std::bind(*caster, std::placeholders::_1);
+    return result;
+}
+
 void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
     auto& logic = Logic::get();
 
     static int offset = rand();
+
+    if (drawer && logic.hacks.showHitboxes)
+    {
+        drawer->setVisible(true);
+
+        if (self->m_pPlayer1) {
+            drawer->drawForPlayer1(self->m_pPlayer1);
+        }
+        if (self->m_pPlayer2) {
+            drawer->drawForPlayer2(self->m_pPlayer2);
+        }
+
+        for (int s = self->sectionForPos(self->m_pPlayer1->getPositionX()) - 5; s < self->sectionForPos(self->m_pPlayer1->getPositionX()) + 6; ++s)
+        {
+            if (s < 0)
+                continue;
+            if (s >= self->m_sectionObjects->count())
+                break;
+            auto section = static_cast<CCArray*>(self->m_sectionObjects->objectAtIndex(s));
+            for (size_t i = 0; i < section->count(); ++i)
+            {
+                cast_function caster = make_cast<gd::GameObject, CCObject>();
+                auto obj = reinterpret_cast<gd::GameObject*>(caster(section->objectAtIndex(i)));
+                drawer->drawForObject(obj);
+
+                if (obj->m_nObjectID != 749 && obj->getObjType() == gd::GameObjectType::kGameObjectTypeDecoration)
+                    continue;
+                if (!obj->m_bActive)
+                    continue;
+
+                //drawer->drawForObject(obj);
+            }
+        }
+
+    }
 
     if (self->m_isDead && logic.recorder.m_recording) {
         self->m_time += dt;
@@ -273,8 +354,8 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
         if (logic.is_recording()) logic.toggle_recording();
     }
 
-    if (drawer && !Logic::get().hacks.trajectory)
-        drawer->clear();
+    /*if (drawer && !Logic::get().hacks.trajectory)
+        drawer->clear();*/
 
     logic.player_acceleration = self->m_pPlayer1->m_xAccel;
     logic.player_speed = self->m_pPlayer1->m_playerSpeed;
@@ -301,23 +382,6 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
     }
 
     logic.player_x_positions.push_back(self->m_pPlayer1->m_position.x);
-
-    if (logic.is_playing() && !logic.get_inputs().empty()) {
-        if (logic.sequence_enabled) {
-            if (logic.replay_index - 1 < logic.replays.size()) {
-                Replay& selected_replay = logic.replays[logic.replay_index - 1];
-                static int offset = selected_replay.max_frame_offset > 0 ? (rand() % selected_replay.max_frame_offset / 2) - selected_replay.max_frame_offset : 0;
-
-                if (logic.play_macro(offset)) {
-                    offset = selected_replay.max_frame_offset > 0 ? (rand() % selected_replay.max_frame_offset / 2) - selected_replay.max_frame_offset : 0;
-                }
-            }
-        }
-        else {
-            int _ = 0;
-            logic.play_macro(_);
-        }
-    }
 
     logic.recorder.m_song_start_offset = self->m_pLevelSettings->m_songStartOffset;
 
@@ -467,7 +531,6 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
 
         self->addChild(time_label2, 999, TIME_LABEL_ID);
     }
-
 
     if (Logic::get().hacks.trajectory)
         TrajectorySimulation::getInstance()->processMainSimulation(dt);
@@ -834,18 +897,6 @@ void* __fastcall Hooks::PlayLayer::exitLevel_h(gd::PlayLayer* self, int) {
         logic.recorder.stop();
 
     return exitLevel(self);
-}
-
-typedef std::function<void* (void*)> cast_function;
-
-template <typename To, typename From>
-cast_function make_cast() {
-    std::unique_ptr<cast_function> caster(new cast_function([](void* from)->void* {
-        return static_cast<void*>(static_cast<To*>(static_cast<From*>(from)));
-        }));
-
-    auto result = std::bind(*caster, std::placeholders::_1);
-    return result;
 }
 
 int __fastcall Hooks::createCheckpoint_h(gd::PlayLayer* self) {

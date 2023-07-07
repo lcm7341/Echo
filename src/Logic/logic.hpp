@@ -36,8 +36,8 @@ struct Frame {
 
 struct HacksStr
 {
-	bool showHitboxes, showDecorations;
-	float hitboxThickness = 0.5f;
+	bool showHitboxes = false, showDecorations = false;
+	float hitboxThickness = 1.f;
 	int hitboxOpacity = 200, borderOpacity = 255;
 
 	bool hitboxTrail = false, trajectory = false;

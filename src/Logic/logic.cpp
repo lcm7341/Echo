@@ -642,6 +642,17 @@ void Logic::sort_inputs() {
         });
 }
 
+typedef std::function<void* (void*)> cast_function;
+
+template <typename To, typename From>
+cast_function make_cast() {
+    std::unique_ptr<cast_function> caster(new cast_function([](void* from)->void* {
+        return static_cast<void*>(static_cast<To*>(static_cast<From*>(from)));
+        }));
+
+    auto result = std::bind(*caster, std::placeholders::_1);
+    return result;
+}
 
 void Logic::handle_checkpoint_data() {
     if (PLAYLAYER) {
@@ -650,10 +661,11 @@ void Logic::handle_checkpoint_data() {
 
             // PLAYLAYER->m_cameraPos = data.camera;
 
+            cast_function caster = make_cast<gd::GameObject, CCObject>();
             for (const auto& pair : data.objects) {
                 const ObjectData& nodeData = pair.second;
-                gd::GameObject* child = (gd::GameObject*)PLAYLAYER->m_pObjects->objectAtIndex(nodeData.tag);
-                if (child) {
+                //gd::GameObject* child = reinterpret_cast<gd::GameObject*>(caster(PLAYLAYER->m_pObjects->objectAtIndex(nodeData.tag)));
+                /*if (child) {
                     child->setPositionX(nodeData.posX);
                     child->setPositionY(nodeData.posY);
                     child->setRotationX(nodeData.rotX);
@@ -666,7 +678,7 @@ void Logic::handle_checkpoint_data() {
                     child->m_unk33C = nodeData.speed3;
                     child->m_unk340 = nodeData.speed4;
                     child->m_unk390 = nodeData.speed5;
-                }
+                }*/
             }
 
             data.player_1_data.apply(PLAYLAYER->m_pPlayer1);

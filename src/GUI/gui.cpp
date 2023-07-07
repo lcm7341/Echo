@@ -2017,6 +2017,8 @@ void GUI::main() {
 
 		ImGui::Text("Macro Size: %i", logic.get_inputs().size());
 
+		ImGui::Checkbox("Hitbox trail", &logic.hacks.hitboxTrail);
+		ImGui::Checkbox("Hitboxes", &logic.hacks.showHitboxes);
 
 		ImGui::PushItemFlag(ImGuiItemFlags_NoTabStop, true);
 		ImGui::SetNextItemWidth(150);

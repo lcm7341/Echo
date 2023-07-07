@@ -255,10 +255,9 @@ void HitboxNode::drawForObject(gd::GameObject* obj)
 	case gd::GameObjectType::kGameObjectTypeWavePortal:
 	case gd::GameObjectType::kGameObjectTypeRobotPortal:
 	case gd::GameObjectType::kGameObjectTypeSpiderPortal:
-	case gd::GameObjectType::kGameObjectTypeTeleportPortal:color = { (GLubyte)(hacks.portalHitboxColor[0] * 255.f), (GLubyte)(hacks.portalHitboxColor[1] * 255.f),
-				 (GLubyte)(hacks.portalHitboxColor[2] * 255.f) };
-
-														  break;
+	case gd::GameObjectType::kGameObjectTypeTeleportPortal:
+		color = { (GLubyte)(hacks.portalHitboxColor[0] * 255.f), (GLubyte)(hacks.portalHitboxColor[1] * 255.f),(GLubyte)(hacks.portalHitboxColor[2] * 255.f) };
+		break;
 	case gd::GameObjectType::kGameObjectTypeModifier:
 		switch (obj->m_nObjectID)
 		{
