@@ -648,13 +648,19 @@ void Logic::handle_checkpoint_data() {
             for (const auto& pair : data.objects) {
                 const ObjectData& nodeData = pair.second;
                 gd::GameObject* child = (gd::GameObject*)PLAYLAYER->m_objects->objectAtIndex(nodeData.tag);
-                if (child && child->m_objectType) {
+                if (child) {
                     child->setPositionX(nodeData.posX);
                     child->setPositionY(nodeData.posY);
                     child->setRotationX(nodeData.rotX);
                     child->setRotationY(nodeData.rotY);
                     child->setSkewX(nodeData.velX);
                     child->setSkewY(nodeData.velY);
+
+                    child->m_unk2F4 = nodeData.speed1;
+                    child->m_unk2F8 = nodeData.speed2;
+                    child->m_unk33C = nodeData.speed3;
+                    child->m_unk340 = nodeData.speed4;
+                    child->m_unk390 = nodeData.speed5;
                 }
             }
 
