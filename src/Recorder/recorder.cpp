@@ -54,8 +54,8 @@ void Recorder::start(const std::string& path) {
     auto gm = gd::GameManager::sharedState();
     auto play_layer = gm->getPlayLayer();
     auto song_file = play_layer->m_level->getAudioFileName();
-    auto fade_in = play_layer->m_levelSettings->m_fadeIn;
-    auto fade_out = play_layer->m_levelSettings->m_fadeOut;
+    auto fade_in = play_layer->m_pLevelSettings->m_fadeIn;
+    auto fade_out = play_layer->m_pLevelSettings->m_fadeOut;
     auto bg_volume = gm->m_fBackgroundMusicVolume;
     auto sfx_volume = gm->m_fEffectsVolume;
     if (play_layer->m_level->songID == 0)
@@ -74,7 +74,7 @@ void Recorder::start(const std::string& path) {
         else
             stream << "-pix_fmt yuv420p ";
         auto playlayer = gd::GameManager::sharedState()->getPlayLayer();
-        int end_frame = playlayer->timeForXPos2(playlayer->m_endPortal->getPositionX(), true) * logic.fps;
+        int end_frame = playlayer->timeForXPos(playlayer->m_endPortal->getPositionX()) * logic.fps;
         if (!m_vf_args.empty()) {
             if (color_fix) {
                 stream << "-cq 0 -vf colorspace=all=bt709:iall=bt470bg:fast=1," << m_vf_args << ",\"vflip\"" << " -an \"" << path << "\" ";
@@ -199,13 +199,13 @@ void Recorder::capture_frame() {
 }
 
 void Recorder::handle_recording(gd::PlayLayer* play_layer, float dt) {
-    double difference = play_layer->m_endPortal->getPositionX() - play_layer->m_player1->getPositionX();
+    double difference = play_layer->m_endPortal->getPositionX() - play_layer->m_pPlayer1->getPositionX();
     double frame_time = (60.f * Logic::get().player_speed * Logic::get().player_acceleration) * (1.f / Logic::get().fps);
 
     double abs_value_difference = difference > 0 ? difference : 0.f - difference;
     Logic::get().completed_level = abs_value_difference <= 349.f || play_layer->m_hasCompletedLevel;
 
-    auto tfx2 = play_layer->timeForXPos2(play_layer->m_player1->m_position.x, true);
+    auto tfx2 = play_layer->timeForXPos(play_layer->m_pPlayer1->m_position.x);
     if (Logic::get().tfx2_calculated == 0 || !Logic::get().completed_level) Logic::get().tfx2_calculated = tfx2;
 
     if (!Logic::get().completed_level || m_after_end_extra_time < m_after_end_duration + 3.5) {
@@ -223,7 +223,7 @@ void Recorder::handle_recording(gd::PlayLayer* play_layer, float dt) {
         auto time = (ssb_fix ? Logic::get().tfx2_calculated : play_layer->m_time) + m_extra_t - m_last_frame_t;
 
         if (time >= frame_dt) {
-            gd::FMODAudioEngine::sharedEngine()->setBackgroundMusicTime(
+            gd::FMODAudioEngine::sharedEngine()->setMusicTime(
                 (ssb_fix ? Logic::get().tfx2_calculated : play_layer->m_time) + m_song_start_offset);
             m_extra_t = time - frame_dt;
             m_last_frame_t = ssb_fix ? Logic::get().tfx2_calculated : play_layer->m_time;
@@ -237,6 +237,6 @@ void Recorder::handle_recording(gd::PlayLayer* play_layer, float dt) {
 
 void Recorder::update_song_offset(gd::PlayLayer* play_layer) {
     // from what i've checked rob doesnt store the timeforxpos result anywhere, so i have to calculate it again
-    m_song_start_offset = play_layer->m_levelSettings->m_songStartOffset + play_layer->timeForXPos2(
-        play_layer->m_player1->m_position.x, play_layer->m_isTestMode);
+    m_song_start_offset = play_layer->m_pLevelSettings->m_songStartOffset + play_layer->timeForXPos(
+        play_layer->m_pPlayer1->m_position.x);
 }

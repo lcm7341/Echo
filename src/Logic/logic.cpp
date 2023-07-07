@@ -32,9 +32,14 @@ double Logic::xpos_calculation() {
 
 void Logic::record_input(bool down, bool player1) {
     if (is_recording() || is_both()) {
-        auto twoplayer = PLAYLAYER->m_levelSettings->m_twoPlayerMode;
+        auto twoplayer = PLAYLAYER->m_pLevelSettings->m_twoPlayerMode;
         player1 ^= 1 && gd::GameManager::sharedState()->getGameVariable("0010"); // what the fuck ?
-        add_input({ get_frame(), down, twoplayer && !player1, PLAYLAYER->m_player1->getPositionY(), PLAYLAYER->m_player1->getPositionX(), PLAYLAYER->m_player1->getRotation(), PLAYLAYER->m_player1->m_yAccel, PLAYLAYER->m_player1->m_xAccel });
+        if (player1) {
+            add_input({ get_frame(), down, twoplayer && !player1, PLAYLAYER->m_pPlayer1->getPositionY(), PLAYLAYER->m_pPlayer1->getPositionX(), PLAYLAYER->m_pPlayer1->getRotation(), PLAYLAYER->m_pPlayer1->m_yAccel, PLAYLAYER->m_pPlayer1->m_xAccel });
+        }
+        else {
+            add_input({ get_frame(), down, twoplayer && !player1, PLAYLAYER->m_pPlayer2->getPositionY(), PLAYLAYER->m_pPlayer2->getPositionX(), PLAYLAYER->m_pPlayer2->getRotation(), PLAYLAYER->m_pPlayer2->m_yAccel, PLAYLAYER->m_pPlayer2->m_xAccel });
+        }
     }
 }
 
@@ -46,12 +51,12 @@ void Logic::play_input(Frame& input) {
     // PLAYLAYER->m_player1->setPositionX(input.xPosition);
     
 
-    if (PLAYLAYER->m_player1->m_yAccel != input.yVelocity) {
-        printf("MISMATCH Y VELOCITY %f:%f\n", PLAYLAYER->m_player1->m_yAccel, input.yVelocity);
+    if (PLAYLAYER->m_pPlayer1->m_yAccel != input.yVelocity) {
+        printf("MISMATCH Y VELOCITY %f:%f\n", PLAYLAYER->m_pPlayer1->m_yAccel, input.yVelocity);
     }
 
-    if (PLAYLAYER->m_player1->m_xAccel != input.xVelocity) {
-        printf("MISMATCH X VELOCITY %f:%f\n", PLAYLAYER->m_player1->m_xAccel, input.xVelocity);
+    if (PLAYLAYER->m_pPlayer1->m_xAccel != input.xVelocity) {
+        printf("MISMATCH X VELOCITY %f:%f\n", PLAYLAYER->m_pPlayer1->m_xAccel, input.xVelocity);
     }
 
     if (!input.isPlayer2 ^ gamevar && !play_player_1)
@@ -647,7 +652,7 @@ void Logic::handle_checkpoint_data() {
 
             for (const auto& pair : data.objects) {
                 const ObjectData& nodeData = pair.second;
-                gd::GameObject* child = (gd::GameObject*)PLAYLAYER->m_objects->objectAtIndex(nodeData.tag);
+                gd::GameObject* child = (gd::GameObject*)PLAYLAYER->m_pObjects->objectAtIndex(nodeData.tag);
                 if (child) {
                     child->setPositionX(nodeData.posX);
                     child->setPositionY(nodeData.posY);
@@ -664,8 +669,8 @@ void Logic::handle_checkpoint_data() {
                 }
             }
 
-            data.player_1_data.apply(PLAYLAYER->m_player1);
-            data.player_2_data.apply(PLAYLAYER->m_player2);
+            data.player_1_data.apply(PLAYLAYER->m_pPlayer1);
+            data.player_2_data.apply(PLAYLAYER->m_pPlayer2);
         }
     }
 }

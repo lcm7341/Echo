@@ -19,6 +19,30 @@ namespace Hooks {
 	inline int(__fastcall* createCheckpoint)(gd::PlayLayer* self); int __fastcall createCheckpoint_h(gd::PlayLayer* self);
 
 	inline int(__fastcall* removeCheckpoint)(gd::PlayLayer* self); int __fastcall removeCheckpoint_h(gd::PlayLayer* self);
+
+	// 0xe5d60
+	inline gd::GameObject* (__fastcall* powerOffObject)(gd::GameObject* self); gd::GameObject* __fastcall powerOffObject_h(gd::GameObject* self);
+
+	// 0xeab20
+	inline gd::GameObject* (__fastcall* playShineEffect)(gd::GameObject* self); gd::GameObject* __fastcall playShineEffect_h(gd::GameObject* self);
+
+	// 0x1e9a20
+	inline void (__fastcall* incrementJumps)(gd::PlayerObject* self); void __fastcall incrementJumps_h(gd::PlayerObject* self);
+
+	// 0x10ed50
+	inline void (__fastcall* bumpPlayer)(gd::GJBaseGameLayer* self, gd::PlayerObject* player, gd::GameObject* object); void __fastcall bumpPlayer_h(gd::GJBaseGameLayer* self, gd::PlayerObject* player, gd::GameObject* object);
+
+	// 0x1f62c0
+	inline void (__fastcall* toggleDartMode)(gd::PlayerObject* self, bool toggle); void __fastcall toggleDartMode_h(gd::PlayerObject* self, bool toggle);
+
+	// 0x14ebc0
+	inline void (__fastcall* addPoint)(gd::HardStreak* self, cocos2d::CCPoint point); void __fastcall addPoint_h(gd::HardStreak* self, cocos2d::CCPoint point);
+
+	// 0xd1790
+	inline void (__fastcall* triggerObject)(gd::GameObject* self, gd::GJBaseGameLayer* layer); void __fastcall triggerObject_h(gd::GameObject* self, gd::GJBaseGameLayer* layer);
+
+	// 0xEF110
+	inline gd::GameObject*(__fastcall* hasBeenActivatedByPlayer)(gd::GameObject* self, gd::GameObject* other); gd::GameObject* __fastcall hasBeenActivatedByPlayer_h(gd::GameObject* self, gd::GameObject* other);
 	
 	inline void(__thiscall* CCKeyboardDispatcher_dispatchKeyboardMSG)(CCKeyboardDispatcher* self, int key, bool down); void __fastcall CCKeyboardDispatcher_dispatchKeyboardMSG_h(CCKeyboardDispatcher* self, int, int key, bool down);
 
@@ -31,11 +55,23 @@ namespace Hooks {
 
 		inline int(__thiscall* pushButton)(gd::PlayLayer* self, int, bool); int __fastcall pushButton_h(gd::PlayLayer* self, int, int, bool);
 
+		// 0x20d810
+		inline void(__thiscall* onQuit)(gd::PlayLayer* self); void __fastcall onQuit_h(gd::PlayLayer* self);
+
+		// 0x207d30
+		inline void (__thiscall* flipGravity)(gd::PlayLayer* self, gd::PlayerObject* player, bool idk, bool idk2); void __fastcall flipGravity_h(gd::PlayLayer* self, gd::PlayerObject* player, bool idk, bool idk2);
+
+		// 0x207e00
+		inline void(__thiscall* playGravityEffect)(gd::PlayLayer* self, bool toggle); void __fastcall playGravityEffect_h(gd::PlayLayer* self, bool toggle);
+
 		inline int(__thiscall* releaseButton)(gd::PlayLayer* self, int, bool); int __fastcall releaseButton_h(gd::PlayLayer* self, int, int, bool);
 
 		inline int(__thiscall* resetLevel)(gd::PlayLayer* self); int __fastcall resetLevel_h(gd::PlayLayer* self, int);
 
 		inline void* (__thiscall* exitLevel)(gd::PlayLayer* self); void* __fastcall exitLevel_h(gd::PlayLayer* self, int);
+
+		// 0x20a1a0
+		inline void (__thiscall* destroyPlayer)(gd::PlayLayer* self, gd::PlayerObject*, gd::GameObject*); void __fastcall destroyPlayer_h(gd::PlayLayer* self, gd::PlayerObject*, gd::GameObject*);
 
 		inline bool(__thiscall* death)(void*, void*, void*); bool __fastcall death_h(void* self, void*, void* go, void* thingy);
 		}
