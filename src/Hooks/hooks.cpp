@@ -697,57 +697,23 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
 
         if (!logic.checkpoints.empty()) {
             logic.set_removed(logic.get_removed() + (logic.get_frame() - logic.get_latest_checkpoint().number));
-
             if (logic.record_player_1)
                 logic.remove_inputs(logic.get_frame(), true);
             if (logic.record_player_2)
                 logic.remove_inputs(logic.get_frame(), false);
-
-            printf("%i", logic.get_frame());
-
-            if (!logic.get_inputs().empty()) {
-                auto& inputs = logic.get_inputs();
-
-                auto last_input_p1 = std::find_if(inputs.rbegin(), inputs.rend(), [](Frame input) { return !input.isPlayer2; });
-                auto last_input_p2 = std::find_if(inputs.rbegin(), inputs.rend(), [](Frame input) { return input.isPlayer2; });
-
-                bool currently_holdingP1 = self->m_player1->m_isHolding;
-                bool currently_holdingP2 = self->m_player2->m_isHolding;
-
-                if (last_input_p1 != inputs.rend()) {
-                    if (last_input_p1->pressingDown && logic.record_player_1 && !currently_holdingP1 && !logic.get_latest_checkpoint().player_1_data.m_isDashing) {
-                        logic.add_input({ logic.get_latest_checkpoint().number, false, false });
-                    }
-                    else if (logic.record_player_1 && currently_holdingP1 && !logic.get_latest_checkpoint().player_1_data.m_isDashing) {
-                        logic.add_input({ logic.get_latest_checkpoint().number, true, false });
-                    }
-                }
-
-                if (last_input_p2 != inputs.rend()) {
-                    if (last_input_p2->pressingDown && logic.record_player_2 && !currently_holdingP2 && self->m_level->twoPlayerMode && (!logic.get_latest_checkpoint().player_1_data.m_isDashing || !logic.get_latest_checkpoint().player_2_data.m_isDashing)) {
-                        logic.add_input({ logic.get_latest_checkpoint().number, false, true });
-                    }
-                    else if (logic.record_player_2 && currently_holdingP2 && self->m_level->twoPlayerMode && (!logic.get_latest_checkpoint().player_1_data.m_isDashing || !logic.get_latest_checkpoint().player_2_data.m_isDashing)) {
-                        logic.add_input({ logic.get_latest_checkpoint().number, true, true });
-                    }
-                }
-            }
         }
         else {
-            if (logic.record_player_1)
-                logic.remove_inputs(logic.get_frame(), true);
-            if (logic.record_player_2)
-                logic.remove_inputs(logic.get_frame(), false);
-
+            logic.inputs.clear();
             logic.set_removed(0);
             self->m_time = 0;
         }
 
-        if (logic.record_player_1 && self->m_player1->m_isHolding && logic.checkpoints.empty())
-            logic.record_input(true, true);
-        if (logic.record_player_2 && self->m_player2->m_isHolding && logic.checkpoints.empty())
-            logic.record_input(true, false);
+        // Handle inputs for player 1 and player 2 separately
+        logic.handlePlayerInputs(self->m_player1, logic.record_player_1, logic.get_latest_checkpoint().player_1_data.m_isDashing, false);
+        if (self->m_level->twoPlayerMode)
+            logic.handlePlayerInputs(self->m_player2, logic.record_player_2, logic.get_latest_checkpoint().player_2_data.m_isDashing, true);
     }
+
 
     return ret;
 }
@@ -790,10 +756,10 @@ int __fastcall Hooks::createCheckpoint_h(gd::PlayLayer* self) {
     std::map<int, ObjectData> childData;
     cocos2d::CCArray* children = self->m_objects;
     CCObject* it = NULL;
-    /*CCARRAY_FOREACH(children, it)
+    CCARRAY_FOREACH(children, it)
     {
         auto child = dynamic_cast<gd::GameObject*>(it);
-        if (child)
+        if (child && child->m_objectType && child->m_objectType != gd::GameObjectType::kGameObjectTypeDecoration)
         {
             ObjectData data;
             data.tag = child->m_uID;
@@ -803,9 +769,14 @@ int __fastcall Hooks::createCheckpoint_h(gd::PlayLayer* self) {
             data.rotY = child->getRotationY();
             data.velX = child->getSkewX();
             data.velY = child->getSkewY();
+            data.speed1 = child->m_unk2F4;
+            data.speed2 = child->m_unk2F8;
+            data.speed3 = child->m_unk33C;
+            data.speed4 = child->m_unk340;
+            data.speed5 = child->m_unk390;
             childData[data.tag] = data;
         }
-    }*/
+    }
 
     logic.save_checkpoint({ logic.get_frame(), checkpointData1, checkpointData2, logic.activated_objects.size(), logic.activated_objects_p2.size(), childData, self->m_cameraPos, logic.calculated_xpos });
 
@@ -815,8 +786,10 @@ int __fastcall Hooks::createCheckpoint_h(gd::PlayLayer* self) {
 int __fastcall Hooks::removeCheckpoint_h(gd::PlayLayer* self) {
     auto& logic = Logic::get();
 
-    logic.remove_last_offset();
-    logic.remove_last_checkpoint();
+    if (!logic.checkpoints.empty()) {
+        logic.remove_last_offset();
+        logic.remove_last_checkpoint();
+    }
 
     return removeCheckpoint(self);
 }

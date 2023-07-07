@@ -44,12 +44,19 @@ struct ObjectData {
 	float rotY;
 	float velX;
 	float velY;
+
+	float speed1; // m_unk2F4
+	float speed2; // m_unk2F8
+	float speed3; // m_unk33C
+	float speed4; // m_unk340
+	float speed5; // m_unk390
 };
 
 #define PLAYER_FIELDS \
 	FIELD(double, m_xAccel) \
 	FIELD(double, m_yAccel) \
 	FIELD(double, m_jumpAccel) \
+	FIELD(double, unk688) \
 	FIELD(bool, m_blackOrb) \
 	FIELD(bool, m_isDashing) \
 	FIELD(bool, m_isUpsideDown) \
@@ -60,9 +67,15 @@ struct ObjectData {
 	FIELD(float, m_playerSpeed) \
 	FIELD(bool, unk480) \
 	FIELD(bool, unk4B0) \
-	FIELD(cocos2d::CCSprite*, unk4B4) \
 	FIELD(bool, unk4D4) \
 	FIELD(bool, unk4DC) \
+	FIELD(cocos2d::CCSprite*, unk4B4) \
+	FIELD(bool, unk53D) \
+	FIELD(bool, unk53E) \
+	FIELD(bool, unk5B0) \
+	FIELD(bool, unk5FC) \
+	FIELD(bool, unk5FD) \
+	FIELD(bool, unk53F) \
 	FIELD(bool, unk538) \
 	FIELD(bool, unk539) \
 	FIELD(bool, unk53A) \
@@ -82,7 +95,10 @@ struct ObjectData {
 	FIELD(gd::HardStreak*, m_waveTrail) \
 	FIELD(bool, unk630) \
 	FIELD(bool, unk631) \
+	FIELD(bool, unk610) \
 	FIELD(float, unk634) \
+	FIELD(float, unk584) \
+	FIELD(float, unk61C) \
 	FIELD(bool, m_isShip) \
 	FIELD(bool, m_isBird) \
 	FIELD(bool, m_isBall) \
@@ -314,6 +330,45 @@ public:
 			(state == PLAYING) ? IDLE :
 			(state == RECORDING) ? RECORDING_AND_PLAYING :
 			RECORDING; // if state was RECORDING_AND_PLAYING, switch to RECORDING
+	}
+
+	void handlePlayerInputs(gd::PlayerObject* player, bool record_player, bool isDashing, bool isPlayer2) {
+		if (!record_player)
+			return;
+
+		bool wasPressingDown = false;
+		Frame lastInput;
+
+		if (!get_inputs().empty()) {
+			auto& inputs = get_inputs();
+			auto last_input_itr = std::find_if(inputs.rbegin(), inputs.rend(), [=](Frame input) { return input.isPlayer2 == isPlayer2; });
+
+			if (last_input_itr != inputs.rend()) {
+				lastInput = *last_input_itr;
+				wasPressingDown = lastInput.pressingDown;
+
+				// If the player is not currently pressing, but was pressing on the last input
+				if (!player->m_isHolding && wasPressingDown && !isDashing) {
+					if (lastInput.number != get_frame()) {
+						add_input({ get_frame(), false, isPlayer2 });
+					}
+				}
+				// If the player is currently pressing, but was not pressing on the last input
+				else if (player->m_isHolding && !wasPressingDown && !isDashing) {
+					if (lastInput.number != get_frame()) {
+						add_input({ get_frame(), true, isPlayer2 });
+					}
+				}
+			}
+		}
+		else {
+			// If no previous input and the player is currently pressing
+			if (player->m_isHolding) {
+				add_input({ get_frame(), true, isPlayer2 });
+
+				// Handle Orb Checking
+			}
+		}
 	}
 
 	void toggle_recording() {
