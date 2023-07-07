@@ -357,6 +357,9 @@ public:
 				else if (player->m_isHolding && !wasPressingDown && !isDashing) {
 					if (lastInput.number != get_frame()) {
 						add_input({ get_frame(), true, isPlayer2 });
+
+						// Handle Orb Checking
+						orbChecking(player->getPosition());
 					}
 				}
 			}
@@ -367,6 +370,62 @@ public:
 				add_input({ get_frame(), true, isPlayer2 });
 
 				// Handle Orb Checking
+				orbChecking(player->getPosition());
+			}
+		}
+	}
+
+	bool isClose(cocos2d::CCPoint p1, cocos2d::CCPoint p2, float threshold) {
+		float dist = p1.getDistance(p2);
+		return dist <= threshold;
+	}
+
+	typedef std::function<void* (void*)> cast_function;
+
+	template <typename To, typename From>
+	cast_function make_cast() {
+		std::unique_ptr<cast_function> caster(new cast_function([](void* from)->void* {
+			return static_cast<void*>(static_cast<To*>(static_cast<From*>(from)));
+			}));
+
+		auto result = std::bind(*caster, std::placeholders::_1);
+		return result;
+	}
+
+	void orbChecking(cocos2d::CCPoint playerPosition) { 
+		cocos2d::CCArray* children = gd::GameManager::sharedState()->getPlayLayer()->m_objects;
+		printf("Number of Children: %ld\n", children->count());
+		CCObject* it = NULL;
+		cast_function caster = make_cast<gd::GameObject, CCObject>();
+		CCARRAY_FOREACH(children, it)
+		{
+			try {
+				auto child = reinterpret_cast<gd::GameObject*>(caster(it));
+				if (child && child->m_objectType) {
+					switch (child->m_objectType) {
+					case gd::GameObjectType::kGameObjectTypeGravityRing:
+					case gd::GameObjectType::kGameObjectTypeYellowJumpRing:
+					case gd::GameObjectType::kGameObjectTypePinkJumpRing:
+					case gd::GameObjectType::kGameObjectTypeDropRing:
+					case gd::GameObjectType::kGameObjectTypeRedJumpRing:
+					case gd::GameObjectType::kGameObjectTypeCustomRing:
+					case gd::GameObjectType::kGameObjectTypeDashRing:
+					case gd::GameObjectType::kGameObjectTypeGravityDashRing:
+						printf("Player Position: (%f, %f)\n", playerPosition.x, playerPosition.y);
+						printf("Child Position: (%f, %f)\n", child->getPosition().x, child->getPosition().y);
+
+						if (isClose(playerPosition, child->getPosition(), 0.5f)) {
+							printf("Triggered object");
+							// TRIGGER ORB HERE
+						}
+						break;
+					default:
+						break;
+					}
+				}
+			}
+			catch (std::exception& e) {
+				printf("Exception occurred: %s\n", e.what());
 			}
 		}
 	}
