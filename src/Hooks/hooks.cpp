@@ -746,6 +746,18 @@ void* __fastcall Hooks::PlayLayer::exitLevel_h(gd::PlayLayer* self, int) {
     return exitLevel(self);
 }
 
+typedef std::function<void* (void*)> cast_function;
+
+template <typename To, typename From>
+cast_function make_cast() {
+    std::unique_ptr<cast_function> caster(new cast_function([](void* from)->void* {
+        return static_cast<void*>(static_cast<To*>(static_cast<From*>(from)));
+        }));
+
+    auto result = std::bind(*caster, std::placeholders::_1);
+    return result;
+}
+
 int __fastcall Hooks::createCheckpoint_h(gd::PlayLayer* self) {
     auto& logic = Logic::get();
 
@@ -755,10 +767,12 @@ int __fastcall Hooks::createCheckpoint_h(gd::PlayLayer* self) {
 
     std::map<int, ObjectData> childData;
     cocos2d::CCArray* children = self->m_objects;
+
+    cast_function caster = make_cast<gd::GameObject, CCObject>();
     CCObject* it = NULL;
     CCARRAY_FOREACH(children, it)
     {
-        auto child = dynamic_cast<gd::GameObject*>(it);
+        auto child = reinterpret_cast<gd::GameObject*>(caster(it));
         if (child && child->m_objectType && child->m_objectType != gd::GameObjectType::kGameObjectTypeDecoration)
         {
             ObjectData data;
