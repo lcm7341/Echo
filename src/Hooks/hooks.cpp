@@ -203,11 +203,11 @@ bool __fastcall Hooks::PlayLayer::init_h(gd::PlayLayer* self, void* edx, gd::GJG
     logic.replay_index = 0;
     Clickbot::start = std::chrono::system_clock::now();
 
-    // drawer = HitboxNode::getInstance();
+    drawer = HitboxNode::getInstance();
 
     bool ret = Hooks::PlayLayer::init(self, level);
 
-    // TrajectorySimulation::getInstance()->createSimulation();
+    TrajectorySimulation::getInstance()->createSimulation();
 
     return ret;
 }
