@@ -786,7 +786,7 @@ void GUI::editor() {
 				}
 
 				// Automatically select the closest input to the current frame
-				if (PLAYLAYER && !PLAYLAYER->m_isPaused && (!logic.frame_advance || !logic.holding_frame_advance) && editor_auto_scroll) {
+				if (PLAYLAYER && !PLAYLAYER->m_bIsPaused && (!logic.frame_advance || !logic.holding_frame_advance) && editor_auto_scroll) {
 					if (closestInputIndex != -1) {
 						selectedInput = closestInputIndex;
 						newInput = inputs[closestInputIndex];
