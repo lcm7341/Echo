@@ -68,10 +68,16 @@ void Logic::play_input(Frame& input) {
         live_inputs.push_back(input);
 
         if (input.pressingDown) {
+            playback_clicking = true;
             Hooks::PlayLayer::pushButton(PLAYLAYER, 0, !input.isPlayer2 ^ gamevar);
+            Hooks::PlayLayer::pushButton_h(PLAYLAYER, 0, 0, !input.isPlayer2 ^ gamevar);
+            playback_clicking = false;
         }
         else {
+            playback_releasing = true;
             Hooks::PlayLayer::releaseButton(PLAYLAYER, 0, !input.isPlayer2 ^ gamevar);
+            Hooks::PlayLayer::releaseButton_h(PLAYLAYER, 0, 0, !input.isPlayer2 ^ gamevar);
+            playback_releasing = false;
         }
     }
 }
@@ -229,16 +235,18 @@ std::string getRandomWavFile(const std::vector<std::string>& wavFiles) {
     return wavFiles[randomIndex];
 }
 
-bool Logic::play_macro(int& offset) {
+bool Logic::play_macro() {
     if (is_playing()) {
         auto& inputs = get_inputs();
         unsigned current_frame = get_frame()/* - offset*/;
         bool ret = false;
 
+        int nearest_pos = find_closest_input();
         while (inputs[replay_pos].number <= current_frame && replay_pos < inputs.size()) {
             auto& input = inputs[replay_pos];
 
-            play_input(inputs[replay_pos]);
+            if (inputs[replay_pos].number == current_frame)
+                play_input(inputs[replay_pos]);
             replay_pos += 1;
             ret = true;
         }
@@ -579,6 +587,14 @@ void Logic::read_file_json(const std::string& filename, bool is_path = false) {
 
 void Logic::sort_inputs() {
     std::map<unsigned, std::vector<Frame>> frameMap;
+
+    std::stable_sort(inputs.begin(), inputs.end(), [](const Frame& a, const Frame& b) {
+        if (a.number == b.number) {
+            return false;  // Skip inputs with the same frame number
+        }
+        return a.number < b.number;
+        });
+    return;
 
     for (const auto& frame : inputs) {
         frameMap[frame.number].push_back(frame);

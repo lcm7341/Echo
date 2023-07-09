@@ -511,8 +511,8 @@ void GUI::ui_editor() {
 			if (ImGui::BeginTabItem("Sizes"))
 			{
 
-				ImGui::SetNextWindowSizeConstraints(ImVec2(-1, 350 * io.FontGlobalScale), ImVec2(-1, 350 * io.FontGlobalScale));
-				ImGui::BeginChild("###sizesChild", ImVec2(-1, 350 * io.FontGlobalScale), true, ImGuiWindowFlags_AlwaysAutoResize);
+				ImGui::SetNextWindowSizeConstraints(ImVec2(-1, 350 * io.FontGlobalScale * 2), ImVec2(-1, 350 * io.FontGlobalScale * 2));
+				ImGui::BeginChild("###sizesChild", ImVec2(-1, 350 * io.FontGlobalScale * 2), true, ImGuiWindowFlags_AlwaysAutoResize);
 				ImGui::Text("Main");
 				ImGui::PushItemWidth(200);
 				ImGui::SliderFloat2("WindowPadding", (float*)&style.WindowPadding, 0.0f, 20.0f, "%.0f");
@@ -567,7 +567,7 @@ void GUI::ui_editor() {
 				static ImGuiColorEditFlags alpha_flags = 0;
 
 				//ImGui::SetNextWindowSizeConstraints(ImVec2(500, 500), ImVec2(500, 500));
-				ImGui::BeginChild("##colors", ImVec2(-1, 350 * io.FontGlobalScale), true, ImGuiWindowFlags_AlwaysAutoResize);
+				ImGui::BeginChild("##colors", ImVec2(-1, 350 * io.FontGlobalScale * 2), true, ImGuiWindowFlags_AlwaysAutoResize);
 				ImGui::PushItemWidth(250);
 				if (filter.PassFilter("Player 1 In Editor")) {
 					ImGui::PushID(998);
@@ -702,7 +702,7 @@ void GUI::editor() {
 	if (ImGui::BeginTabItem("Editor") || !docked) {
 
 		if (!docked) {
-			ImGui::SetNextWindowSizeConstraints(ImVec2(450 * ImGui::GetIO().FontGlobalScale, 415 * ImGui::GetIO().FontGlobalScale), ImVec2(550 * ImGui::GetIO().FontGlobalScale, 515 * ImGui::GetIO().FontGlobalScale));
+			ImGui::SetNextWindowSizeConstraints(ImVec2(450 * ImGui::GetIO().FontGlobalScale * 2, 415 * ImGui::GetIO().FontGlobalScale * 2), ImVec2(550 * ImGui::GetIO().FontGlobalScale * 2, 515 * ImGui::GetIO().FontGlobalScale * 2));
 			ImGui::Begin("Editor", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
 
 			editor_pos = ImGui::GetWindowPos();
@@ -745,7 +745,7 @@ void GUI::editor() {
 
 		// Modify the style settings
 
-		ImGui::BeginChild("##List", ImVec2(0, (firstChildHeight - ImGui::GetFrameHeightWithSpacing() + 1) * ImGui::GetIO().FontGlobalScale), true, ImGuiWindowFlags_AlwaysUseWindowPadding);
+		ImGui::BeginChild("##List", ImVec2(0, (firstChildHeight - ImGui::GetFrameHeightWithSpacing() + 1) * ImGui::GetIO().FontGlobalScale * 2), true, ImGuiWindowFlags_AlwaysUseWindowPadding);
 		if (!inputs.empty()) {
 			int closestFrameDiff = INT_MAX;
 			int closestInputIndex = -1;
@@ -811,7 +811,7 @@ void GUI::editor() {
 		ImGui::EndChild();
 		ImGui::NextColumn();
 
-		ImGui::BeginChild("##EditArea", ImVec2(0, (firstChildHeight - ImGui::GetFrameHeightWithSpacing() + 1) * ImGui::GetIO().FontGlobalScale), true, ImGuiWindowFlags_AlwaysUseWindowPadding);
+		ImGui::BeginChild("##EditArea", ImVec2(0, (firstChildHeight - ImGui::GetFrameHeightWithSpacing() + 1) * ImGui::GetIO().FontGlobalScale * 2), true, ImGuiWindowFlags_AlwaysUseWindowPadding);
 
 		if (selectedInput >= 0 && selectedInput < inputs.size()) {
 			ImGui::Text("Editing Input %d", selectedInput + 1); ImGui::SameLine();
@@ -1122,7 +1122,7 @@ void GUI::sequential_replay() {
 	if (ImGui::BeginTabItem("Sequence") || !docked) {
 
 		if (!docked) {
-			ImGui::SetNextWindowSizeConstraints({ 375 * ImGui::GetIO().FontGlobalScale, 330 * ImGui::GetIO().FontGlobalScale }, { 375 * ImGui::GetIO().FontGlobalScale, 350 * ImGui::GetIO().FontGlobalScale });
+			ImGui::SetNextWindowSizeConstraints({ 375 * ImGui::GetIO().FontGlobalScale * 2, 330 * ImGui::GetIO().FontGlobalScale * 2 }, { 375 * ImGui::GetIO().FontGlobalScale * 2, 350 * ImGui::GetIO().FontGlobalScale * 2 });
 			ImGui::Begin("Sequence", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
 
 			sequence_pos = ImGui::GetWindowPos();
@@ -1553,8 +1553,15 @@ void GUI::tools() {
 		HelpMarker("Frame Advance is a tool that allows you to step through the game's frames one at a time.\nYou can use either the 'Advance' button or the respective keybind to advance.");
 
 		ImGui::PushItemWidth(75);
-		ImGui::DragInt("Hold Time (ms)", (int*)&logic.frame_advance_hold_duration, 1, 0); ImGui::SameLine();
-		ImGui::DragInt("Speed (ms)", (int*)&logic.frame_advance_delay, 1, 0);
+		int hold_time = logic.frame_advance_hold_duration;
+		ImGui::DragInt("Hold Time (ms)", &hold_time, 1, 0); ImGui::SameLine();
+		if (hold_time < 0) hold_time = 0;
+		logic.frame_advance_hold_duration = hold_time;
+
+		int delay_time = logic.frame_advance_delay;
+		ImGui::DragInt("Speed (ms)", &delay_time, 1, 0);
+		if (delay_time < 0) delay_time = 0;
+		logic.frame_advance_delay = delay_time;
 		ImGui::PopItemWidth();
 
 		ImGui::Separator();
@@ -2016,9 +2023,6 @@ void GUI::main() {
 		ImGui::SetCursorPosX(cursor_pos_x);
 
 		ImGui::Text("Macro Size: %i", logic.get_inputs().size());
-
-		ImGui::Checkbox("Hitbox trail", &logic.hacks.hitboxTrail);
-		ImGui::Checkbox("Hitboxes", &logic.hacks.showHitboxes);
 
 		ImGui::PushItemFlag(ImGuiItemFlags_NoTabStop, true);
 		ImGui::SetNextItemWidth(150);
@@ -2557,11 +2561,13 @@ void GUI::init() {
 
 	CCDirector::sharedDirector()->setAnimationInterval(1.f / Logic::get().fps);
 
-	ImGui::GetIO().Fonts->AddFontFromMemoryTTF(Fonts::OpenSans_Medium, sizeof(Fonts::OpenSans_Medium), 21.f, &fontConfig);
+	ImGui::GetIO().Fonts->AddFontFromMemoryTTF(Fonts::OpenSans_Medium, sizeof(Fonts::OpenSans_Medium), 42.f, &fontConfig);
 
 	style.FramePadding = ImVec2{ 8, 4 };
 	style.IndentSpacing = 21;
 	style.ItemSpacing = { 8, 8 };
+
+	ImGui::GetIO().FontGlobalScale /= 2;
 
 	style.ScrollbarSize = 14;
 	style.GrabMinSize = 8;

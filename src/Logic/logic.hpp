@@ -19,6 +19,8 @@ enum State {
 #include "../GUI/keybinds.h"
 #include "../Clickbot/clickbot.hpp"
 
+#define PLAYLAYER gd::GameManager::sharedState()->getPlayLayer()
+
 using namespace cocos2d;
 
 struct Frame {
@@ -107,18 +109,79 @@ struct ObjectData {
 	FIELD(bool, m_isDart) \
 	FIELD(bool, m_isRobot) \
 	FIELD(bool, m_isSpider) \
+	FIELD(bool, m_isLocked) \
+	FIELD(bool, m_unk) \
+	FIELD(float, m_unk69C) \
+	FIELD(double, m_lastJumpTime) \
+	FIELD(double, m_unknown20) \
+	FIELD(gd::GameObject*, m_objectSnappedTo) \
+	FIELD(gd::GJRobotSprite*, m_robotSprite) \
+	FIELD(gd::GJSpiderSprite*, m_spiderSprite) \
+	PLFIELD(bool, unk39D) \
+	PLFIELD(bool, unk39E) \
+	PLFIELD(bool, unk534) \
+	PLFIELD(bool, unk4C4) \
+	PLFIELD(bool, m_disableGravityEffect) \
+	PLFIELD(bool, unk39F) \
+	PLFIELD(bool, unk42A) \
+	PLFIELD(bool, unk42B) \
+	PLFIELD(bool, unk2ED) \
+	PLFIELD(bool, unk2EC) \
+	PLFIELD(bool, unk42C) \
+	PLFIELD(bool, m_isCameraShaking) \
+	PLFIELD(bool, unk496) \
+	PLFIELD(bool, unk497) \
+	PLFIELD(bool, unk49C) \
+	PLFIELD(bool, m_bHasCheated) \
+	PLFIELD(bool, unk2DC) \
+	PLFIELD(bool, unknown5e4) \
+	PLFIELD(int, unk2E8) \
+	PLFIELD(int, unk2D8) \
+	PLFIELD(int, unk2E4) \
+	PLFIELD(int, unk2E0) \
+	PLFIELD(int, m_ballFrameSeed) \
+	PLFIELD(float, unk3B8) \
+	PLFIELD(float, m_cameraX) \
+	PLFIELD(float, unknown5ec) \
+	PLFIELD(float, m_lockGroundToCamera) \
+	PLFIELD(float, unknown5f4) \
+	PLFIELD(float, unk2FC) \
+	PLFIELD(float, m_currentShakeStrength) \
+	PLFIELD(float, m_currentShakeInterval) \
+	PLFIELD(float, unk300) \
+	PLFIELD(float, unk304) \
+	PLFIELD(float, unk308) \
+	PLFIELD(float, unk30C) \
+	PLFIELD(double, unk508) \
+	PLFIELD(double, unk4E8) \
+	PLFIELD(double, unk4E0) \
+	PLFIELD(double, m_lastShakeTime) \
+	PLFIELD(cocos2d::CCArray*, unk354) \
+	PLFIELD(cocos2d::CCArray*, unk358) \
+	PLFIELD(cocos2d::CCArray*, unk35C) \
+	PLFIELD(cocos2d::CCArray*, unk360) \
+	PLFIELD(cocos2d::CCArray*, unk37C) \
+	PLFIELD(cocos2d::CCArray*, unk498) \
+	PLFIELD(cocos2d::CCArray*, unk4D4) \
+	PLFIELD(gd::GJGroundLayer*, m_bottomGround) \
+	PLFIELD(gd::GJGroundLayer*, m_topGround) \
 
 struct CheckpointData {
+	#define PLFIELD(type, name) type name;
 	#define FIELD(type, name) type name;
 		PLAYER_FIELDS
+	#undef PLFIELD
 	#undef FIELD
 	float m_rotation;
 	gd::Gamemode gamemode;
 
 	static CheckpointData create(gd::PlayerObject* player) {
 		CheckpointData data;
+		
 		#define FIELD(type, name) data.name = player->name;
+		#define PLFIELD(type, name) data.name = PLAYLAYER->name;
 			PLAYER_FIELDS
+		#undef PLFIELD
 		#undef FIELD
 
 		data.m_rotation = player->getRotation();
@@ -128,8 +191,10 @@ struct CheckpointData {
 
 	void apply(gd::PlayerObject* player) {
 		#define FIELD(type, name) player->name = name;
+		#define PLFIELD(type, name) PLAYLAYER->name = name;
 			PLAYER_FIELDS
 		#undef FIELD
+		#undef PLFIELD
 		player->setRotation(m_rotation);
 	}
 
@@ -342,6 +407,9 @@ public:
 	unsigned frame_advance_hold_duration = 300; // ms
 	unsigned frame_advance_delay = 50; // ms
 
+	bool playback_clicking = false;
+	bool playback_releasing = false;
+
 	unsigned get_frame();
 	double get_time();
 
@@ -487,7 +555,7 @@ public:
 
 	void play_input(Frame& input);
 
-	bool play_macro(int& offset);
+	bool play_macro();
 
 	int find_closest_input();
 

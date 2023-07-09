@@ -32,17 +32,17 @@ void Hooks::init_hooks() {
 
     //MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x20a1a0), PlayLayer::destroyPlayer_h, reinterpret_cast<void**>(&PlayLayer::destroyPlayer));
 
-    MH_CreateHook(reinterpret_cast<void*>(gd::base + 0xe5d60), powerOffObject_h, reinterpret_cast<void**>(&powerOffObject));
-    MH_CreateHook(reinterpret_cast<void*>(gd::base + 0xeab20), playShineEffect_h, reinterpret_cast<void**>(&playShineEffect));
-    MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x1e9a20), incrementJumps_h, reinterpret_cast<void**>(&incrementJumps));
-    //MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x10ed50), bumpPlayer_h, reinterpret_cast<void**>(&bumpPlayer)); // crashes idk why (wtf is bumpplayer)
-    MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x1f62c0), toggleDartMode_h, reinterpret_cast<void**>(&toggleDartMode));
-    MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x14ebc0), addPoint_h, reinterpret_cast<void**>(&addPoint));
-    MH_CreateHook(reinterpret_cast<void*>(gd::base + 0xd1790), triggerObject_h, reinterpret_cast<void**>(&triggerObject));
-    MH_CreateHook(reinterpret_cast<void*>(gd::base + 0xEF110), hasBeenActivatedByPlayer_h, reinterpret_cast<void**>(&hasBeenActivatedByPlayer));
-    MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x20d810), PlayLayer::onQuit_h, reinterpret_cast<void**>(&PlayLayer::onQuit));
-    MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x207d30), PlayLayer::flipGravity_h, reinterpret_cast<void**>(&PlayLayer::flipGravity));
-    MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x207e00), PlayLayer::playGravityEffect_h, reinterpret_cast<void**>(&PlayLayer::playGravityEffect));
+    //MH_CreateHook(reinterpret_cast<void*>(gd::base + 0xe5d60), powerOffObject_h, reinterpret_cast<void**>(&powerOffObject));
+    //MH_CreateHook(reinterpret_cast<void*>(gd::base + 0xeab20), playShineEffect_h, reinterpret_cast<void**>(&playShineEffect));
+    //MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x1e9a20), incrementJumps_h, reinterpret_cast<void**>(&incrementJumps));
+    ////MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x10ed50), bumpPlayer_h, reinterpret_cast<void**>(&bumpPlayer)); // crashes idk why (wtf is bumpplayer)
+    //MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x1f62c0), toggleDartMode_h, reinterpret_cast<void**>(&toggleDartMode));
+    //MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x14ebc0), addPoint_h, reinterpret_cast<void**>(&addPoint));
+    //MH_CreateHook(reinterpret_cast<void*>(gd::base + 0xd1790), triggerObject_h, reinterpret_cast<void**>(&triggerObject));
+    //MH_CreateHook(reinterpret_cast<void*>(gd::base + 0xEF110), hasBeenActivatedByPlayer_h, reinterpret_cast<void**>(&hasBeenActivatedByPlayer));
+    //MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x20d810), PlayLayer::onQuit_h, reinterpret_cast<void**>(&PlayLayer::onQuit));
+    //MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x207d30), PlayLayer::flipGravity_h, reinterpret_cast<void**>(&PlayLayer::flipGravity));
+    //MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x207e00), PlayLayer::playGravityEffect_h, reinterpret_cast<void**>(&PlayLayer::playGravityEffect));
 
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x1E4570), PauseLayer::init_h, reinterpret_cast<void**>(&PauseLayer::init));
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x20D810), PlayLayer::exitLevel_h, reinterpret_cast<void**>(&PlayLayer::exitLevel));
@@ -90,23 +90,6 @@ bool __fastcall Hooks::PlayLayer::death_h(void* self, void*, void* go, void* thi
 void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
     auto& logic = Logic::get();
     auto play_layer = gd::GameManager::sharedState()->getPlayLayer();
-
-    if (logic.is_playing() && !logic.get_inputs().empty() && play_layer) {
-        if (logic.sequence_enabled) {
-            if (logic.replay_index - 1 < logic.replays.size()) {
-                Replay& selected_replay = logic.replays[logic.replay_index - 1];
-                static int offset = selected_replay.max_frame_offset > 0 ? (rand() % selected_replay.max_frame_offset / 2) - selected_replay.max_frame_offset : 0;
-
-                if (logic.play_macro(offset)) {
-                    offset = selected_replay.max_frame_offset > 0 ? (rand() % selected_replay.max_frame_offset / 2) - selected_replay.max_frame_offset : 0;
-                }
-            }
-        }
-        else {
-            int _ = 0;
-            logic.play_macro(_);
-        }
-    }
 
     if (logic.frame_advance && !play_layer) logic.frame_advance = false;
 
@@ -170,27 +153,29 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
                 return CCScheduler_update(self, dt);
             }
         }
+
         const float target_dt = 1.f / logic.get_fps() / logic.speedhack;
 
-        if (logic.real_time_mode) {
-            //mtx.lock();
-            float speedhack = logic.speedhack;
-            //mtx.unlock();
+        float speedhack = logic.speedhack;
 
-            g_disable_render = true;
+        g_disable_render = true;
 
-            // min(static_cast<int>(g_left_over / target_dt), 50) <- super fast but i think its inaccurate
-            const unsigned int times = min(static_cast<int>(dt + g_left_over / target_dt), 150);
+        // min(static_cast<int>(g_left_over / target_dt), 50) <- super fast but i think its inaccurate
+        //const int times = min(round((dt + g_left_over) / target_dt), 150);
+        const int times = min(round(g_left_over / target_dt), 150);
 
-            for (unsigned i = 0; i < times; i++) {
-                if (i == times - 1) {
-                    g_disable_render = false;
-                }
-                CCScheduler_update(self, target_dt);
+        if (play_layer && !play_layer->m_bIsPaused)
+        printf("Times: %f, over: %f\n", (dt + g_left_over) / target_dt, g_left_over);
+
+        for (int i = 0; i < times; i++) {
+            if (i == times - 1) {
+                g_disable_render = false;
             }
-
-            g_left_over += dt - target_dt * times;
+            CCScheduler_update(self, target_dt);
         }
+        g_left_over += dt - target_dt * times;
+
+        return;
     }
     else {
         return CCScheduler_update(self, dt);
@@ -549,16 +534,34 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
         TrajectorySimulation::getInstance()->processMainSimulation(dt);
 
     update(self, dt);
+
+    // this is rotation bug fix for playback vvvvvv we MUST call it after update() or else the click isnt registered in time
+
+    if (logic.is_playing() && !logic.get_inputs().empty()) {
+        if (logic.sequence_enabled) {
+            if (logic.replay_index - 1 < logic.replays.size()) {
+                Replay& selected_replay = logic.replays[logic.replay_index - 1];
+                static int offset = selected_replay.max_frame_offset > 0 ? (rand() % selected_replay.max_frame_offset / 2) - selected_replay.max_frame_offset : 0;
+
+                if (logic.play_macro()) {
+                    offset = selected_replay.max_frame_offset > 0 ? (rand() % selected_replay.max_frame_offset / 2) - selected_replay.max_frame_offset : 0;
+                }
+            }
+        }
+        else {
+            logic.play_macro();
+        }
+    }
 }
 
 int __fastcall Hooks::PlayLayer::pushButton_h(gd::PlayLayer* self, int, int idk, bool button) {
     auto& logic = Logic::get();
 
     if (!self->m_level->twoPlayerMode) {
-        button = true;
+        button = false;
     }
 
-    if (logic.clickbot_enabled) {
+    if ((logic.clickbot_enabled && !logic.is_playing()) || (logic.clickbot_enabled && logic.playback_clicking)) {
         button = !button; // i fucked up before and done wanna care
         if (!Clickbot::inited)
         {
@@ -602,7 +605,12 @@ int __fastcall Hooks::PlayLayer::pushButton_h(gd::PlayLayer* self, int, int idk,
 
     if (logic.is_playing()) {
         if (logic.ignore_actions_at_playback) {
-            return 0;
+            if (button && !logic.record_player_1)
+                return 0;
+            if (!button && !logic.record_player_2)
+                return 0;
+            if (logic.play_player_1 && logic.play_player_2)
+                return 0;
         }
     }
 
@@ -637,10 +645,10 @@ int __fastcall Hooks::PlayLayer::releaseButton_h(gd::PlayLayer* self, int, int i
     auto& logic = Logic::get();
 
     if (!self->m_level->twoPlayerMode) {
-        button = true;
+        button = false;
     }
 
-    if (logic.clickbot_enabled) {
+    if ((logic.clickbot_enabled && !logic.is_playing()) || (logic.clickbot_enabled && logic.playback_releasing)) {
         button = !button; // i fucked up before and done wanna care
         if (!Clickbot::inited)
         {
@@ -685,7 +693,14 @@ int __fastcall Hooks::PlayLayer::releaseButton_h(gd::PlayLayer* self, int, int i
 
     if (logic.is_playing()) {
         if (logic.ignore_actions_at_playback) {
-            return 0;
+            if (logic.ignore_actions_at_playback) {
+                if (button && !logic.record_player_1)
+                    return 0;
+                if (!button && !logic.record_player_2)
+                    return 0;
+                if (logic.play_player_1 && logic.play_player_2)
+                    return 0;
+            }
         }
     }
 
@@ -834,13 +849,17 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
 
         if (!logic.checkpoints.empty()) {
             logic.set_removed(logic.get_removed() + (logic.get_frame() - logic.get_latest_checkpoint().number));
+
             if (logic.record_player_1)
                 logic.remove_inputs(logic.get_frame(), true);
             if (logic.record_player_2)
                 logic.remove_inputs(logic.get_frame(), false);
         }
         else {
-            logic.inputs.clear();
+            if (logic.record_player_1)
+                logic.remove_inputs(logic.get_frame(), true);
+            if (logic.record_player_2)
+                logic.remove_inputs(logic.get_frame(), false);
             logic.set_removed(0);
             self->m_time = 0;
         }
