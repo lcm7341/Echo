@@ -205,7 +205,7 @@ void Recorder::handle_recording(gd::PlayLayer* play_layer, float dt) {
     double abs_value_difference = difference > 0 ? difference : 0.f - difference;
     Logic::get().completed_level = abs_value_difference <= 349.f || play_layer->m_hasCompletedLevel;
 
-    auto tfx2 = play_layer->timeForXPos(play_layer->m_pPlayer1->m_position.x);
+    auto tfx2 = play_layer->timeForXPos2(play_layer->m_pPlayer1->m_position.x, true);
     if (Logic::get().tfx2_calculated == 0 || !Logic::get().completed_level) Logic::get().tfx2_calculated = tfx2;
 
     if (!Logic::get().completed_level || m_after_end_extra_time < m_after_end_duration + 3.5) {
@@ -237,6 +237,6 @@ void Recorder::handle_recording(gd::PlayLayer* play_layer, float dt) {
 
 void Recorder::update_song_offset(gd::PlayLayer* play_layer) {
     // from what i've checked rob doesnt store the timeforxpos result anywhere, so i have to calculate it again
-    m_song_start_offset = play_layer->m_pLevelSettings->m_songStartOffset + play_layer->timeForXPos(
-        play_layer->m_pPlayer1->m_position.x);
+    m_song_start_offset = play_layer->m_pLevelSettings->m_songStartOffset + play_layer->timeForXPos2(
+        play_layer->m_pPlayer1->m_position.x, true);
 }
