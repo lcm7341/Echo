@@ -20,12 +20,12 @@ public:
 	std::deque<cocos2d::CCRect> m_player1Queue;
 	std::deque<cocos2d::CCRect> m_player2Queue;
 
-	float m_thickness;
-	float m_trailLength;
-	bool m_drawTrail;
-	bool m_noLimitTrail;
+	float m_thickness = 1.f;
+	float m_trailLength = 50;
+	bool m_drawTrail = false;
+	bool m_noLimitTrail = false;
 
-	bool m_isMini1, m_isMini2;
+	bool m_isMini1 = false, m_isMini2 = false;
 
 	virtual void clearQueue();
 	virtual void addToPlayer1Queue(cocos2d::CCRect const& rect);

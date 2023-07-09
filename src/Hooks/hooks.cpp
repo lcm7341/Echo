@@ -30,10 +30,12 @@ void Hooks::init_hooks() {
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x20DDD0), createCheckpoint_h, reinterpret_cast<void**>(&createCheckpoint));
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x20b830), removeCheckpoint_h, reinterpret_cast<void**>(&removeCheckpoint));
 
+    //MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x20a1a0), PlayLayer::destroyPlayer_h, reinterpret_cast<void**>(&PlayLayer::destroyPlayer));
+
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0xe5d60), powerOffObject_h, reinterpret_cast<void**>(&powerOffObject));
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0xeab20), playShineEffect_h, reinterpret_cast<void**>(&playShineEffect));
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x1e9a20), incrementJumps_h, reinterpret_cast<void**>(&incrementJumps));
-    MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x10ed50), bumpPlayer_h, reinterpret_cast<void**>(&bumpPlayer));
+    //MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x10ed50), bumpPlayer_h, reinterpret_cast<void**>(&bumpPlayer)); // crashes idk why (wtf is bumpplayer)
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x1f62c0), toggleDartMode_h, reinterpret_cast<void**>(&toggleDartMode));
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x14ebc0), addPoint_h, reinterpret_cast<void**>(&addPoint));
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0xd1790), triggerObject_h, reinterpret_cast<void**>(&triggerObject));
@@ -41,7 +43,6 @@ void Hooks::init_hooks() {
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x20d810), PlayLayer::onQuit_h, reinterpret_cast<void**>(&PlayLayer::onQuit));
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x207d30), PlayLayer::flipGravity_h, reinterpret_cast<void**>(&PlayLayer::flipGravity));
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x207e00), PlayLayer::playGravityEffect_h, reinterpret_cast<void**>(&PlayLayer::playGravityEffect));
-    MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x20a1a0), PlayLayer::destroyPlayer_h, reinterpret_cast<void**>(&PlayLayer::destroyPlayer));
 
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x1E4570), PauseLayer::init_h, reinterpret_cast<void**>(&PauseLayer::init));
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x20D810), PlayLayer::exitLevel_h, reinterpret_cast<void**>(&PlayLayer::exitLevel));
@@ -179,7 +180,7 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
             g_disable_render = true;
 
             // min(static_cast<int>(g_left_over / target_dt), 50) <- super fast but i think its inaccurate
-            const unsigned int times = min(round(g_left_over / target_dt), 50);
+            const unsigned int times = min(static_cast<int>(dt + g_left_over / target_dt), 150);
 
             for (unsigned i = 0; i < times; i++) {
                 if (i == times - 1) {
@@ -310,6 +311,18 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
     auto& logic = Logic::get();
 
     static int offset = rand();
+
+    if (drawer && logic.hacks.showHitboxes) {
+        drawer->setVisible(true);
+
+        if (self->m_pPlayer1) {
+            drawer->drawForPlayer1(self->m_pPlayer1);
+        }
+        if (self->m_pPlayer2) {
+            drawer->drawForPlayer2(self->m_pPlayer2);
+        }
+
+    }
 
     if (drawer && logic.hacks.showHitboxes)
     {
