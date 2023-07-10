@@ -241,13 +241,34 @@ bool Logic::play_macro() {
         unsigned current_frame = get_frame()/* - offset*/;
         bool ret = false;
 
-        int nearest_pos = find_closest_input();
         while (inputs[replay_pos].number <= current_frame && replay_pos < inputs.size()) {
             auto& input = inputs[replay_pos];
 
-            if (inputs[replay_pos].number == current_frame)
-                play_input(inputs[replay_pos]);
-            replay_pos += 1;
+            std::vector<Frame> same_player;
+            for (const Frame& frame : inputs) {
+                if (frame.isPlayer2 == input.isPlayer2 && frame.number <= input.number) same_player.push_back(frame);
+            }
+            auto closest_it = std::min_element(same_player.begin(), same_player.end(),
+                [current_frame](const Frame& a, const Frame& b) {
+                    return std::abs(static_cast<int>(a.number - current_frame)) < std::abs(static_cast<int>(b.number - current_frame));
+                });
+            auto closest = std::distance(inputs.begin(), closest_it);
+
+            int index = 0;
+            for (int i = 0; i < inputs.size(); i++) {
+                if (inputs[i].number > input.number) break;
+                else index = i;
+            }
+
+            if (inputs[replay_pos].number == same_player.back().number) index = 0;
+            auto player = input.isPlayer2 ? PLAYLAYER->m_pPlayer2 : PLAYLAYER->m_pPlayer1;
+            auto gamemode = CheckpointData::GetGamemode(player);
+            bool passes = gamemode != gd::kGamemodeBall && gamemode != gd::kGamemodeSpider && gamemode != gd::kGamemodeUfo;
+
+            if (input.number == current_frame || (replay_pos == index && passes)) {
+                play_input(input);
+            }
+            ++replay_pos;
             ret = true;
         }
 
@@ -302,7 +323,7 @@ void Logic::write_file(const std::string& filename) {
     else if (format == META)
         file_format = "META";
     else if (format == META_DBG)
-        file_format = "META_DBG";
+        file_format = "METADBG";
 
     w_b(file_format);
 
@@ -381,7 +402,7 @@ void Logic::read_file(const std::string& filename, bool is_path = false) {
         r_b(file_format);
         format = META;
     }
-    else if (file_format == "META_DBG") {
+    else if (file_format == "METADBG") {
         r_b(file_format);
         format = META_DBG;
     }
@@ -459,7 +480,7 @@ void Logic::write_file_json(const std::string& filename) {
     else if (format == META)
         state["version"] = "META";
     else if (format == META_DBG)
-        state["version"] = "META_DBG";
+        state["version"] = "METADBG";
 
     state["fps"] = fps;
     state["end_xpos"] = end_portal_position;
@@ -539,10 +560,10 @@ void Logic::read_file_json(const std::string& filename, bool is_path = false) {
         if (version == "SIMPLE") format = SIMPLE;
         if (version == "DEBUG") format = DEBUG;
         if (version == "META") format = META;
-        if (version == "META_DBG") format = META_DBG;
+        if (version == "METADBG") format = META_DBG;
     }
     else {
-        format = META;
+        format = SIMPLE;
     }
 
     if (is_recording()) toggle_recording();
@@ -582,6 +603,7 @@ void Logic::read_file_json(const std::string& filename, bool is_path = false) {
         inputs.push_back(input);
     }
 
+    format = META;
     file.close();
 }
 

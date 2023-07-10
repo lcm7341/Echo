@@ -31,6 +31,44 @@ void initFuncWrapper() {
 	instance.init();
 }
 
+namespace fs = std::filesystem;
+
+void renameFilesInEchoDirectory()
+{
+	std::string directoryPath = ".echo";
+
+	for (const auto& entry : fs::directory_iterator(directoryPath))
+	{
+		if (entry.is_regular_file())
+		{
+			std::string filePath = entry.path().string();
+
+			// Check if file ends with ".echo"
+			if (filePath.size() >= 5 && filePath.substr(filePath.size() - 5) == ".echo")
+			{
+				std::ifstream fileStream(filePath);
+				char firstCharacter = fileStream.get();
+				fileStream.close();
+
+				if (firstCharacter == '{')
+				{
+					std::string newFilePath = filePath + ".json";
+					fs::rename(filePath, newFilePath);
+					std::cout << "Renamed file: " << filePath << " to " << newFilePath << std::endl;
+				}
+			}
+			// Check if file ends with ".bin"
+			else if (filePath.size() >= 4 && filePath.substr(filePath.size() - 4) == ".bin")
+			{
+				std::string newFilePath = filePath.substr(0, filePath.size() - 4);
+				fs::rename(filePath, newFilePath);
+				newFilePath += ".echo";
+				std::cout << "Renamed file: " << filePath << " to " << newFilePath << std::endl;
+			}
+		}
+	}
+}
+
 void writeConfig() {
 	auto& logic = Logic::get();
 	auto& recorder = logic.recorder;
@@ -267,7 +305,6 @@ void UnfullscreenGame()
 }
 
 DWORD WINAPI my_thread(void* hModule) {
-	
 	MH_Initialize();
 	readConfig();
 	Speedhack::Setup();
@@ -316,6 +353,7 @@ DWORD WINAPI my_thread(void* hModule) {
 		std::filesystem::create_directory(path);
 	}
 
+	renameFilesInEchoDirectory();
 	return 0;
 }
 

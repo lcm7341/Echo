@@ -2024,6 +2024,8 @@ void GUI::main() {
 
 		ImGui::Text("Macro Size: %i", logic.get_inputs().size());
 
+		ImGui::Text("Replay Pos: %i", logic.get_replay_pos());
+
 		ImGui::PushItemFlag(ImGuiItemFlags_NoTabStop, true);
 		ImGui::SetNextItemWidth(150);
 		if (ImGui::DragFloat("###fps", &input_fps, 0.1, 1.f))
@@ -2239,7 +2241,7 @@ void GUI::main() {
 
 		ImGui::SameLine();
 
-		ImGui::Checkbox("Use File Dialog", &logic.file_dialog);
+		ImGui::Checkbox("File Browser", &logic.file_dialog);
 
 		CHECK_KEYBIND("useDialog");
 		ImGui::SameLine();

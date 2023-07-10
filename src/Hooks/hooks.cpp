@@ -164,9 +164,6 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
         //const int times = min(round((dt + g_left_over) / target_dt), 150);
         const int times = min(round(g_left_over / target_dt), 150);
 
-        if (play_layer && !play_layer->m_bIsPaused)
-        printf("Times: %f, over: %f\n", (dt + g_left_over) / target_dt, g_left_over);
-
         for (int i = 0; i < times; i++) {
             if (i == times - 1) {
                 g_disable_render = false;
@@ -644,6 +641,8 @@ int __fastcall Hooks::PlayLayer::pushButton_h(gd::PlayLayer* self, int, int idk,
 int __fastcall Hooks::PlayLayer::releaseButton_h(gd::PlayLayer* self, int, int idk, bool button) {
     auto& logic = Logic::get();
 
+    printf("Released\n");
+
     if (!self->m_level->twoPlayerMode) {
         button = false;
     }
@@ -752,6 +751,10 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
 
     printf("\n");
 
+    if (logic.is_playing() && !logic.inputs.empty()) {
+            logic.set_replay_pos(logic.find_closest_input());
+    }
+
     if (logic.is_recording()) logic.total_attempt_count++;
 
     logic.calculated_xpos = self->m_pPlayer1->getPositionX();
@@ -786,8 +789,8 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
     // Section 1: Handle Sequencing
     if (logic.sequence_enabled) {
         if (!logic.is_recording() && (!logic.is_playing() || logic.sequence_enabled)) {
-            Hooks::PlayLayer::releaseButton(self, 0, false);
-            Hooks::PlayLayer::releaseButton(self, 0, true);
+            //Hooks::PlayLayer::releaseButton(self, 0, false);
+            //Hooks::PlayLayer::releaseButton(self, 0, true);
             if (logic.replay_index < logic.replays.size() && logic.sequence_enabled) {
                 logic.get_inputs() = logic.replays[logic.replay_index].actions;
             }
@@ -805,9 +808,9 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
         logic.recorder.video_name = logic.macro_name;
     }
 
-    if (logic.is_playing()) {
+    /*if (logic.is_playing()) {
         logic.set_replay_pos(logic.find_closest_input());
-    }
+    }*/
 
     if (!self->m_isPracticeMode)
         logic.checkpoints.clear();
