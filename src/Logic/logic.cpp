@@ -263,7 +263,7 @@ bool Logic::play_macro() {
             if (inputs[replay_pos].number == same_player.back().number) index = 0;
             auto player = input.isPlayer2 ? PLAYLAYER->m_pPlayer2 : PLAYLAYER->m_pPlayer1;
             auto gamemode = CheckpointData::GetGamemode(player);
-            bool passes = gamemode != gd::kGamemodeBall && gamemode != gd::kGamemodeSpider && gamemode != gd::kGamemodeUfo;
+            bool passes = gamemode != gd::kGamemodeBall && gamemode != gd::kGamemodeSpider && gamemode != gd::kGamemodeUfo && gamemode != gd::kGamemodeRobot;
 
             if (input.number == current_frame || (replay_pos == index && passes)) {
                 play_input(input);
