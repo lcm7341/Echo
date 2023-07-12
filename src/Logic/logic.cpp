@@ -265,7 +265,7 @@ bool Logic::play_macro() {
             auto gamemode = CheckpointData::GetGamemode(player);
             bool passes = gamemode != gd::kGamemodeBall && gamemode != gd::kGamemodeSpider && gamemode != gd::kGamemodeUfo && gamemode != gd::kGamemodeRobot;
 
-            if (input.number == current_frame || (replay_pos == index && passes)) {
+            if (input.number == current_frame/* || (replay_pos == index && passes)*/) {
                 play_input(input);
             }
             ++replay_pos;
@@ -616,68 +616,6 @@ void Logic::sort_inputs() {
         }
         return a.number < b.number;
         });
-    return;
-
-    for (const auto& frame : inputs) {
-        frameMap[frame.number].push_back(frame);
-    }
-
-    inputs.clear();
-
-    std::map<bool, std::deque<Frame>> pressQueues;
-    std::map<bool, std::deque<Frame>> releaseQueues;
-
-    for (const auto& [frameNumber, frames] : frameMap) {
-        std::vector<Frame> mergedFrames;
-
-        for (bool isPlayer2 : { false, true }) {
-            std::deque<Frame>& pressQueue = pressQueues[isPlayer2];
-            std::deque<Frame>& releaseQueue = releaseQueues[isPlayer2];
-
-            for (const auto& frame : frames) {
-                if (frame.isPlayer2 != isPlayer2) continue;
-
-                if (frame.pressingDown) {
-                    pressQueue.push_back(frame);
-                }
-                else {
-                    if (!pressQueue.empty()) {
-                        mergedFrames.push_back(pressQueue.front());
-                        pressQueue.pop_front();
-                        mergedFrames.push_back(frame);
-                    }
-                    else {
-                        releaseQueue.push_back(frame);
-                    }
-                }
-            }
-
-            while (!pressQueue.empty() && !releaseQueue.empty()) {
-                mergedFrames.push_back(pressQueue.front());
-                pressQueue.pop_front();
-                mergedFrames.push_back(releaseQueue.front());
-                releaseQueue.pop_front();
-            }
-
-            inputs.insert(inputs.end(), mergedFrames.begin(), mergedFrames.end());
-            mergedFrames.clear();
-        }
-    }
-
-    // If there are any unpaired 'click' frames, append them to the inputs
-    for (bool isPlayer2 : { false, true }) {
-        std::deque<Frame>& pressQueue = pressQueues[isPlayer2];
-        inputs.insert(inputs.end(), pressQueue.begin(), pressQueue.end());
-        pressQueue.clear();
-    }
-
-    // Sort the inputs by frames, skipping inputs with the same frame number
-    std::stable_sort(inputs.begin(), inputs.end(), [](const Frame& a, const Frame& b) {
-        if (a.number == b.number) {
-            return false;  // Skip inputs with the same frame number
-        }
-        return a.number < b.number;
-        });
 }
 
 typedef std::function<void* (void*)> cast_function;
@@ -702,8 +640,8 @@ void Logic::handle_checkpoint_data() {
             cast_function caster = make_cast<gd::GameObject, CCObject>();
             for (const auto& pair : data.objects) {
                 const ObjectData& nodeData = pair.second;
-                //gd::GameObject* child = reinterpret_cast<gd::GameObject*>(caster(PLAYLAYER->m_pObjects->objectAtIndex(nodeData.tag)));
-                /*if (child) {
+                /*gd::GameObject* child = reinterpret_cast<gd::GameObject*>(caster(PLAYLAYER->m_pObjects->objectAtIndex(nodeData.tag)));
+                if (child && child->m_nObjectType == gd::kGameObjectTypeDecoration) {
                     child->setPositionX(nodeData.posX);
                     child->setPositionY(nodeData.posY);
                     child->setRotationX(nodeData.rotX);

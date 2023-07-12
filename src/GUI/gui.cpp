@@ -1238,6 +1238,7 @@ static int selected_noclip = 0; // Index of "Both" option (auto selected)
 static int selected_recording = 0; // Index of "Both" option (auto selected)
 static int selected_playback = 0; // Index of "Both" option (auto selected)
 static int selected_autoclicker_player = 2; // Index of "Both" option (auto selected)
+static int selected_inverse_click = 0; // Index of "Both" option (auto selected)
 
 std::map<std::string, std::shared_ptr<Convertible>> options = {
 	{"TASBot", std::make_shared<TASBot>()},
@@ -1412,6 +1413,43 @@ void GUI::tools() {
 		ImGui::SameLine();
 		ImGui::Checkbox("Swap Player Input", &logic.swap_player_input);
 		CHECK_KEYBIND("swapInput");
+
+		const char* inverse_options[] = { "Off", "Player 1", "Player 2", "Both" };
+
+		ImGui::PushItemWidth(200);
+		if (ImGui::BeginCombo("Inverse Inputs##dropdown_inverse", inverse_options[selected_inverse_click]))
+		{
+			for (int i = 0; i < IM_ARRAYSIZE(inverse_options); i++)
+			{
+				const bool isSelected = (selected_inverse_click == i);
+				if (ImGui::Selectable(inverse_options[i], isSelected))
+					selected_inverse_click = i;
+
+				if (isSelected) {
+					ImGui::SetItemDefaultFocus();
+
+					const char* selected = inverse_options[selected_inverse_click];
+				}
+			}
+			ImGui::EndCombo();
+		}
+
+		if (selected_inverse_click == 0) {
+			logic.click_inverse_p1 = false;
+			logic.click_inverse_p2 = false;
+		}
+		else if (selected_inverse_click == 1) {
+			logic.click_inverse_p1 = true;
+			logic.click_inverse_p2 = false;
+		}
+		else if (selected_inverse_click == 2) {
+			logic.click_inverse_p1 = false;
+			logic.click_inverse_p2 = true;
+		}
+		else if (selected_inverse_click == 3) {
+			logic.click_inverse_p1 = true;
+			logic.click_inverse_p2 = true;
+		}
 
 		ImGui::Separator();
 
@@ -1601,6 +1639,43 @@ void GUI::tools() {
 
 static int selected_clickbot_player = 0; // Index of "Both" option (auto selected)
 
+void ShowFolderDropdown(const fs::path& directoryPath, std::string selectedFolder)
+{
+	// Get all directories within the specified directory
+	std::vector<fs::path> folders;
+	for (const auto& entry : fs::directory_iterator(directoryPath))
+	{
+		if (fs::is_directory(entry.path()))
+		{
+			folders.push_back(entry.path());
+		}
+	}
+
+	// Convert the folder paths to folder names for ImGui
+	std::vector<std::string> folderNames;
+	folderNames.reserve(folders.size());
+	for (const auto& folder : folders)
+	{
+		folderNames.push_back(folder.filename().string());
+	}
+
+	// Create the ImGui dropdown list
+	if (ImGui::BeginCombo("##folder_dropdown", selectedFolder.c_str()))
+	{
+		for (const auto& folderName : folderNames)
+		{
+			bool isSelected = (selectedFolder == folderName);
+			if (ImGui::Selectable(folderName.c_str(), isSelected))
+			{
+				selectedFolder = folderName;
+			}
+		}
+
+		ImGui::EndCombo();
+	}
+}
+
+
 void GUI::clickbot() {
 	auto& logic = Logic::get();
 
@@ -1644,38 +1719,118 @@ void GUI::clickbot() {
 		if (ImGui::BeginTabBar("ClickbotTabs")) {
 			if (ImGui::BeginTabItem("General", nullptr)) {
 				if (selected_clickbot_player == 0) {
+					// Specify the directory path
+					fs::path directoryPath = ".echo\\clickpacks";
+
+					// Get all directories within the specified directory
+					std::vector<fs::path> folders;
+					for (const auto& entry : fs::directory_iterator(directoryPath))
+					{
+						if (fs::is_directory(entry.path()))
+						{
+							folders.push_back(entry.path());
+						}
+					}
+
+					// Convert the folder paths to folder names for ImGui
+					std::vector<std::string> folderNames;
+					folderNames.reserve(folders.size());
+					for (const auto& folder : folders)
+					{
+						folderNames.push_back(folder.filename().string());
+					}
+
+					if (logic.player_1_path.empty() && !folderNames.empty()) logic.player_1_path = folderNames[0];
+
+					// Create the ImGui dropdown list
+					if (ImGui::BeginCombo("##folder_dropdown", logic.player_1_path.c_str()))
+					{
+						for (const auto& folderName : folderNames)
+						{
+							bool isSelected = (logic.player_1_path == folderName);
+							if (ImGui::Selectable(folderName.c_str(), isSelected))
+							{
+								logic.player_1_path = folderName;
+							}
+						}
+
+						ImGui::EndCombo();
+					}
+
 					ImGui::Checkbox("Soft Clicks###soft_clicks_p1", &logic.player_1_softs); ImGui::SameLine();
 					ImGui::Checkbox("Hard Clicks###hard_clicks_p1", &logic.player_1_hards);
 
-					ImGui::Checkbox("Micro Clicks###micro_clicks_p1", &logic.player_1_softs); ImGui::SameLine();
-					ImGui::Checkbox("Double Clicks###dbl_clicks_p1", &logic.player_1_hards);
+					ImGui::Checkbox("Micro Clicks###micro_clicks_p1", &logic.player_1_micros);
 				}
 				else {
+					// Specify the directory path
+					fs::path directoryPath = ".echo\\clickpacks";
+
+					// Get all directories within the specified directory
+					std::vector<fs::path> folders;
+					for (const auto& entry : fs::directory_iterator(directoryPath))
+					{
+						if (fs::is_directory(entry.path()))
+						{
+							folders.push_back(entry.path());
+						}
+					}
+
+					// Convert the folder paths to folder names for ImGui
+					std::vector<std::string> folderNames;
+					folderNames.reserve(folders.size());
+					for (const auto& folder : folders)
+					{
+						folderNames.push_back(folder.filename().string());
+					}
+
+					if (logic.player_2_path.empty() && !folderNames.empty()) logic.player_2_path = folderNames[0];
+
+					// Create the ImGui dropdown list
+					if (ImGui::BeginCombo("##folder_dropdown", logic.player_2_path.c_str()))
+					{
+						for (const auto& folderName : folderNames)
+						{
+							bool isSelected = (logic.player_2_path == folderName);
+							if (ImGui::Selectable(folderName.c_str(), isSelected))
+							{
+								logic.player_2_path = folderName;
+							}
+						}
+
+						ImGui::EndCombo();
+					}
+					ImGui::SameLine();
+					ImGui::Text("Click Pack");
+
 					ImGui::Checkbox("Soft Clicks###soft_clicks_p2", &logic.player_2_softs); ImGui::SameLine();
 					ImGui::Checkbox("Hard Clicks###hard_clicks_p2", &logic.player_2_hards);
 
-					ImGui::Checkbox("Micro Clicks###micro_clicks_p2", &logic.player_1_softs); ImGui::SameLine();
-					ImGui::Checkbox("Double Clicks###dbl_clicks_p2", &logic.player_1_hards);
+					ImGui::Checkbox("Micro Clicks###micro_clicks_p2", &logic.player_2_micros);
 				}
 				ImGui::EndTabItem();
 			}
 			if (ImGui::BeginTabItem("Volume", nullptr)) {
 				if (selected_clickbot_player == 0) {
 					ImGui::PushItemWidth(200);
-					ImGui::DragFloat("Softs###soft_clicks_vol_p1", &logic.player_1_softs_volume, 0.01, 0, 500);
+					ImGui::DragFloat("Soft Clicks###soft_clicks_vol_p1", &logic.player_1_softs_volume, 0.01, 0, 500);
 
-					ImGui::DragFloat("Regulars###reg_clicks_vol_p1", &logic.player_1_volume, 0.01, 0, 500);
+					ImGui::DragFloat("Regular Clicks###reg_clicks_vol_p1", &logic.player_1_volume, 0.01, 0, 500);
 
-					ImGui::DragFloat("Hards###hard_clicks_vol_p1", &logic.player_1_hards_volume, 0.01, 0, 500);
+					ImGui::DragFloat("Hard Clicks###hard_clicks_vol_p1", &logic.player_1_hards_volume, 0.01, 0, 500);
+
+					ImGui::DragFloat("Micro Clicks###micro_clicks_vol_p1", &logic.player_1_micros_volume, 0.01, 0, 500);
 					ImGui::PopItemWidth();
 				}
 				else {
 					ImGui::PushItemWidth(200);
-					ImGui::DragFloat("Softs###soft_clicks_vol_p2", &logic.player_2_softs_volume, 0.01, 0, 500);
+					ImGui::DragFloat("Soft Clicks###soft_clicks_vol_p2", &logic.player_2_softs_volume, 0.01, 0, 500);
 
-					ImGui::DragFloat("Regulars###reg_clicks_vol_p2", &logic.player_2_volume, 0.01, 0, 500);
+					ImGui::DragFloat("Regular Clicks###reg_clicks_vol_p2", &logic.player_2_volume, 0.01, 0, 500);
 
-					ImGui::DragFloat("Hards###hard_clicks_vol_p2", &logic.player_2_hards_volume, 0.01, 0, 500);
+					ImGui::DragFloat("Hard Clicks###hard_clicks_vol_p2", &logic.player_2_hards_volume, 0.01, 0, 500);
+
+					ImGui::DragFloat("Micro Clicks###micro_clicks_vol_p2", &logic.player_2_micros_volume, 0.01, 0, 500);
 					ImGui::PopItemWidth();
 				}
 				ImGui::EndTabItem();
@@ -1683,9 +1838,13 @@ void GUI::clickbot() {
 			if (ImGui::BeginTabItem("Times", nullptr)) {
 
 				if (selected_clickbot_player == 0) {
+					ImGui::Text("Micro Times:");
+					ImGui::SameLine();
+					ImGui::Text("0 to %i", logic.player_1_micros_time);
+
 					ImGui::Text("Soft Times:");
 					ImGui::SameLine();
-					ImGui::Text("0 to %.3f", logic.player_1_softs_time);
+					ImGui::Text("%i to %.3f", logic.player_1_micros_time, logic.player_1_softs_time);
 
 					ImGui::Text("Regular Times:");
 					ImGui::SameLine();
@@ -1696,9 +1855,13 @@ void GUI::clickbot() {
 					ImGui::Text("%.3f and up", logic.player_1_hards_time);
 				}
 				else {
+					ImGui::Text("Micro Times:");
+					ImGui::SameLine();
+					ImGui::Text("0 to %i", logic.player_2_micros_time);
+
 					ImGui::Text("Soft Times:");
 					ImGui::SameLine();
-					ImGui::Text("0 to %.3f", logic.player_2_softs_time);
+					ImGui::Text("%i to %.3f", logic.player_2_micros_time, logic.player_2_softs_time);
 
 					ImGui::Text("Regular Times:");
 					ImGui::SameLine();
@@ -2023,8 +2186,6 @@ void GUI::main() {
 		ImGui::SetCursorPosX(cursor_pos_x);
 
 		ImGui::Text("Macro Size: %i", logic.get_inputs().size());
-
-		ImGui::Text("Replay Pos: %i", logic.get_replay_pos());
 
 		ImGui::PushItemFlag(ImGuiItemFlags_NoTabStop, true);
 		ImGui::SetNextItemWidth(150);

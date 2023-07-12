@@ -277,6 +277,9 @@ public:
 	float player_1_volume = 1.f;
 	float player_2_volume = 1.f;
 
+	std::string player_1_path;
+	std::string player_2_path;
+
 	bool player_1_softs = true;
 	float player_1_softs_time = 150;
 	float player_1_softs_volume = 1.f;
@@ -285,6 +288,10 @@ public:
 	float player_1_hards_time = 2.f;
 	float player_1_hards_volume = 1.f;
 
+	bool player_1_micros = true;
+	int player_1_micros_time = 25;
+	float player_1_micros_volume = 1.f;
+
 	bool player_2_softs = true;
 	float player_2_softs_time = 150;
 	float player_2_softs_volume = 1.f;
@@ -292,6 +299,10 @@ public:
 	bool player_2_hards = true;
 	float player_2_hards_time = 2.f;
 	float player_2_hards_volume = 1.f;
+
+	bool player_2_micros = true;
+	int player_2_micros_time = 25;
+	float player_2_micros_volume = 1.f;
 
 	bool record_player_1 = true;
 	bool record_player_2 = true;
@@ -632,6 +643,9 @@ public:
 
 	bool click_both_players = false;
 	bool swap_player_input = false;
+
+	bool click_inverse_p1 = false;
+	bool click_inverse_p2 = false;
 
 	void remove_inputs(unsigned frame, bool player_1);
 

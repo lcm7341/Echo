@@ -5,7 +5,7 @@
 
 namespace Clickbot
 {
-    std::string pickRandomFile(std::string folder, bool player1);
+    std::string pickRandomFile(std::string path, std::string folder);
 
     static bool inited = false;
     static std::chrono::system_clock::time_point start, now;

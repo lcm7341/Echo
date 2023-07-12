@@ -2,22 +2,44 @@
 #include <vector>
 #include <filesystem>
 #include <random>
+#include <iostream>
+#include <sstream>
+#include <fstream>
 
 namespace fs = std::filesystem;
 
 namespace Clickbot
 {
-    std::string pickRandomFile(std::string folder, bool player1)
+    std::string pickRandomFile(std::string path, std::string folder)
     {
         std::vector<std::string> clicks;
         std::vector<std::string> out;
-        std::string player = player1 ? "player_1\\" : "player_2\\";
-        std::string path = ".echo\\clickbot\\" + player + folder;
-        for (const auto& entry : fs::directory_iterator(path))
+        std::string path2 = ".echo\\clickpacks\\" + path + "\\" + folder;
+        try
         {
-            clicks.push_back(entry.path().string());
+            for (const auto& entry : std::filesystem::directory_iterator(path2))
+            {
+                clicks.push_back(entry.path().string());
+            }
         }
+        catch (const std::filesystem::filesystem_error& ex)
+        {
+            // Log the error message using printf
+            printf("Filesystem error: %s\n", ex.what());
+
+            std::ofstream logfile("error.log");
+            if (logfile.is_open())
+            {
+                logfile << "Filesystem error: " << ex.what() << std::endl;
+                logfile.close();
+            }
+
+            // Return an empty string to indicate an error
+            return "";
+        }
+
         if (clicks.empty()) return "";
+
         std::sample(
             clicks.begin(),
             clicks.end(),
@@ -25,6 +47,7 @@ namespace Clickbot
             1,
             std::mt19937{ std::random_device{}() }
         );
+
         return out[0];
     }
 }

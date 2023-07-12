@@ -11,6 +11,9 @@
 #include <conio.h>
 #include <thread>
 #include "Logic/speedhack.h"
+#include <exception>
+#include <cstdlib>
+#include <stdexcept>
 
 using json = nlohmann::json;
 
@@ -304,7 +307,36 @@ void UnfullscreenGame()
 	}
 }
 
+void terminationHandler()
+{
+	try
+	{
+		std::exception_ptr exPtr = std::current_exception();
+		if (exPtr)
+		{
+			// Rethrow the exception to obtain the exception object
+			std::rethrow_exception(exPtr);
+		}
+	}
+	catch (const std::exception& ex)
+	{
+		// Log the error message to a log file
+		std::ofstream logfile("error.log");
+		if (logfile.is_open())
+		{
+			logfile << "Error: " << ex.what() << std::endl;
+			logfile.close();
+		}
+
+		// Print the error message to the console
+		std::cerr << "Error: " << ex.what() << std::endl;
+
+		// You can take additional actions here, such as displaying an error message to the user or gracefully exiting the program
+	}
+}
+
 DWORD WINAPI my_thread(void* hModule) {
+
 	MH_Initialize();
 	readConfig();
 	Speedhack::Setup();
@@ -324,7 +356,7 @@ DWORD WINAPI my_thread(void* hModule) {
 		Logic::get().error = "Could not load MinHook! Restart your game!";
 	}
 
-	//ImGuiHook::setKeybind(VK_SHIFT);
+	////ImGuiHook::setKeybind(VK_SHIFT);
 
 	std::vector<std::string> paths = {
 		".echo",
@@ -332,28 +364,36 @@ DWORD WINAPI my_thread(void* hModule) {
 		".echo/settings",
 		".echo/themes",
 		".echo/osu",
-		".echo/clickbot",
-		".echo/clickbot/player_1",
-		".echo/clickbot/player_2",
-		".echo/clickbot/player_1/clicks",
-		".echo/clickbot/player_1/releases",
-		".echo/clickbot/player_1/soft_clicks",
-		".echo/clickbot/player_1/soft_releases",
-		".echo/clickbot/player_1/hard_clicks",
-		".echo/clickbot/player_1/hard_releases",
-		".echo/clickbot/player_2/clicks",
-		".echo/clickbot/player_2/releases",
-		".echo/clickbot/player_2/soft_clicks",
-		".echo/clickbot/player_2/soft_releases",
-		".echo/clickbot/player_2/hard_clicks",
-		".echo/clickbot/player_2/hard_releases"
+		".echo/clickpacks",
+		".echo/clickpacks/format",
+		".echo/clickpacks/format/clicks",
+		".echo/clickpacks/format/releases",
+		".echo/clickpacks/format/soft_clicks",
+		".echo/clickpacks/format/soft_releases",
+		".echo/clickpacks/format/hard_clicks",
+		".echo/clickpacks/format/hard_releases",
+		".echo/clickpacks/format/micro_clicks",
+		".echo/clickpacks/format/micro_releases",
 	};
 
-	for (auto& path : paths) {
-		std::filesystem::create_directory(path);
+	try {
+		for (auto& path : paths) {
+			std::filesystem::create_directory(path);
+		}
+	}
+	catch (const std::filesystem::filesystem_error& ex) {
+		printf("Filesystem error: %s\n", ex.what());
+
+		std::ofstream logfile("ECHO_ERROR.txt");
+		if (logfile.is_open())
+		{
+			logfile << "Filesystem error: " << ex.what() << std::endl;
+			logfile.close();
+		}
 	}
 
 	renameFilesInEchoDirectory();
+
 	return 0;
 }
 
