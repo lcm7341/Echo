@@ -69,8 +69,20 @@ void Logic::play_input(Frame& input) {
 
         if (input.pressingDown) {
             playback_clicking = true;
-            Hooks::PlayLayer::pushButton(PLAYLAYER, 0, !input.isPlayer2 ^ gamevar);
-            Hooks::PlayLayer::pushButton_h(PLAYLAYER, 0, 0, !input.isPlayer2 ^ gamevar);
+            try {
+                Hooks::PlayLayer::pushButton(PLAYLAYER, 0, !input.isPlayer2 ^ gamevar);
+                Hooks::PlayLayer::pushButton_h(PLAYLAYER, 0, 0, !input.isPlayer2 ^ gamevar);
+            }
+            catch (std::exception& ex) {
+                printf("Clickbot error: %s\n", ex.what());
+
+                std::ofstream logfile("error.log");
+                if (logfile.is_open())
+                {
+                    logfile << "Clickbot error: " << ex.what() << std::endl;
+                    logfile.close();
+                }
+            }
             playback_clicking = false;
         }
         else {
@@ -204,12 +216,28 @@ int Logic::find_closest_input() {
     }
 
     unsigned current_frame = get_frame();
-    auto closest_it = std::min_element(inputs.begin(), inputs.end(),
-        [current_frame](const Frame& a, const Frame& b) {
-            return std::abs(static_cast<int>(a.number - current_frame)) < std::abs(static_cast<int>(b.number - current_frame));
-        });
+    auto closest_it = inputs.end();
+    for (auto it = inputs.begin(); it != inputs.end(); ++it) {
+        if (it->number > current_frame) {
+            closest_it = it;
+            break;
+        }
+    }
+
+    if (closest_it == inputs.end()) {
+        // No input frame found above the current frame
+        // Select the last input frame
+        closest_it = std::prev(inputs.end());
+    }
+    else if (closest_it != inputs.begin()) {
+        // If the closest input is not the first frame,
+        // move the iterator back to select the frame right before it
+        --closest_it;
+    }
+
     return std::distance(inputs.begin(), closest_it);
 }
+
 
 namespace fs = std::filesystem;
 
@@ -265,7 +293,7 @@ bool Logic::play_macro() {
             auto gamemode = CheckpointData::GetGamemode(player);
             bool passes = gamemode != gd::kGamemodeBall && gamemode != gd::kGamemodeSpider && gamemode != gd::kGamemodeUfo && gamemode != gd::kGamemodeRobot;
 
-            if (input.number == current_frame/* || (replay_pos == index && passes)*/) {
+            if ((input.number <= current_frame && passes) || (input.number == current_frame && !passes)) {
                 play_input(input);
             }
             ++replay_pos;

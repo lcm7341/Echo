@@ -380,6 +380,30 @@ DWORD WINAPI my_thread(void* hModule) {
 		for (auto& path : paths) {
 			std::filesystem::create_directory(path);
 		}
+
+		// Specify the directory path
+		fs::path directoryPath = ".echo\\clickpacks";
+
+		// Get all directories within the specified directory
+		std::vector<fs::path> folders;
+		for (const auto& entry : fs::directory_iterator(directoryPath))
+		{
+			if (fs::is_directory(entry.path()))
+			{
+				folders.push_back(entry.path());
+			}
+		}
+
+		// Convert the folder paths to folder names for ImGui
+		std::vector<std::string> folderNames;
+		folderNames.reserve(folders.size());
+		for (const auto& folder : folders)
+		{
+			folderNames.push_back(folder.filename().string());
+		}
+
+		if (Logic::get().player_2_path.empty() && !folderNames.empty()) Logic::get().player_2_path = folderNames[0];
+		if (Logic::get().player_1_path.empty() && !folderNames.empty()) Logic::get().player_1_path = folderNames[0];
 	}
 	catch (const std::filesystem::filesystem_error& ex) {
 		printf("Filesystem error: %s\n", ex.what());
