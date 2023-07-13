@@ -91,7 +91,12 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
     auto& logic = Logic::get();
     auto play_layer = gd::GameManager::sharedState()->getPlayLayer();
 
+    if (!logic.is_recording() && !logic.is_playing()) g_disable_render = false;
+
     if (logic.frame_advance && !play_layer) logic.frame_advance = false;
+
+    if (logic.recorder.m_recording && play_layer && !play_layer->m_bIsPaused)
+        logic.recorder.handle_recording(play_layer, dt);
 
     if (logic.frame_advance) return;
 
@@ -355,9 +360,6 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
     logic.player_acceleration = self->m_pPlayer1->m_xAccel;
     logic.player_speed = self->m_pPlayer1->m_playerSpeed;
 
-    if (logic.recorder.m_recording)
-        logic.recorder.handle_recording(self, dt);
-
     logic.previous_real_xpos = self->m_pPlayer1->getPositionX();
 
     if (!logic.player_x_positions.empty()) {
@@ -529,6 +531,8 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
 
     if (Logic::get().hacks.trajectory)
         TrajectorySimulation::getInstance()->processMainSimulation(dt);
+
+    logic.is_over_orb = false;
 
     update(self, dt);
 
@@ -846,7 +850,7 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
         delete_from(logic.activated_objects, logic.checkpoints.back().activated_objects_size);
         delete_from(logic.activated_objects_p2, logic.checkpoints.back().activated_objects_p2_size);
 
-        if (logic.is_recording()) {
+        if (logic.is_recording() || logic.is_playing()) {
             for (const auto& object : logic.activated_objects)
                 object->m_bHasBeenActivated = true;
             for (const auto& object : logic.activated_objects_p2)
@@ -897,9 +901,11 @@ void __fastcall Hooks::PlayerObject_ringJump_h(gd::PlayerObject* self, int, gd::
     if (Logic::get().hacks.trajectory && TrajectorySimulation::getInstance()->shouldInterrumpHooksWithPlayer(self))
         return;
 
+    Logic::get().is_over_orb = true;
+
     PlayerObject_ringJump(self, ring);
     auto& logic = Logic::get();
-    if (logic.is_recording() && *reinterpret_cast<bool*>(reinterpret_cast<uintptr_t>(ring) + 0x2ca)) {
+    if ((logic.is_recording() || logic.is_playing()) && *reinterpret_cast<bool*>(reinterpret_cast<uintptr_t>(ring) + 0x2ca)) {
         logic.activated_objects.push_back(ring);
     }
 }
@@ -931,9 +937,11 @@ void __fastcall Hooks::GameObject_activateObject_h(gd::GameObject* self, int, gd
     if (Logic::get().hacks.trajectory && TrajectorySimulation::getInstance()->shouldInterrumpHooksWithPlayer(player))
         return;
 
+    Logic::get().is_over_orb = true;
+
     GameObject_activateObject(self, player);
     auto& logic = Logic::get();
-    if (logic.is_recording() && *reinterpret_cast<bool*>(reinterpret_cast<uintptr_t>(self) + 0x2ca)) {
+    if ((logic.is_recording() || logic.is_playing()) && *reinterpret_cast<bool*>(reinterpret_cast<uintptr_t>(self) + 0x2ca)) {
         logic.activated_objects.push_back(self);
     }
 }

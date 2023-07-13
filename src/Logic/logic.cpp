@@ -272,29 +272,16 @@ bool Logic::play_macro() {
         while (inputs[replay_pos].number <= current_frame && replay_pos < inputs.size()) {
             auto& input = inputs[replay_pos];
 
-            std::vector<Frame> same_player;
-            for (const Frame& frame : inputs) {
-                if (frame.isPlayer2 == input.isPlayer2 && frame.number <= input.number) same_player.push_back(frame);
-            }
-            auto closest_it = std::min_element(same_player.begin(), same_player.end(),
-                [current_frame](const Frame& a, const Frame& b) {
-                    return std::abs(static_cast<int>(a.number - current_frame)) < std::abs(static_cast<int>(b.number - current_frame));
-                });
-            auto closest = std::distance(inputs.begin(), closest_it);
-
-            int index = 0;
-            for (int i = 0; i < inputs.size(); i++) {
-                if (inputs[i].number > input.number) break;
-                else index = i;
-            }
-
-            if (inputs[replay_pos].number == same_player.back().number) index = 0;
             auto player = input.isPlayer2 ? PLAYLAYER->m_pPlayer2 : PLAYLAYER->m_pPlayer1;
             auto gamemode = CheckpointData::GetGamemode(player);
             bool passes = gamemode != gd::kGamemodeBall && gamemode != gd::kGamemodeSpider && gamemode != gd::kGamemodeUfo && gamemode != gd::kGamemodeRobot;
 
-            if ((input.number <= current_frame && passes) || (input.number == current_frame && !passes)) {
-                play_input(input);
+            if ((input.number <= current_frame && passes) || input.number == current_frame) {
+                if (input.number < current_frame && !is_over_orb)
+                    play_input(input);
+                else if (input.number == current_frame) {
+                    play_input(input);
+                }
             }
             ++replay_pos;
             ret = true;

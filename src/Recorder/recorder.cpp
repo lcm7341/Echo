@@ -148,6 +148,9 @@ void MyRenderTexture::begin() {
 
     m_texture = new CCTexture2D;
     {
+        if (m_width <= 0) m_width = 1;
+        if (m_height <= 0) m_height = 1;
+
         auto data = malloc(m_width * m_height * 3);
         memset(data, 0, m_width * m_height * 3);
         m_texture->initWithData(data, kCCTexture2DPixelFormat_RGB888, m_width, m_height, CCSize(static_cast<float>(m_width), static_cast<float>(m_height)));
@@ -224,7 +227,7 @@ void Recorder::handle_recording(gd::PlayLayer* play_layer, float dt) {
 
         if (time >= frame_dt) {
             gd::FMODAudioEngine::sharedEngine()->setMusicTime(
-                (ssb_fix ? Logic::get().tfx2_calculated : play_layer->m_time) + m_song_start_offset);
+                play_layer->m_time + m_song_start_offset);
             m_extra_t = time - frame_dt;
             m_last_frame_t = ssb_fix ? Logic::get().tfx2_calculated : play_layer->m_time;
             capture_frame();

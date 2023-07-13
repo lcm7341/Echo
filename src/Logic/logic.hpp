@@ -641,6 +641,8 @@ public:
 	float last_xpos = 0.0f;
 	unsigned int frame = 0;
 
+	bool is_over_orb = false;
+
 	bool click_both_players = false;
 	bool swap_player_input = false;
 
