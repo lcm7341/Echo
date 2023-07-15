@@ -64,8 +64,8 @@ void renameFilesInEchoDirectory()
 			else if (filePath.size() >= 4 && filePath.substr(filePath.size() - 4) == ".bin")
 			{
 				std::string newFilePath = filePath.substr(0, filePath.size() - 4);
-				fs::rename(filePath, newFilePath);
 				newFilePath += ".echo";
+				fs::rename(filePath, newFilePath);
 				std::cout << "Renamed file: " << filePath << " to " << newFilePath << std::endl;
 			}
 		}

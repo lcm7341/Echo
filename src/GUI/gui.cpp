@@ -25,6 +25,7 @@
 #include "../Hack/audiopitchHack.hpp"
 #include "../Logic/convertible.h"
 #include "../Logic/Conversions/tasbot.h"
+#include "../Logic/Conversions/mhr_json.h"
 #include "../Logic/Conversions/mhr.h"
 #include "../Logic/Conversions/osu.h"
 #include "../Logic/Conversions/plaintext.h"
@@ -1243,7 +1244,8 @@ static int selected_inverse_click = 0; // Index of "Both" option (auto selected)
 std::map<std::string, std::shared_ptr<Convertible>> options = {
 	{"TASBot", std::make_shared<TASBot>()},
 	{"Osu", std::make_shared<Osu>()},
-	{"Mega Hack Replay JSON", std::make_shared<MHR>()},
+	{"Mega Hack Replay JSON", std::make_shared<MHRJSON>()},
+	{"Mega Hack Replay", std::make_shared<MHR>()},
 	{"Plain Text", std::make_shared<PlainText>()}
 };
 
@@ -1340,7 +1342,7 @@ void GUI::tools() {
 		ImGui::Separator();
 
 		if (ImGui::Button("Merge With Replay")) {
-			ImGuiFileDialog::Instance()->OpenDialog("MergeReplay", "Choose File", ".echo,.bin", ".echo/");
+			ImGuiFileDialog::Instance()->OpenDialog("MergeReplay", "Choose File", ".echo,.json", ".echo/");
 		}
 
 		if (ImGuiFileDialog::Instance()->Display("MergeReplay", ImGuiWindowFlags_NoCollapse, ImVec2(500, 200)))
@@ -1352,7 +1354,7 @@ void GUI::tools() {
 				std::vector<Frame> before_inputs = logic.get_inputs();
 				logic.inputs.clear();
 
-				std::string suffix = ".bin";
+				std::string suffix = ".echo";
 				if (filePathName.size() >= suffix.size() && filePathName.rfind(suffix) == (filePathName.size() - suffix.size()))
 					logic.read_file(filePathName, true);
 				else
@@ -2443,6 +2445,7 @@ void GUI::main() {
 			ImGui::EndPopup();
 		}
 
+		ImGui::Separator();
 
 		ImGui::PushItemFlag(ImGuiItemFlags_NoTabStop, true);
 		ImGui::SetNextItemWidth(175);
@@ -2510,6 +2513,8 @@ void GUI::main() {
 			ImGuiFileDialog::Instance()->Close();
 		}
 
+
+		ImGui::Separator();
 
 		if (ImGui::Button("Close Menu", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.5, 0))) {
 			show_window = false;

@@ -1,47 +1,93 @@
 #ifndef MHR_H
 #define MHR_H
 
-template<typename T>
-T getOrDefault(const json& j, const std::string& key, const T& defaultValue) {
-    if (j.contains(key) && !j[key].is_null()) {
-        return j[key].get<T>();
-    }
-    return defaultValue;
-}
 
 class MHR : public Convertible {
+    struct Event {
+        wchar_t type;
+        bool mouse_down;
+        bool player_2;
+        int frame;
+        float x;
+        float y;
+        double accel;
+        double rot;
+    };
 public:
     void import(const std::string& filename) override {
         auto& logic = Logic::get();
 
-        std::ifstream file(filename);
+        std::ifstream file(filename, std::ios::binary);
 
-        json state;
-        file >> state;
+        // Read the header
+        std::string header;
+        file.read(reinterpret_cast<char*>(&header), 8);
 
+        // Read the meta size
+        int meta_size = 0;
+        file.read(reinterpret_cast<char*>(&meta_size), 4);
 
-        if (!state.contains("_")) {
-            file.close();
-            logic.conversion_message = "Not an MHR file!";
-            return;
+        // Read the meta
+        std::vector<char> meta(meta_size);
+        file.read(meta.data(), meta_size);
+
+        // Read the reserved
+        std::string reserved;
+        file.read(reinterpret_cast<char*>(&reserved), 8);
+
+        // Read the event size
+        int event_size = 0;
+        file.read(reinterpret_cast<char*>(&event_size), 4);
+
+        // Read the event count
+        int event_count = 0;
+        file.read(reinterpret_cast<char*>(&event_count), 4);
+
+        // Read the events
+        std::vector<Event> events(event_count);
+        file.read(reinterpret_cast<char*>(events.data()), event_size * event_count);
+
+        // Seek to the footer position
+        file.seekg(0, std::ios::end);
+        std::ifstream::pos_type fileSize = file.tellg();
+        file.seekg(fileSize - static_cast<std::ifstream::pos_type>(sizeof(uint64_t)));
+
+        // Read the footer
+        uint64_t footer = 0;
+        file.read(reinterpret_cast<char*>(&footer), sizeof(footer));
+
+        // Close the file
+        file.close();
+
+        int fps = 0;
+
+        for (int i = 3; i >= 0; i--) {
+            fps = (fps << 8) | static_cast<unsigned char>(meta[i]);
         }
 
+        std::ofstream outputFile("output.txt");
+        if (!outputFile) {
+            std::cerr << "Failed to create the output file." << std::endl;
+        }
 
-        logic.fps = state["meta"]["fps"].get<float>();
+        for (const auto& event : events) {
+            // Format the event data as a string
+            std::string eventString = std::to_string(event.frame) + " " +
+                std::to_string(event.mouse_down ? 1 : 0) + " " +
+                std::to_string(event.player_2 ? 1 : 0) + "\n";
+
+            // Write the event string to the output file
+            outputFile << eventString;
+        }
+
+        outputFile.close();
 
         logic.inputs.clear();
-        for (auto& json_input : state["events"]) {
-            if (json_input.find("down") != json_input.end()) {
-                Frame input;
-                input.number = json_input["frame"].get<unsigned>();
-                input.pressingDown = json_input["down"].get<int>();
-                input.xPosition = json_input["x"].get<float>();
-                input.yPosition = json_input["y"].get<float>();
-                input.rotation = json_input["r"].get<float>();
-                input.yVelocity = json_input["a"].get<double>();
-                input.isPlayer2 = getOrDefault(json_input, "p2", false);
-                logic.inputs.push_back(input);
-            }
+        logic.fps = fps;
+
+        for (int i = 0; i < events.size(); i++) {
+            Event event = events[i];
+            logic.add_input({ event.frame, event.mouse_down, event.player_2, event.y, event.x, float(event.rot), event.accel, 0.f });
         }
 
         logic.conversion_message = ""; // Clearing
@@ -51,39 +97,41 @@ public:
     void export_to(const std::string& filename) override {
         auto& logic = Logic::get();
         std::string dir = ".echo/";
-        std::string ext = ".json";
+        std::string ext = ".mhr";
 
         std::string full_filename = dir + filename + ext;
 
-        std::ofstream file(full_filename);
+        std::ofstream file(full_filename, std::ios::binary);
 
-        json state;
-        state["_"] = "Mega Hack v7.1.1-GM1 Replay";
-        state["meta"]["fps"] = logic.fps;
+        std::string header = "HACKPRO";
+        file.write(reinterpret_cast<const char*>(&header), 8);
 
-        json json_events = json::array();
-        for (auto& input : logic.inputs) {
-            json json_input;
-            json_input["frame"] = input.number;
-            json_input["down"] = input.pressingDown;
-            json_input["x"] = input.xPosition;
-            json_input["a"] = input.yVelocity;
-            json_input["r"] = input.rotation;
-            json_input["y"] = input.yPosition;
-            json_input["p2"] = input.isPlayer2;
-            json_events.push_back(json_input);
+        int meta_size = 4;
+        file.write(reinterpret_cast<const char*>(&meta_size), 4);
+        file.write(reinterpret_cast<const char*>(&logic.fps), 4);
+
+        std::string reserved = "ABSÌLUTE";
+        file.write(reinterpret_cast<const char*>(&reserved), 8);
+
+        int event_size = 32;
+        file.write(reinterpret_cast<const char*>(&event_size), 4);
+
+        int event_count = logic.inputs.size();
+        file.write(reinterpret_cast<const char*>(&event_count), 4);
+
+        std::vector<Event> events(event_count);
+        for (const auto& input : logic.inputs) {
+            events.push_back({ 2, input.pressingDown, input.isPlayer2, input.number, input.xPosition, input.yPosition, input.yVelocity, input.rotation });
         }
 
-        state["events"] = json_events;
-
-        file << state.dump(4);
+        file.write(reinterpret_cast<const char*>(&events), event_size * event_count);
 
         logic.conversion_message = ""; // Clearing
         file.close();
     }
 
     std::string get_type_filter() const override {
-        return ".json";
+        return ".mhr";
     }
 
     std::string get_directory() const override {

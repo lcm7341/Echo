@@ -558,7 +558,7 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
 int __fastcall Hooks::PlayLayer::pushButton_h(gd::PlayLayer* self, int, int idk, bool button) {
     auto& logic = Logic::get();
 
-    if (!self->m_level->twoPlayerMode) {
+    if (!self->m_level->twoPlayerMode || !self->m_bIsDualMode) {
         button = false;
     }
 

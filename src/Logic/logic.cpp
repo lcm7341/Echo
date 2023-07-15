@@ -12,7 +12,7 @@ using json = nlohmann::json;
 
 #define PLAYLAYER gd::GameManager::sharedState()->getPlayLayer()
 
-unsigned Logic::get_frame() {
+int Logic::get_frame() {
     if (PLAYLAYER) {
         return round((PLAYLAYER->m_time * get_fps()) - get_removed());
     }

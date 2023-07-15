@@ -24,7 +24,7 @@ enum State {
 using namespace cocos2d;
 
 struct Frame {
-	unsigned number;
+	int number;
 	bool pressingDown;
 	bool isPlayer2;
 
@@ -232,7 +232,7 @@ struct CheckpointData {
 };
 
 struct Checkpoint {
-	unsigned number;
+	int number;
 	CheckpointData player_1_data;
 	CheckpointData player_2_data;
 	size_t activated_objects_size;
@@ -421,7 +421,7 @@ public:
 	bool playback_clicking = false;
 	bool playback_releasing = false;
 
-	unsigned get_frame();
+	int get_frame();
 	double get_time();
 
 	inline bool is_playing() {
