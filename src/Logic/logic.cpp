@@ -49,7 +49,7 @@ void Logic::play_input(Frame& input) {
 
     // PLAYLAYER->m_player1->setPositionY(input.yPosition);
     // PLAYLAYER->m_player1->setPositionX(input.xPosition);
-    
+
 
     if (PLAYLAYER->m_pPlayer1->m_yAccel != input.yVelocity) {
         printf("MISMATCH Y VELOCITY %f:%f\n", PLAYLAYER->m_pPlayer1->m_yAccel, input.yVelocity);
@@ -94,26 +94,32 @@ void Logic::play_input(Frame& input) {
     }
 }
 
-unsigned Logic::count_presses_in_last_second() {
+unsigned Logic::count_presses_in_last_second(bool player2) {
     unsigned frame_limit = round((((PLAYLAYER->m_time) * get_fps()) - get_removed()) - get_fps());
     if (frame_limit > ((((PLAYLAYER->m_time) * get_fps()) - get_removed()) + 2))
         frame_limit = 0;
 
-    std::vector<float> cps_percents;
+    std::vector<Frame> inputs_for_player;
 
-    unsigned press_count = 0;
     if (is_recording()) {
-        for (auto it = inputs.rbegin(); it != inputs.rend(); ++it) {
-            if (it->number > frame_limit && it->pressingDown) {
-                press_count++;
+        for (auto& input : inputs) {
+            if (input.isPlayer2 == player2) {
+                inputs_for_player.push_back(input);
             }
         }
     }
-    else if (is_playing()) {
-        for (auto it = live_inputs.rbegin(); it != live_inputs.rend(); ++it) {
-            if (it->number > frame_limit && it->pressingDown) {
-                press_count++;
+    else {
+        for (auto& input : live_inputs) {
+            if (input.isPlayer2 == player2) {
+                inputs_for_player.push_back(input);
             }
+        }
+    }
+
+    unsigned press_count = 0;
+    for (auto it = inputs_for_player.rbegin(); it != inputs_for_player.rend(); ++it) {
+        if (it->number > frame_limit && it->pressingDown) {
+            press_count++;
         }
     }
 
@@ -128,10 +134,20 @@ unsigned Logic::count_presses_in_last_second() {
 
 std::string Logic::highest_cps() {
     std::vector<std::pair<float, std::string>> cps_percents;
-    std::string highest_cps = "0";
+    std::vector<std::pair<float, std::string>> cps_percents_p2;
+    std::string highest_cps = "P1: 0";
     int highest_cps_real = 0;
+    int highest_cps_real_p2 = 0;
 
-    for (Frame& frame : inputs) {
+    std::vector<Frame> inputs_p1;
+    std::vector<Frame> inputs_p2;
+
+    for (auto& frame : inputs) {
+        if (frame.isPlayer2) inputs_p2.push_back(frame);
+        else inputs_p1.push_back(frame);
+    }
+
+    for (Frame& frame : inputs_p1) {
         if (!frame.pressingDown) {
             continue;
         }
@@ -149,7 +165,7 @@ std::string Logic::highest_cps() {
         }
         if (second_cps > highest_cps_real) {
             highest_cps_real = second_cps;
-            highest_cps = std::to_string(highest_cps_real) + " (" + std::to_string(firstClickFrame) + " to " + std::to_string(frameOneSecondLater) + ")";
+            highest_cps = "P1: " + std::to_string(highest_cps_real) + " (" + std::to_string(firstClickFrame) + " to " + std::to_string(frameOneSecondLater) + ")";
         }
 
         if (inputFramesWithinASecond.size() < 4) {
@@ -189,8 +205,68 @@ std::string Logic::highest_cps() {
         }
     }
 
+    for (Frame& frame : inputs_p2) {
+        if (!frame.pressingDown) {
+            continue;
+        }
+
+        std::vector<Frame> inputFramesWithinASecond;
+        int firstClickFrame = frame.number;
+        int frameOneSecondLater = firstClickFrame + get_fps();
+
+        int second_cps = 0;
+        for (Frame& checkFrame : inputs) {
+            if (checkFrame.number >= firstClickFrame && checkFrame.number <= frameOneSecondLater && checkFrame.pressingDown) {
+                second_cps++;
+                inputFramesWithinASecond.push_back(checkFrame);
+            }
+        }
+        if (second_cps > highest_cps_real) {
+            highest_cps_real = second_cps;
+            highest_cps = "P2: " + std::to_string(highest_cps_real) + " (" + std::to_string(firstClickFrame) + " to " + std::to_string(frameOneSecondLater) + ")";
+        }
+
+        if (inputFramesWithinASecond.size() < 4) {
+            continue;
+        }
+
+        for (size_t j = 0; j < inputFramesWithinASecond.size(); ++j) {
+            int numClicks = j;
+            int framesBetweenClicks = inputFramesWithinASecond[j].number - firstClickFrame;
+            float timeBetweenClicks = static_cast<float>(framesBetweenClicks) / get_fps();
+            float cps = numClicks / timeBetweenClicks;
+
+            float current_percent = 0.f;
+
+            if (inputFramesWithinASecond[j].xPosition != 0) {
+                current_percent = std::round(((inputFramesWithinASecond[j].xPosition / end_portal_position) * 100.f) * 100) / 100;
+
+                if (cps != 0 && numClicks + 1 > 3) {
+
+                    // Rule 2: CPS must not exceed 18 clicks per second rate in any 1/3rd of a second to 1 second.
+                    if (cps > 20 && timeBetweenClicks >= 1.0f / 3.0f) {
+                        // cps_percents.push_back({ current_percent, "Rule 2 violation: " + std::to_string(cps) + " cps rate for the " + std::to_string(numClicks + 1) + " click stint from frame " + std::to_string(firstClickFrame) + " to " + std::to_string(inputFramesWithinASecond[j].number) + " (" + std::to_string(timeBetweenClicks) + "s)" });
+                        cps_percents_p2.push_back({ current_percent, "Rule 2" });
+                    }
+                }
+            }
+            else {
+                if (cps != 0 && numClicks + 1 > 3) {
+
+                    // Rule 2: CPS must not exceed 18 clicks per second rate in any 1/3rd of a second to 1 second.
+                    if (cps > 20 && timeBetweenClicks >= 1.0f / 3.0f) {
+                        // cps_percents.push_back({ current_percent, "Rule 2 violation: " + std::to_string(cps) + " cps rate for the " + std::to_string(numClicks + 1) + " click stint from frame " + std::to_string(firstClickFrame) + " to " + std::to_string(inputFramesWithinASecond[j].number) + " (" + std::to_string(timeBetweenClicks) + "s)" });
+                        cps_percents_p2.push_back({ inputFramesWithinASecond[j].number, "Rule 2" });
+                    }
+                }
+            }
+        }
+    }
+
     // Remove cps_percents within 1 of each other.
     std::vector<std::pair<float, std::string>> unique_cps_percents;
+    std::vector<std::pair<float, std::string>> unique_cps_percents_p2;
+
     for (auto& percent : cps_percents) {
         bool should_push = true;
         for (auto& unique_percent : unique_cps_percents) {
@@ -203,7 +279,20 @@ std::string Logic::highest_cps() {
         }
     }
 
+    for (auto& percent : cps_percents_p2) {
+        bool should_push = true;
+        for (auto& unique_percent : unique_cps_percents_p2) {
+            if (std::abs(percent.first - unique_percent.first) <= 0.4) {
+                should_push = false;
+            }
+        }
+        if (should_push) {
+            unique_cps_percents_p2.push_back(percent);
+        }
+    }
+
     cps_over_percents = unique_cps_percents;
+    cps_over_percents_p2 = unique_cps_percents_p2;
 
     // The maximum CPS as a string
     return highest_cps;
@@ -373,7 +462,7 @@ void Logic::write_file(const std::string& filename) {
 void Logic::read_file(const std::string& filename, bool is_path = false) {
     std::string dir = ".echo\\";
     std::string ext = ".echo";
-    
+
     std::string full_filename = is_path ? filename : dir + filename + ext;
 
     std::ifstream temp_file(full_filename, std::ios::binary);
@@ -586,7 +675,7 @@ void Logic::read_file_json(const std::string& filename, bool is_path = false) {
 
     // Extract the state data from the JSON object
     fps = state["fps"].get<double>();
-    
+
     end_portal_position = state["end_xpos"].get<double>();
 
     if (format == META || format == META_DBG) {

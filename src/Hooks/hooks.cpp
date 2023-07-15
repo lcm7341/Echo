@@ -395,6 +395,8 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
             frame_counter->setAnchorPoint({ 0, 0.5 });
             frame_counter->setPosition(logic.frame_counter_x, logic.frame_counter_y); // Adjusted the x-position calculation
             frame_counter->setString(out);
+            frame_counter->setOpacity(logic.frame_counter_opacity);
+            frame_counter->setScale(logic.frame_counter_scale);
 
         }
         else {
@@ -404,10 +406,10 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
         }
     }
     else if (logic.show_frame) {
-        auto frame_counter2 = cocos2d::CCLabelBMFont::create("Frame: ", "chatFont.fnt"); //probably leaks memory :p
+        auto frame_counter2 = cocos2d::CCLabelBMFont::create("Frame: ", "bigFont.fnt"); //probably leaks memory :p
         frame_counter2->setPosition(logic.frame_counter_x, logic.frame_counter_y);
-        frame_counter2->setOpacity(70);
-
+        frame_counter2->setOpacity(logic.frame_counter_opacity);
+        frame_counter2->setScale(logic.frame_counter_scale);
         self->addChild(frame_counter2, 999, FRAME_LABEL_ID);
     }
 
@@ -416,9 +418,18 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
         if (logic.is_recording()) {
             // Update the frame counter label with the current frame number
             char out[1000];
-            sprintf_s(out, "Recording: %i", logic.inputs.size());
-            recording_label->setPosition(cocos2d::CCDirector::sharedDirector()->getWinSize().width / 2.f, 20);
+            int holds_count = 0;
+            int releases_count = 0;
+            for (auto& input : logic.inputs) {
+                if (input.pressingDown) holds_count++;
+                else releases_count++;
+            }
+            sprintf_s(out, "Recording: %i/%i", holds_count, releases_count);
             recording_label->setString(out);
+            recording_label->setPosition(logic.recording_label_x, logic.recording_label_y);
+            recording_label->setOpacity(logic.recording_label_opacity);
+            recording_label->setScale(logic.recording_label_scale);
+            recording_label->setAnchorPoint({ 0, 0.5 });
         }
         else {
             // Remove and release the frame counter label if show_frame is false
@@ -426,10 +437,12 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
             recording_label->release();
         }
     }
-    else if (logic.is_recording()) {
-        auto recording_label2 = cocos2d::CCLabelBMFont::create("Recording: %i", "chatFont.fnt"); //probably leaks memory :p
-        recording_label2->setPosition(cocos2d::CCDirector::sharedDirector()->getWinSize().width / 2.f, 20);
-        recording_label2->setOpacity(70);
+    else if (logic.is_recording() && logic.show_recording) {
+        auto recording_label2 = cocos2d::CCLabelBMFont::create("Recording: 0/0", "bigFont.fnt"); //probably leaks memory :p
+        //recording_label2->setPosition(cocos2d::CCDirector::sharedDirector()->getWinSize().width / 2.f, 20);
+        recording_label2->setPosition(logic.recording_label_x, logic.recording_label_y);
+        recording_label2->setOpacity(logic.recording_label_opacity);
+        recording_label2->setScale(logic.recording_label_scale);
 
         self->addChild(recording_label2, 999, RECORDING_LABEL_ID);
     }
@@ -439,7 +452,7 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
     if (cps_counter) {
         if (logic.show_cps) {
             char out[24];
-            sprintf_s(out, "CPS: %i", logic.count_presses_in_last_second());
+            sprintf_s(out, "CPS: %i/%i", logic.count_presses_in_last_second(false), logic.count_presses_in_last_second(true));
             cps_counter->setString(out);
             if (logic.current_cps > logic.max_cps) {
                 cps_counter->setColor({ 255, 0, 0 });
@@ -449,6 +462,8 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
             }
             cps_counter->setAnchorPoint({ 0, 0.5 });
             cps_counter->setPosition(logic.cps_counter_x, logic.cps_counter_y);
+            cps_counter->setOpacity(logic.cps_counter_opacity);
+            cps_counter->setScale(logic.cps_counter_scale);
         }
 
         else {
@@ -457,9 +472,10 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
         }
     }
     else if (logic.show_cps) {
-        auto cps_counter2 = cocos2d::CCLabelBMFont::create("CPS: ", "chatFont.fnt");
+        auto cps_counter2 = cocos2d::CCLabelBMFont::create("CPS: 0/0", "bigFont.fnt");
         cps_counter2->setPosition(logic.cps_counter_x, logic.cps_counter_y);
-        cps_counter2->setOpacity(70);
+        cps_counter2->setOpacity(logic.cps_counter_opacity);
+        cps_counter2->setScale(logic.cps_counter_scale);
 
         self->addChild(cps_counter2, 999, CPS_LABEL_ID);
     }
@@ -483,7 +499,7 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
             percent_label->setAnchorPoint({ 0, 0.5 });
             percent_label->setPosition(logic.percent_counter_x, logic.percent_counter_y);
             percent_label->setScale(logic.percent_scale);
-            percent_label->setOpacity(70);
+            percent_label->setOpacity(logic.percent_opacity);
         }
 
         else {
@@ -495,7 +511,7 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
         auto percent_label2 = cocos2d::CCLabelBMFont::create("", "bigFont.fnt");
         percent_label2->setPosition(logic.percent_counter_x, logic.percent_counter_y);
         percent_label2->setScale(logic.percent_scale);
-        percent_label2->setOpacity(70);
+        percent_label2->setOpacity(logic.percent_opacity);
 
         self->addChild(percent_label2, 999, PERCENT_LABEL_ID);
     }
@@ -512,7 +528,7 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
             time_label->setAnchorPoint({ 0, 0.5 });
             time_label->setPosition(logic.time_counter_x, logic.time_counter_y);
             time_label->setScale(logic.time_scale);
-            time_label->setOpacity(70);
+            time_label->setOpacity(logic.time_opacity);
         }
 
         else {
@@ -524,7 +540,7 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
         auto time_label2 = cocos2d::CCLabelBMFont::create("", "bigFont.fnt");
         time_label2->setPosition(logic.time_counter_x, logic.time_counter_y);
         time_label2->setScale(logic.time_scale);
-        time_label2->setOpacity(70);
+        time_label2->setOpacity(logic.percent_opacity);
 
         self->addChild(time_label2, 999, TIME_LABEL_ID);
     }
@@ -560,6 +576,10 @@ int __fastcall Hooks::PlayLayer::pushButton_h(gd::PlayLayer* self, int, int idk,
 
     if (!self->m_level->twoPlayerMode || !self->m_bIsDualMode) {
         button = false;
+    }
+
+    if (!logic.is_playing() && !logic.is_recording()) {
+        logic.live_inputs.push_back({ logic.get_frame(), true, button, self->getPositionY(), self->getPositionX(), self->getRotation(), 0.f, 0.f });
     }
 
     if ((logic.clickbot_enabled && !logic.is_playing()) || (logic.clickbot_enabled && logic.playback_clicking)) {

@@ -1318,6 +1318,8 @@ void GUI::tools() {
 			}
 		}
 
+		ImGui::Checkbox("Auto-Export to Bot Location", &logic.export_to_bot_location);
+
 		if (ImGuiFileDialog::Instance()->Display("ConversionImport", ImGuiWindowFlags_NoCollapse, ImVec2(500, 200)))
 		{
 			// action if OK
@@ -2328,6 +2330,30 @@ void GUI::main() {
 
 		if (ImGui::BeginPopupModal("Label Settings", &open_label_modal, ImGuiWindowFlags_AlwaysAutoResize)) {
 
+			ImGui::BeginChild("RecordingLabel", ImVec2(250, 150), false, ImGuiWindowFlags_AlwaysUseWindowPadding);
+			ImGui::Checkbox("Show Recording Label", &logic.show_recording);
+
+			CHECK_KEYBIND("showRecording");
+
+			ImGui::PushItemWidth(75);
+			ImGui::DragFloat("X###record_x", &logic.recording_label_x, 1);
+			ImGui::PopItemWidth();
+			ImGui::SameLine();
+			ImGui::PushItemWidth(75);
+			ImGui::DragFloat("Y###record_y", &logic.recording_label_y, 1);
+
+			ImGui::PushItemWidth(150);
+			ImGui::DragFloat("Scale###record_scale", &logic.recording_label_scale, 0.01, 10);
+			ImGui::PopItemWidth();
+
+			ImGui::PushItemWidth(150);
+			ImGui::DragFloat("Opacity###record_opacity", &logic.recording_label_opacity, 0.1, 0, 100);
+			ImGui::PopItemWidth();
+
+			ImGui::EndChild();
+			ImGui::SameLine();
+			ImGui::BeginChild("CpsLabel", ImVec2(250, 150), false, ImGuiWindowFlags_AlwaysUseWindowPadding);
+
 			ImGui::Checkbox("Show CPS", &logic.show_cps);
 
 			CHECK_KEYBIND("showCPS");
@@ -2339,7 +2365,17 @@ void GUI::main() {
 			ImGui::PushItemWidth(75);
 			ImGui::DragFloat("Y###cps_y", &logic.cps_counter_y, 1);
 
+			ImGui::PushItemWidth(150);
+			ImGui::DragFloat("Scale###cps_scale", &logic.cps_counter_scale, 0.01, 10);
+			ImGui::PopItemWidth();
+
+			ImGui::PushItemWidth(150);
+			ImGui::DragFloat("Opacity###cps_opacity", &logic.cps_counter_opacity, 0.1, 0, 100);
+			ImGui::PopItemWidth();
+
+			ImGui::EndChild();
 			ImGui::Separator();
+			ImGui::BeginChild("FrameLabel", ImVec2(250, 150), false, ImGuiWindowFlags_AlwaysUseWindowPadding);
 
 			ImGui::Checkbox("Show Frame", &logic.show_frame);
 
@@ -2353,6 +2389,39 @@ void GUI::main() {
 			ImGui::DragFloat("Y###frame_y", &logic.frame_counter_y, 1);
 			ImGui::PopItemWidth();
 
+			ImGui::PushItemWidth(150);
+			ImGui::DragFloat("Scale###frame_scale", &logic.frame_counter_scale, 0.01, 10);
+			ImGui::PopItemWidth();
+
+			ImGui::PushItemWidth(150);
+			ImGui::DragFloat("Opacity###frame_opacity", &logic.frame_counter_opacity, 0.1, 0, 100);
+			ImGui::PopItemWidth();
+
+			ImGui::EndChild();
+			ImGui::SameLine();
+			ImGui::BeginChild("TimeLabel", ImVec2(250, 150), false, ImGuiWindowFlags_AlwaysUseWindowPadding);
+
+			ImGui::Checkbox("Show Time", &logic.show_time);
+
+			CHECK_KEYBIND("showTime");
+
+			ImGui::PushItemWidth(75);
+			ImGui::DragFloat("X###time_x", &logic.time_counter_x, 1);
+			ImGui::PopItemWidth();
+			ImGui::SameLine();
+			ImGui::PushItemWidth(75);
+			ImGui::DragFloat("Y###time_y", &logic.time_counter_y, 1);
+			ImGui::PopItemWidth();
+
+			ImGui::PushItemWidth(150);
+			ImGui::DragFloat("Scale###time_scale", &logic.time_scale, 0.01, 10);
+			ImGui::PopItemWidth();
+
+			ImGui::PushItemWidth(150);
+			ImGui::DragFloat("Opacity###time_opacity", &logic.time_opacity, 0.1, 0, 100);
+			ImGui::PopItemWidth();
+
+			ImGui::EndChild();
 			ImGui::Separator();
 
 			ImGui::Checkbox("Show Percent", &logic.show_percent);
@@ -2375,22 +2444,8 @@ void GUI::main() {
 			ImGui::DragFloat("Scale###percent_scale", &logic.percent_scale, 0.01, 10);
 			ImGui::PopItemWidth();
 
-			ImGui::Separator();
-
-			ImGui::Checkbox("Show Time", &logic.show_time);
-
-			CHECK_KEYBIND("showTime");
-
-			ImGui::PushItemWidth(75);
-			ImGui::DragFloat("X###time_x", &logic.time_counter_x, 1);
-			ImGui::PopItemWidth();
-			ImGui::SameLine();
-			ImGui::PushItemWidth(75);
-			ImGui::DragFloat("Y###time_y", &logic.time_counter_y, 1);
-			ImGui::PopItemWidth();
-
 			ImGui::PushItemWidth(150);
-			ImGui::DragFloat("Scale###time_scale", &logic.time_scale, 0.01, 10);
+			ImGui::DragFloat("Opacity###percent_opacity", &logic.percent_opacity, 0.1, 0, 100);
 			ImGui::PopItemWidth();
 
 			ImGui::EndPopup();
@@ -2714,6 +2769,7 @@ void GUI::init() {
 	SET_BIND(autoDisableClicker, Logic::get().autoclicker_auto_disable);
 	SET_BIND(frameAdvance, Logic::get().frame_advance);
 	SET_BIND(menuBind, show_window);
+	SET_BIND(showRecord, Logic::get().show_recording);
 
 	Logic::get().keybinds.GetKeybind("menuBind").SetKey(90, false, true, false);
 

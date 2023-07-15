@@ -273,6 +273,8 @@ public:
 
 	HacksStr hacks;
 
+	bool export_to_bot_location = false;
+
 	bool clickbot_enabled = false;
 	float player_1_volume = 1.f;
 	float player_2_volume = 1.f;
@@ -321,6 +323,7 @@ public:
 	std::vector<gd::GameObject*> activated_objects;
 	std::vector<gd::GameObject*> activated_objects_p2;
 	std::vector<std::pair<float, std::string>> cps_over_percents;
+	std::vector<std::pair<float, std::string>> cps_over_percents_p2;
 
 
 	float fps = 60.f;
@@ -372,6 +375,7 @@ public:
 	bool show_percent = true;
 	int percent_accuracy = 1;
 	bool show_time = false;
+	bool show_recording = false;
 
 	float end_portal_position = 0;
 	float max_cps = 15;
@@ -401,19 +405,30 @@ public:
 
 	bool file_dialog = false;
 
+	float recording_label_x = 50.f;
+	float recording_label_y = 50.f;
+	float recording_label_scale = 0.4;
+	float recording_label_opacity = 70;
+
 	float frame_counter_x = 50.f;
 	float frame_counter_y = 50.f;
+	float frame_counter_scale = 0.4;
+	float frame_counter_opacity = 70;
 
 	float cps_counter_x = 30.f;
 	float cps_counter_y = 20.f;
+	float cps_counter_scale = 0.4;
+	float cps_counter_opacity = 70;
 
 	float percent_counter_x = 5.f;
 	float percent_counter_y = 315.f;
 	float percent_scale = 0.4;
+	float percent_opacity = 70;
 
 	float time_counter_x = 90.f;
 	float time_counter_y = 20.f;
 	float time_scale = 0.4;
+	float time_opacity = 70;
 
 	unsigned frame_advance_hold_duration = 300; // ms
 	unsigned frame_advance_delay = 50; // ms
@@ -612,7 +627,7 @@ public:
 		return fps;
 	}
 
-	unsigned count_presses_in_last_second();
+	unsigned count_presses_in_last_second(bool player2);
 	std::string highest_cps();
 
 	unsigned cached_inputs_hash = 0;

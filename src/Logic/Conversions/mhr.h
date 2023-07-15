@@ -65,23 +65,6 @@ public:
             fps = (fps << 8) | static_cast<unsigned char>(meta[i]);
         }
 
-        std::ofstream outputFile("output.txt");
-        if (!outputFile) {
-            std::cerr << "Failed to create the output file." << std::endl;
-        }
-
-        for (const auto& event : events) {
-            // Format the event data as a string
-            std::string eventString = std::to_string(event.frame) + " " +
-                std::to_string(event.mouse_down ? 1 : 0) + " " +
-                std::to_string(event.player_2 ? 1 : 0) + "\n";
-
-            // Write the event string to the output file
-            outputFile << eventString;
-        }
-
-        outputFile.close();
-
         logic.inputs.clear();
         logic.fps = fps;
 
@@ -96,21 +79,24 @@ public:
 
     void export_to(const std::string& filename) override {
         auto& logic = Logic::get();
-        std::string dir = ".echo/";
+        std::string dir = ".echo\\";
         std::string ext = ".mhr";
+
+        if (logic.export_to_bot_location) dir = "macros\\";
 
         std::string full_filename = dir + filename + ext;
 
         std::ofstream file(full_filename, std::ios::binary);
 
-        std::string header = "HACKPRO";
-        file.write(reinterpret_cast<const char*>(&header), 8);
+        unsigned char bytes[] = { 0x48, 0x41, 0x43, 0x4B, 0x50, 0x52, 0x4F, 0x07 };
+        file.write(reinterpret_cast<const char*>(&bytes), 8);
 
         int meta_size = 4;
         file.write(reinterpret_cast<const char*>(&meta_size), 4);
-        file.write(reinterpret_cast<const char*>(&logic.fps), 4);
+        int fps = (int)logic.fps;
+        file.write(reinterpret_cast<const char*>(&fps), 4);
 
-        std::string reserved = "ABSÌLUTE";
+        std::string reserved = "ABSOLUTE";
         file.write(reinterpret_cast<const char*>(&reserved), 8);
 
         int event_size = 32;
@@ -122,9 +108,16 @@ public:
         std::vector<Event> events(event_count);
         for (const auto& input : logic.inputs) {
             events.push_back({ 2, input.pressingDown, input.isPlayer2, input.number, input.xPosition, input.yPosition, input.yVelocity, input.rotation });
+            wchar_t type = 2;
+            file.write(reinterpret_cast<const char*>(&type), 2);
+            file.write(reinterpret_cast<const char*>(&input.pressingDown), 1);
+            file.write(reinterpret_cast<const char*>(&input.isPlayer2), 1);
+            file.write(reinterpret_cast<const char*>(&input.number), 4);
+            file.write(reinterpret_cast<const char*>(&input.xPosition), 4);
+            file.write(reinterpret_cast<const char*>(&input.yPosition), 4);
+            file.write(reinterpret_cast<const char*>(&input.yVelocity), 8);
+            file.write(reinterpret_cast<const char*>(&input.rotation), 8);
         }
-
-        file.write(reinterpret_cast<const char*>(&events), event_size * event_count);
 
         logic.conversion_message = ""; // Clearing
         file.close();

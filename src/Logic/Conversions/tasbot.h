@@ -63,6 +63,8 @@ public:
         std::string dir = ".echo\\";
         std::string ext = ".json";
 
+        if (logic.export_to_bot_location) dir = ".tasbot\\macro\\";
+
         std::string full_filename = dir + filename + ext;
 
         std::ofstream file(full_filename);
