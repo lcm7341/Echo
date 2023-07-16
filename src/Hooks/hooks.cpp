@@ -766,7 +766,7 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
 int __fastcall Hooks::PlayLayer::pushButton_h(gd::PlayLayer* self, int, int idk, bool button) {
     auto& logic = Logic::get();
 
-    if (!self->m_level->twoPlayerMode || !self->m_bIsDualMode) {
+    if (!self->m_level->twoPlayerMode) {
         button = false;
     }
 
@@ -852,17 +852,6 @@ int __fastcall Hooks::PlayLayer::pushButton_h(gd::PlayLayer* self, int, int idk,
         button = !button; // i fucked up before and done wanna care
     }
 
-    if (logic.is_playing()) {
-        if (logic.ignore_actions_at_playback) {
-            if (button && !logic.record_player_1)
-                return 0;
-            if (!button && !logic.record_player_2)
-                return 0;
-            if (logic.play_player_1 && logic.play_player_2)
-                return 0;
-        }
-    }
-
     if (button && self->m_pPlayer1->m_isDashing) {
         return 0;
     }
@@ -880,9 +869,9 @@ int __fastcall Hooks::PlayLayer::pushButton_h(gd::PlayLayer* self, int, int idk,
 
 
     if (logic.is_recording()) {
-        if (button && !logic.record_player_1)
+        if (button && !logic.record_player_2)
             return 0;
-        if (!button && !logic.record_player_2)
+        if (!button && !logic.record_player_1)
             return 0;
     }
 
@@ -896,13 +885,22 @@ int __fastcall Hooks::PlayLayer::pushButton_h(gd::PlayLayer* self, int, int idk,
         return 0;
     }
 
+    if (logic.is_playing()) {
+        if (logic.ignore_actions_at_playback) {
+            if (button && !logic.record_player_2)
+                return 0;
+            if (!button && !logic.record_player_1)
+                return 0;
+            if (logic.play_player_1 && logic.play_player_2)
+                return 0;
+        }
+    }
+
     return pushButton(self, idk, button);
 }
 
 int __fastcall Hooks::PlayLayer::releaseButton_h(gd::PlayLayer* self, int, int idk, bool button) {
     auto& logic = Logic::get();
-
-    printf("Released\n");
 
     if (!self->m_level->twoPlayerMode) {
         button = false;
@@ -986,19 +984,6 @@ int __fastcall Hooks::PlayLayer::releaseButton_h(gd::PlayLayer* self, int, int i
         button = !button; // i fucked up before and done wanna care
     }
 
-    if (logic.is_playing()) {
-        if (logic.ignore_actions_at_playback) {
-            if (logic.ignore_actions_at_playback) {
-                if (button && !logic.record_player_1)
-                    return 0;
-                if (!button && !logic.record_player_2)
-                    return 0;
-                if (logic.play_player_1 && logic.play_player_2)
-                    return 0;
-            }
-        }
-    }
-
     if (logic.click_both_players && self->m_level->twoPlayerMode) {
         logic.record_input(false, !button);
         releaseButton(self, idk, !button);
@@ -1007,9 +992,9 @@ int __fastcall Hooks::PlayLayer::releaseButton_h(gd::PlayLayer* self, int, int i
     if (logic.swap_player_input) button = !button;
 
     if (logic.is_recording()) {
-        if (button && !logic.record_player_1)
+        if (button && !logic.record_player_2)
             return 0;
-        if (!button && !logic.record_player_2)
+        if (!button && !logic.record_player_1)
             return 0;
     }
     if (logic.click_inverse_p2 || logic.click_inverse_p1)
@@ -1020,6 +1005,17 @@ int __fastcall Hooks::PlayLayer::releaseButton_h(gd::PlayLayer* self, int, int i
     if (button ? logic.click_inverse_p2 : logic.click_inverse_p1) {
         pushButton(self, idk, button);
         return 0;
+    }
+
+    if (logic.is_playing()) {
+        if (logic.ignore_actions_at_playback) {
+            if (button && !logic.record_player_2)
+                return 0;
+            if (!button && !logic.record_player_1)
+                return 0;
+            if (logic.play_player_1 && logic.play_player_2)
+                return 0;
+        }
     }
 
     return releaseButton(self, idk, button);
