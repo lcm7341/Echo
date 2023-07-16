@@ -87,6 +87,197 @@ bool __fastcall Hooks::PlayLayer::death_h(void* self, void*, void* go, void* thi
 
 }
 
+HHOOK mouseHook;  // Global mouse hook handle
+
+LRESULT CALLBACK MouseProc(int nCode, WPARAM wParam, LPARAM lParam)
+{
+    auto& logic = Logic::get();
+    if (nCode >= 0)
+    {
+        bool button = false;
+        if (wParam == WM_LBUTTONDOWN)
+        {
+            if ((logic.clickbot_enabled && !logic.is_playing()) || (logic.clickbot_enabled && logic.playback_clicking)) {
+                button = !button; // i fucked up before and done wanna care
+                if (!Clickbot::inited)
+                {
+                    FMOD::System_Create(&Clickbot::system);
+                    Clickbot::system->init(1024 * 2, FMOD_INIT_NORMAL, nullptr);
+                    Clickbot::inited = true;
+                }
+
+                logic.clickbot_now = 0;
+                logic.cycleTime = logic.clickbot_now - logic.clickbot_start;
+                bool micros = button ? logic.player_1_micros : logic.player_2_micros;
+                bool softs = button ? logic.player_1_softs : logic.player_2_softs;
+                bool hards = button ? logic.player_1_hards : logic.player_2_hards;
+                if (logic.cycleTime <= (button ? logic.player_1_micros_time / 1000.f : logic.player_2_micros_time / 1000.f) && micros)
+                {
+                    std::string path = Clickbot::pickRandomFile(button ? logic.player_1_path : logic.player_2_path, "micro_clicks");
+                    logic.clickbot_start = 0;
+                    Clickbot::system->createSound(path.c_str(), FMOD_DEFAULT, nullptr, button ? &Clickbot::clickSound : &Clickbot::clickSound2);
+                    if (button) {
+                        Clickbot::system->playSound(Clickbot::clickSound, nullptr, true, &Clickbot::clickChannel);
+                        Clickbot::clickChannel->setVolume((float)(logic.player_1_micros_volume * 5 * logic.clickbot_volume_multiplier));
+                    }
+                    else {
+                        Clickbot::system->playSound(Clickbot::clickSound2, nullptr, true, &Clickbot::clickChannel2);
+                        Clickbot::clickChannel2->setVolume((float)(logic.player_2_micros_volume * 5 * logic.clickbot_volume_multiplier));
+                    }
+                }
+                else if (logic.cycleTime <= (button ? logic.player_1_softs_time / 1000.f : logic.player_2_softs_time / 1000.f) && softs)
+                {
+                    std::string path = Clickbot::pickRandomFile(button ? logic.player_1_path : logic.player_2_path, "soft_clicks");
+                    logic.clickbot_start = 0;
+                    Clickbot::system->createSound(path.c_str(), FMOD_DEFAULT, nullptr, button ? &Clickbot::clickSound : &Clickbot::clickSound2);
+                    if (button) {
+                        Clickbot::system->playSound(Clickbot::clickSound, nullptr, true, &Clickbot::clickChannel);
+                        Clickbot::clickChannel->setVolume((float)(logic.player_1_softs_volume * 5 * logic.clickbot_volume_multiplier));
+                    }
+                    else {
+                        Clickbot::system->playSound(Clickbot::clickSound2, nullptr, true, &Clickbot::clickChannel2);
+                        Clickbot::clickChannel2->setVolume((float)(logic.player_2_softs_volume * 5 * logic.clickbot_volume_multiplier));
+                    }
+                }
+                else if (logic.cycleTime >= (button ? logic.player_1_hards_time : logic.player_2_hards_time) && hards) {
+                    std::string path = Clickbot::pickRandomFile(button ? logic.player_1_path : logic.player_2_path, "hard_clicks");
+                    logic.clickbot_start = 0;
+                    Clickbot::system->createSound(path.c_str(), FMOD_DEFAULT, nullptr, button ? &Clickbot::clickSound : &Clickbot::clickSound2);
+                    if (button) {
+                        Clickbot::system->playSound(Clickbot::clickSound, nullptr, true, &Clickbot::clickChannel);
+                        Clickbot::clickChannel->setVolume((float)(logic.player_1_hards_volume * 5 * logic.clickbot_volume_multiplier));
+                    }
+                    else {
+                        Clickbot::system->playSound(Clickbot::clickSound2, nullptr, true, &Clickbot::clickChannel2);
+                        Clickbot::clickChannel2->setVolume((float)(logic.player_2_hards_volume * 5 * logic.clickbot_volume_multiplier));
+                    }
+                }
+                else {
+                    std::string path = Clickbot::pickRandomFile(button ? logic.player_1_path : logic.player_2_path, "clicks");
+                    logic.clickbot_start = 0;
+                    Clickbot::system->createSound(path.c_str(), FMOD_DEFAULT, nullptr, button ? &Clickbot::clickSound : &Clickbot::clickSound2);
+                    if (button) {
+                        Clickbot::system->playSound(Clickbot::clickSound, nullptr, true, &Clickbot::clickChannel);
+                        Clickbot::clickChannel->setVolume((float)(logic.player_1_volume * 5 * logic.clickbot_volume_multiplier));
+                    }
+                    else {
+                        Clickbot::system->playSound(Clickbot::clickSound2, nullptr, true, &Clickbot::clickChannel2);
+                        Clickbot::clickChannel2->setVolume((float)(logic.player_2_volume * 5 * logic.clickbot_volume_multiplier));
+                    }
+                }
+
+                if (button) {
+                    Clickbot::clickChannel->setPaused(false);
+                }
+                else {
+                    Clickbot::clickChannel2->setPaused(false);
+                }
+                Clickbot::system->update();
+            }
+        }
+        else if (wParam == WM_LBUTTONUP)
+        {
+            if ((logic.clickbot_enabled && !logic.is_playing()) || (logic.clickbot_enabled && logic.playback_releasing)) {
+                button = !button; // i fucked up before and done wanna care
+                if (!Clickbot::inited)
+                {
+                    FMOD::System_Create(&Clickbot::system);
+                    Clickbot::system->init(1024 * 2, FMOD_INIT_NORMAL, nullptr);
+                    Clickbot::inited = true;
+                }
+
+                logic.clickbot_now = 0;
+                logic.cycleTime = logic.clickbot_now - logic.clickbot_start;
+                if (logic.cycleTime <= (button ? logic.player_1_micros_time / 1000.f : logic.player_2_micros_time / 1000.f))
+                {
+                    std::string path = Clickbot::pickRandomFile(button ? logic.player_1_path : logic.player_2_path, "micro_clicks");
+                    logic.clickbot_start = 0;
+                    Clickbot::system->createSound(path.c_str(), FMOD_DEFAULT, nullptr, button ? &Clickbot::clickSound : &Clickbot::clickSound2);
+                    if (button) {
+                        Clickbot::system->playSound(Clickbot::clickSound, nullptr, true, &Clickbot::releaseChannel);
+                        Clickbot::releaseChannel->setVolume((float)(logic.player_1_micros_volume * 5 * logic.clickbot_volume_multiplier));
+                    }
+                    else {
+                        Clickbot::system->playSound(Clickbot::clickSound2, nullptr, true, &Clickbot::releaseChannel2);
+                        Clickbot::releaseChannel2->setVolume((float)(logic.player_2_micros_volume * 5 * logic.clickbot_volume_multiplier));
+                    }
+                }
+                else if (logic.cycleTime < button ? logic.player_1_softs_time / 1000.f : logic.player_2_softs_time / 1000.f)
+                {
+                    std::string path = Clickbot::pickRandomFile(button ? logic.player_1_path : logic.player_2_path, "soft_releases");
+                    logic.clickbot_start = 0;
+                    Clickbot::system->createSound(path.c_str(), FMOD_DEFAULT, nullptr, button ? &Clickbot::releaseSound : &Clickbot::releaseSound2);
+                    if (button) {
+                        Clickbot::system->playSound(Clickbot::releaseSound, nullptr, true, &Clickbot::releaseChannel);
+                        Clickbot::releaseChannel->setVolume((float)(logic.player_1_softs_volume * 5 * logic.clickbot_volume_multiplier));
+                    }
+                    else {
+                        Clickbot::system->playSound(Clickbot::releaseSound2, nullptr, true, &Clickbot::releaseChannel2);
+                        Clickbot::releaseChannel2->setVolume((float)(logic.player_2_softs_volume * 5 * logic.clickbot_volume_multiplier));
+                    }
+                }
+                else if (logic.cycleTime > button ? logic.player_1_hards_time : logic.player_2_hards_time) {
+                    std::string path = Clickbot::pickRandomFile(button ? logic.player_1_path : logic.player_2_path, "hard_releases");
+                    logic.clickbot_start = 0;
+                    Clickbot::system->createSound(path.c_str(), FMOD_DEFAULT, nullptr, button ? &Clickbot::releaseSound : &Clickbot::releaseSound2);
+
+                    if (button) {
+                        Clickbot::system->playSound(Clickbot::releaseSound, nullptr, true, &Clickbot::releaseChannel);
+                        Clickbot::releaseChannel->setVolume((float)(logic.player_1_hards_volume * 5 * logic.clickbot_volume_multiplier));
+                    }
+                    else {
+                        Clickbot::system->playSound(Clickbot::releaseSound2, nullptr, true, &Clickbot::releaseChannel2);
+                        Clickbot::releaseChannel2->setVolume((float)(logic.player_2_hards_volume * 5 * logic.clickbot_volume_multiplier));
+                    }
+                }
+                else {
+                    std::string path = Clickbot::pickRandomFile(button ? logic.player_1_path : logic.player_2_path, "releases");
+                    logic.clickbot_start = 0;
+                    Clickbot::system->createSound(path.c_str(), FMOD_DEFAULT, nullptr, button ? &Clickbot::releaseSound : &Clickbot::releaseSound2);
+                    if (button) {
+                        Clickbot::system->playSound(Clickbot::releaseSound, nullptr, true, &Clickbot::releaseChannel);
+                        Clickbot::releaseChannel->setVolume((float)(logic.player_1_volume * 5 * logic.clickbot_volume_multiplier));
+                    }
+                    else {
+                        Clickbot::system->playSound(Clickbot::releaseSound2, nullptr, true, &Clickbot::releaseChannel2);
+                        Clickbot::releaseChannel2->setVolume((float)(logic.player_2_volume * 5 * logic.clickbot_volume_multiplier));
+                    }
+                }
+
+                if (button) {
+                    Clickbot::releaseChannel->setPaused(false);
+                }
+                else {
+
+                    Clickbot::releaseChannel2->setPaused(false);
+                }
+                Clickbot::system->update();
+            }
+        }
+    }
+
+    return CallNextHookEx(mouseHook, nCode, wParam, lParam);
+}
+
+void SetMouseHook()
+{
+    HINSTANCE hInstance = GetModuleHandle(NULL);  // Get the current module handle
+
+    // Set the mouse hook procedure
+    mouseHook = SetWindowsHookEx(WH_MOUSE_LL, MouseProc, hInstance, 0);
+
+    // Message loop to keep the hook alive
+    MSG msg;
+    if (GetMessage(&msg, NULL, 0, 0))
+    {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
+
+    // Unhook the mouse hook
+    UnhookWindowsHookEx(mouseHook);
+}
+
 void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
     auto& logic = Logic::get();
     auto play_layer = gd::GameManager::sharedState()->getPlayLayer();
@@ -212,6 +403,7 @@ bool __fastcall Hooks::PlayLayer::init_h(gd::PlayLayer* self, void* edx, gd::GJG
     auto& logic = Logic::get();
     logic.replay_index = 0;
     logic.clickbot_start = self->m_time;
+    SetMouseHook();
 
     drawer = HitboxNode::getInstance();
 
@@ -986,7 +1178,6 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
             logic.handlePlayerInputs(self->m_pPlayer1, logic.record_player_2, logic.get_latest_checkpoint().player_2_data.m_isDashing, true);
     }
 
-
     return ret;
 }
 
@@ -1061,7 +1252,155 @@ int __fastcall Hooks::createCheckpoint_h(gd::PlayLayer* self) {
     std::map<int, ObjectData> childData;
     cocos2d::CCArray* children = self->unk4D4;
 
-    cast_function caster = make_cast<gd::GameObject, CCObject>();
+    if (PLAYLAYER->m_pObjectLayer) {
+        auto layer = static_cast<CCLayer*>(PLAYLAYER->getChildren()->objectAtIndex(2));
+        float xp = -layer->getPositionX() / layer->getScale();
+        cast_function caster = make_cast<gd::GameObject, CCObject>();
+
+        for (int s = PLAYLAYER->sectionForPos(xp) - (5 / layer->getScale()); s < PLAYLAYER->sectionForPos(xp) + (6 / layer->getScale()); ++s) {
+            if (s < 0)
+                continue;
+            if (s >= PLAYLAYER->m_sectionObjects->count())
+                break;
+            auto section = static_cast<CCArray*>(PLAYLAYER->m_sectionObjects->objectAtIndex(s));
+            for (size_t i = 0; i < section->count(); ++i)
+            {
+                auto obj = static_cast<gd::GameObject*>(section->objectAtIndex(i));
+                if (obj) {
+                    if (obj->m_nObjectType == gd::kGameObjectTypeDecoration) continue;
+                    ObjectData data;
+                    data.tag = obj->m_uID;
+                    data.posX = obj->getPositionX();
+                    data.posY = obj->getPositionY();
+                    data.rotX = obj->getRotationX();
+                    data.rotY = obj->getRotationY();
+                    data.velX = obj->getSkewX();
+                    data.velY = obj->getSkewY();
+                    data.speed1 = obj->m_unk2F4;
+                    data.speed2 = obj->m_unk2F8;
+                    data.speed3 = obj->m_unk33C;
+                    data.speed4 = obj->m_unk340;
+                    data.speed5 = obj->m_unk390;
+
+                    data.m_bUnk3 = obj->m_bUnk3;
+                    data.m_bIsBlueMaybe = obj->m_bIsBlueMaybe;
+                    data.m_fUnk2 = obj->m_fUnk2;
+                    data.m_fUnk = obj->m_fUnk;
+                    data.m_fUnk3 = obj->m_fUnk3;
+                    data.m_fUnk4 = obj->m_fUnk4;
+                    data.m_bUnk = obj->m_bUnk;
+                    data.m_fAnimSpeed2 = obj->m_fAnimSpeed2;
+                    data.m_bIsEffectObject = obj->m_bIsEffectObject;
+                    data.m_bRandomisedAnimStart = obj->m_bRandomisedAnimStart;
+                    data.m_fAnimSpeed = obj->m_fAnimSpeed;
+                    data.m_bBlackChild = obj->m_bBlackChild;
+                    data.m_bUnkOutlineMaybe = obj->m_bUnkOutlineMaybe;
+                    data.m_fBlackChildOpacity = obj->m_fBlackChildOpacity;
+                    data.field_21C = obj->field_21C;
+                    data.m_bEditor = obj->m_bEditor;
+                    data.m_bGroupDisabled = obj->m_bGroupDisabled;
+                    data.m_bColourOnTop = obj->m_bColourOnTop;
+                    data.m_pMainColourMode = obj->m_pMainColourMode;
+                    data.m_pSecondaryColourMode = obj->m_pSecondaryColourMode;
+                    data.m_bCol1 = obj->m_bCol1;
+                    data.m_bCol2 = obj->m_bCol2;
+                    data.m_obStartPosOffset = obj->m_obStartPosOffset;
+                    data.m_fUnkRotationField = obj->m_fUnkRotationField;
+                    data.m_bTintTrigger = obj->m_bTintTrigger;
+                    data.m_bIsFlippedX = obj->m_bIsFlippedX;
+                    data.m_bIsFlippedY = obj->m_bIsFlippedY;
+                    data.m_obBoxOffset = obj->m_obBoxOffset;
+                    data.m_bIsOriented = obj->m_bIsOriented;
+                    data.m_obBoxOffset2 = obj->m_obBoxOffset2;
+                    data.m_pObjectOBB2D = obj->m_pObjectOBB2D;
+                    data.m_bOriented = obj->m_bOriented;
+                    data.m_pGlowSprite = obj->m_pGlowSprite;
+                    data.m_bNotEditor = obj->m_bNotEditor;
+                    data.m_pMyAction = obj->m_pMyAction;
+                    data.m_bUnk1 = obj->m_bUnk1;
+                    data.m_bRunActionWithTag = obj->m_bRunActionWithTag;
+                    data.m_bObjectPoweredOn = obj->m_bObjectPoweredOn;
+                    data.m_obObjectSize = obj->m_obObjectSize;
+                    data.m_bTrigger = obj->m_bTrigger;
+                    data.m_bActive = obj->m_bActive;
+                    data.m_bAnimationFinished = obj->m_bAnimationFinished;
+                    data.m_pParticleSystem = obj->m_pParticleSystem;
+                    data.m_sEffectPlistName = obj->m_sEffectPlistName;
+                    data.m_bParticleAdded = obj->m_bParticleAdded;
+                    data.m_bHasParticles = obj->m_bHasParticles;
+                    data.m_bUnkCustomRing = obj->m_bUnkCustomRing;
+                    data.m_obPortalPosition = obj->m_obPortalPosition;
+                    data.m_bUnkParticleSystem = obj->m_bUnkParticleSystem;
+                    data.m_obObjectTextureRect = obj->m_obObjectTextureRect;
+                    data.m_bTextureRectDirty = obj->m_bTextureRectDirty;
+                    data.m_fRectXCenterMaybe = obj->m_fRectXCenterMaybe;
+                    data.m_obObjectRect2 = obj->m_obObjectRect2;
+                    data.m_bIsObjectRectDirty = obj->m_bIsObjectRectDirty;
+                    data.m_bIsOrientedRectDirty = obj->m_bIsOrientedRectDirty;
+                    data.m_bHasBeenActivated = obj->m_bHasBeenActivated;
+                    data.m_bHasBeenActivatedP2 = obj->m_bHasBeenActivatedP2;
+
+                    data.m_objectRadius = obj->m_objectRadius;
+                    data.m_bIsRotatedSide = obj->m_bIsRotatedSide;
+                    data.m_unk2F4 = obj->m_unk2F4;
+                    data.m_unk2F8 = obj->m_unk2F8;
+                    data.m_nUniqueID = obj->m_nUniqueID;
+                    data.m_nObjectType = obj->m_nObjectType;
+                    data.m_nSection = obj->m_nSection;
+                    data.m_bTouchTriggered = obj->m_bTouchTriggered;
+                    data.m_bSpawnTriggered = obj->m_bSpawnTriggered;
+
+                    data.m_obStartPosition = obj->m_obStartPosition;
+                    data.m_sTextureName = obj->m_sTextureName;
+                    data.m_unk32C = obj->m_unk32C;
+                    data.m_unk32D = obj->m_unk32D;
+                    data.m_unk33C = obj->m_unk33C;
+                    data.m_unk340 = obj->m_unk340;
+                    data.m_bIsGlowDisabled = obj->m_bIsGlowDisabled;
+                    data.m_nTargetColorID = obj->m_nTargetColorID;
+                    data.m_fScale = obj->m_fScale;
+                    data.m_nObjectID = obj->m_nObjectID;
+                    data.m_unk368 = obj->m_unk368;
+                    data.m_unk369 = obj->m_unk369;
+                    data.m_unk36A = obj->m_unk36A;
+                    data.m_bIsDontEnter = obj->m_bIsDontEnter;
+                    data.m_bIsDontFade = obj->m_bIsDontFade;
+                    data.m_nDefaultZOrder = obj->m_nDefaultZOrder;
+                    data.m_unk38C = obj->m_unk38C;
+                    data.m_unk38D = obj->m_unk38D;
+                    data.m_unk38E = obj->m_unk38E;
+                    data.m_unk390 = obj->m_unk390;
+                    data.m_pBaseColor = obj->m_pBaseColor;
+                    data.m_pDetailColor = obj->m_pDetailColor;
+                    data.m_nDefaultZLayer = obj->m_nDefaultZLayer;
+                    data.m_nZLayer = obj->m_nZLayer;
+                    data.m_nGameZOrder = obj->m_nGameZOrder;
+                    data.m_unk3C0 = obj->m_unk3C0;
+                    data.m_bShowGamemodeBorders = obj->m_bShowGamemodeBorders;
+                    data.m_unk3D9 = obj->m_unk3D9;
+                    data.m_bIsSelected = obj->m_bIsSelected;
+                    data.m_nGlobalClickCounter = obj->m_nGlobalClickCounter;
+                    data.m_bUnknownLayerRelated = obj->m_bUnknownLayerRelated;
+                    data.m_fMultiScaleMultiplier = obj->m_fMultiScaleMultiplier;
+                    data.m_bIsGroupParent = obj->m_bIsGroupParent;
+                    data.m_pGroups = obj->m_pGroups;
+                    data.m_nGroupCount = obj->m_nGroupCount;
+                    data.m_nEditorLayer = obj->m_nEditorLayer;
+                    data.m_nEditorLayer2 = obj->m_nEditorLayer2;
+                    data.m_unk414 = obj->m_unk414;
+                    data.m_obFirstPosition = obj->m_obFirstPosition;
+                    data.m_bHighDetail = obj->m_bHighDetail;
+                    data.m_pColorActionSprite1 = obj->m_pColorActionSprite1;
+                    data.m_pColorActionSprite2 = obj->m_pColorActionSprite2;
+                    data.m_pEffectManager = obj->m_pEffectManager;
+
+                    childData[data.tag] = data;
+                }
+            }
+        }
+    }
+
+    /*cast_function caster = make_cast<gd::GameObject, CCObject>();
     CCObject* it = NULL;
     CCARRAY_FOREACH(children, it)
     {
@@ -1083,7 +1422,7 @@ int __fastcall Hooks::createCheckpoint_h(gd::PlayLayer* self) {
             data.speed5 = child->m_unk390;
             childData[data.tag] = data;
         }
-    }
+    }*/
 
     logic.save_checkpoint({ logic.get_frame(), checkpointData1, checkpointData2, logic.activated_objects.size(), logic.activated_objects_p2.size(), childData, logic.calculated_xpos });
 

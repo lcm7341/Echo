@@ -505,15 +505,14 @@ void GUI::ui_editor() {
 		//ImGui::PopItemWidth();
 
 		float tabWidth = ImGui::GetWindowContentRegionWidth() / 3.0f;
-		ImGui::SetNextItemWidth(tabWidth);
 		if (ImGui::BeginTabBar("##tabs", ImGuiTabBarFlags_None))
 		{
 
 			if (ImGui::BeginTabItem("Sizes"))
 			{
 
-				ImGui::SetNextWindowSizeConstraints(ImVec2(-1, 350 * io.FontGlobalScale * 2), ImVec2(-1, 350 * io.FontGlobalScale * 2));
-				ImGui::BeginChild("###sizesChild", ImVec2(-1, 350 * io.FontGlobalScale * 2), true, ImGuiWindowFlags_AlwaysAutoResize);
+				//ImGui::SetNextWindowSizeConstraints(ImVec2(-1, 350 * io.FontGlobalScale * 2), ImVec2(-1, 350 * io.FontGlobalScale * 2));
+				ImGui::BeginChild("##sizes", ImVec2(-1, 350 * io.FontGlobalScale * 2), true, ImGuiWindowFlags_AlwaysAutoResize);
 				ImGui::Text("Main");
 				ImGui::PushItemWidth(200);
 				ImGui::SliderFloat2("WindowPadding", (float*)&style.WindowPadding, 0.0f, 20.0f, "%.0f");
@@ -585,15 +584,15 @@ void GUI::ui_editor() {
 					ImGui::PopID();
 				}
 
-				style.Colors[ImGuiCol_ModalWindowDimBg] = popup_bg_color;
+				//style.Colors[ImGuiCol_ModalWindowDimBg] = popup_bg_color;
 
-				if (filter.PassFilter("PopupBg")) {
+				/*if (filter.PassFilter("PopupBg")) {
 					ImGui::PushID(1000);
 					MyColorPicker(popup_bg_color, "PopupBg");
 					ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
 					ImGui::TextUnformatted("PopupBg");
 					ImGui::PopID();
-				}
+				}*/
 
 				for (int i = 0; i < ImGuiCol_COUNT; i++)
 				{
@@ -1509,7 +1508,7 @@ void GUI::tools() {
 		}
 		CHECK_KEYBIND("practiceHack");
 
-		ImGui::SameLine(0, docked ? 46 : -1);
+		ImGui::SameLine(0, docked ? 35 : -1);
 
 		bool noEscActivated = noEscape.isActivated();
 		if (ImGui::Checkbox("Ignore Escape", &noEscActivated)) {
@@ -2246,6 +2245,10 @@ void GUI::main() {
 
 		ImGui::SameLine();
 
+		HelpMarker("To set only the Display FPS, set the FPS while recording or playing a replay.");
+
+		ImGui::SameLine();
+
 		float speed = logic.speedhack;
 
 		ImGui::PushItemWidth(150);
@@ -2629,9 +2632,8 @@ void GUI::main() {
 
 		if (docked)
 			ImGui::EndTabItem();
-		else {
+		else
 			ImGui::End();
-		}
 	
 	}
 }

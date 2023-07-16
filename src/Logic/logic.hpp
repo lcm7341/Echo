@@ -65,6 +65,116 @@ struct ObjectData {
 	float speed3; // m_unk33C
 	float speed4; // m_unk340
 	float speed5; // m_unk390
+
+	bool m_bUnk3;
+	bool m_bIsBlueMaybe;
+	float m_fUnk2;
+	float m_fUnk;
+	float m_fUnk3;
+	float m_fUnk4;
+	bool m_bUnk;
+	float m_fAnimSpeed2;
+	bool m_bIsEffectObject;
+	bool m_bRandomisedAnimStart;
+	float m_fAnimSpeed;
+	bool m_bBlackChild;
+	bool m_bUnkOutlineMaybe;
+	float m_fBlackChildOpacity;
+	bool field_21C;
+	bool m_bEditor;
+	bool m_bGroupDisabled;
+	bool m_bColourOnTop;
+	gd::GJSpriteColor* m_pMainColourMode;
+	gd::GJSpriteColor* m_pSecondaryColourMode;
+	bool m_bCol1;
+	bool m_bCol2;
+	cocos2d::CCPoint m_obStartPosOffset;
+	float m_fUnkRotationField;
+	bool m_bTintTrigger;
+	bool m_bIsFlippedX;
+	bool m_bIsFlippedY;
+	cocos2d::CCPoint m_obBoxOffset;
+	bool m_bIsOriented;
+	cocos2d::CCPoint m_obBoxOffset2;
+	gd::OBB2D* m_pObjectOBB2D;
+	bool m_bOriented;
+	cocos2d::CCSprite* m_pGlowSprite;
+	bool m_bNotEditor;
+	cocos2d::CCAction* m_pMyAction;
+	bool m_bUnk1;
+	bool m_bRunActionWithTag;
+	bool m_bObjectPoweredOn;
+	cocos2d::CCSize m_obObjectSize;
+	bool m_bTrigger;
+	bool m_bActive;
+	bool m_bAnimationFinished;
+	cocos2d::CCParticleSystemQuad* m_pParticleSystem;
+	std::string m_sEffectPlistName;
+	bool m_bParticleAdded;
+	bool m_bHasParticles;
+	bool m_bUnkCustomRing;
+	cocos2d::CCPoint m_obPortalPosition;
+	bool m_bUnkParticleSystem;
+	cocos2d::CCRect m_obObjectTextureRect;
+	bool m_bTextureRectDirty;
+	float m_fRectXCenterMaybe;
+	cocos2d::CCRect m_obObjectRect2;
+	bool m_bIsObjectRectDirty;
+	bool m_bIsOrientedRectDirty;
+	bool m_bHasBeenActivated;
+	bool m_bHasBeenActivatedP2;
+	float m_objectRadius; //0x2ec
+	bool m_bIsRotatedSide; //0x2F0 for 90 and 270 degrees rotations
+	float m_unk2F4;
+	float m_unk2F8;
+	int m_nUniqueID; //0x2FC
+	gd::GameObjectType m_nObjectType; //0x300
+	int m_nSection; //0x304
+	bool m_bTouchTriggered; //0x308
+	bool m_bSpawnTriggered; //0x309
+	cocos2d::CCPoint m_obStartPosition; //0x30C
+	std::string m_sTextureName; //0x314
+	bool m_unk32C;
+	bool m_unk32D;
+	float m_unk33C;
+	float m_unk340;
+	bool m_bIsGlowDisabled; //0x354
+	int m_nTargetColorID;	// 0x358 (for color triggers)
+	float m_fScale; //0x35C
+	int m_nObjectID; //0x360
+	bool m_unk368;
+	bool m_unk369;
+	bool m_unk36A;
+	bool m_bIsDontEnter; //0x36B
+	bool m_bIsDontFade; //0x36C
+	int m_nDefaultZOrder; // 0x370
+	bool m_unk38C;
+	bool m_unk38D;
+	bool m_unk38E;
+	float m_unk390;
+	gd::GJSpriteColor* m_pBaseColor; //0x3A8
+	gd::GJSpriteColor* m_pDetailColor; //0x3AC
+	gd::ZLayer m_nDefaultZLayer; // 0x03B4
+	gd::ZLayer m_nZLayer; //0x3B8
+	int m_nGameZOrder; //0x3BC
+	std::string m_unk3C0;
+	bool m_bShowGamemodeBorders;
+	bool m_unk3D9;
+	bool m_bIsSelected; //0x3DA
+	int m_nGlobalClickCounter; //0x3DC i have no idea what this is for
+	bool m_bUnknownLayerRelated;	// 0x3e8
+	float m_fMultiScaleMultiplier;	// 0x3ec
+	bool m_bIsGroupParent; //0x3F0
+	short* m_pGroups; //0x3F4
+	short m_nGroupCount; //0x3F8
+	int m_nEditorLayer; //0x40C
+	int m_nEditorLayer2; //0x410
+	int m_unk414;
+	cocos2d::CCPoint m_obFirstPosition; //0x424 first position from when its placed in the editor
+	bool m_bHighDetail; //0x448
+	gd::ColorActionSprite* m_pColorActionSprite1; //0x44C
+	gd::ColorActionSprite* m_pColorActionSprite2; //0x450
+	gd::GJEffectManager* m_pEffectManager; //0x454
 };
 
 #define PLAYER_FIELDS \
