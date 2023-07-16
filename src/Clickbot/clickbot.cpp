@@ -8,6 +8,28 @@
 
 namespace fs = std::filesystem;
 
+std::string convertToCamelCase(const std::string& input) {
+    std::stringstream ss;
+    bool capitalizeNext = false;
+
+    for (char c : input) {
+        if (c == '_') {
+            capitalizeNext = true;
+        }
+        else {
+            if (capitalizeNext) {
+                ss << static_cast<char>(toupper(c));
+                capitalizeNext = false;
+            }
+            else {
+                ss << c;
+            }
+        }
+    }
+
+    return ss.str();
+}
+
 namespace Clickbot
 {
     std::string pickRandomFile(std::string path, std::string folder)
@@ -15,6 +37,7 @@ namespace Clickbot
         std::vector<std::string> clicks;
         std::vector<std::string> out;
         std::string path2 = ".echo\\clickpacks\\" + path + "\\" + folder;
+        if (!fs::is_directory(path2)) path2 = ".echo\\clickpacks\\" + path + "\\" + convertToCamelCase(folder);
         try
         {
             for (const auto& entry : std::filesystem::directory_iterator(path2))

@@ -7,6 +7,7 @@
 #include <cmath>      // for std::abs
 #include <random>
 #include <cctype>
+#include <regex>
 
 using json = nlohmann::json;
 
@@ -406,11 +407,43 @@ void Logic::set_replay_pos(unsigned idx) {
 #define w_b(var) file.write(reinterpret_cast<char*>(&var), sizeof(var));
 #define r_b(var) file.read(reinterpret_cast<char*>(&var), sizeof(var));
 
-void Logic::write_file(const std::string& filename) {
+std::pair<std::string, std::string> generateNewFileName(const std::string& fileName, std::string ext) {
     std::string dir = ".echo\\";
-    std::string ext = ".echo";
+    std::string baseName = fs::path(fileName).stem().string();
+    std::string extension = fs::path(fileName).extension().string();
 
-    std::string full_filename = dir + filename + ext;
+    std::string newFileName = dir + baseName + ext;
+    int count = 1;
+
+    size_t underscorePos = newFileName.find_last_of('_');
+    if (underscorePos != std::string::npos) {
+        std::string suffix = newFileName.substr(underscorePos + 1);
+        try {
+            count = std::stoi(suffix) + 1;
+            newFileName.erase(underscorePos); // Remove the existing suffix
+            newFileName = newFileName + "_" + std::to_string(count) + ext;
+        }
+        catch (std::invalid_argument&) {
+            // ignore and just use the default count value of 1
+        }
+    }
+
+    while (fs::exists(newFileName)) {
+        newFileName = dir + baseName + "_" + std::to_string(count) + ext;
+        count++;
+    }
+
+    return {newFileName, fs::path(newFileName).stem().string()};
+}
+
+void Logic::write_file(const std::string& filename) {
+    std::string ext = ".echo";
+    std::string base = filename;
+    auto newFileName = generateNewFileName(base, ext);
+
+    std::string full_filename = newFileName.first;
+    std::string newBase = newFileName.second;
+    strcpy(macro_name, newBase.c_str());
 
     std::ofstream file(full_filename, std::ios::binary);
     if (!file.is_open()) {
@@ -562,10 +595,14 @@ void Logic::remove_inputs(unsigned frame, bool player_1) {
 }
 
 void Logic::write_file_json(const std::string& filename) {
-    std::string dir = ".echo\\";
     std::string ext = ".echo.json";
+    std::string base = filename;
 
-    std::string full_filename = dir + filename + ext;
+    auto newFileName = generateNewFileName(base, ext);
+
+    std::string full_filename = newFileName.first;
+    std::string newBase = newFileName.second;
+    strcpy(macro_name, newBase.c_str());
 
     std::ofstream file(full_filename);
     if (!file.is_open()) {

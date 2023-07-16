@@ -278,6 +278,7 @@ public:
 	bool clickbot_enabled = false;
 	float player_1_volume = 1.f;
 	float player_2_volume = 1.f;
+	float clickbot_volume_multiplier = 1.f;
 
 	std::string player_1_path;
 	std::string player_2_path;
@@ -375,7 +376,10 @@ public:
 	bool show_percent = true;
 	int percent_accuracy = 1;
 	bool show_time = false;
-	bool show_recording = false;
+	bool show_recording = true;
+
+	double clickbot_start, clickbot_now;
+	double cycleTime;
 
 	float end_portal_position = 0;
 	float max_cps = 15;

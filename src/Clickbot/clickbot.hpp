@@ -8,8 +8,6 @@ namespace Clickbot
     std::string pickRandomFile(std::string path, std::string folder);
 
     static bool inited = false;
-    static std::chrono::system_clock::time_point start, now;
-    static std::chrono::duration<double> cycleTime;
 
     static FMOD::System* system;
     static FMOD::Channel* clickChannel;

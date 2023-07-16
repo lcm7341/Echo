@@ -14,6 +14,8 @@
 #include <exception>
 #include <cstdlib>
 #include <stdexcept>
+#include "Logic/convertible.h";
+#include "Logic/Conversions/tasbot.h"
 
 using json = nlohmann::json;
 
@@ -111,22 +113,36 @@ void writeConfig() {
 
 	j["file_dialog"] = logic.file_dialog;
 
+	j["show_recording"] = logic.show_recording;
+	j["recording_label_x"] = logic.recording_label_x;
+	j["recording_label_y"] = logic.recording_label_y;
+	j["recording_label_scale"] = logic.recording_label_scale;
+	j["recording_label_opacity"] = logic.recording_label_opacity;
+
+	j["show_frame"] = logic.show_frame;
 	j["frame_counter_x"] = logic.frame_counter_x;
 	j["frame_counter_y"] = logic.frame_counter_y;
+	j["frame_counter_scale"] = logic.frame_counter_scale;
+	j["frame_counter_opacity"] = logic.frame_counter_opacity;
 
+	j["show_cps"] = logic.show_cps;
 	j["cps_counter_x"] = logic.cps_counter_x;
 	j["cps_counter_y"] = logic.cps_counter_y;
+	j["cps_counter_scale"] = logic.cps_counter_scale;
+	j["cps_counter_opacity"] = logic.cps_counter_opacity;
 
 	j["show_percent"] = logic.show_percent;
 	j["percent_counter_x"] = logic.percent_counter_x;
 	j["percent_counter_y"] = logic.percent_counter_y;
 	j["percent_accuracy"] = logic.percent_accuracy;
 	j["percent_scale"] = logic.percent_scale;
+	j["percent_opacity"] = logic.percent_opacity;
 
 	j["show_time"] = logic.show_time;
 	j["time_counter_x"] = logic.time_counter_x;
 	j["time_counter_y"] = logic.time_counter_y;
 	j["time_scale"] = logic.time_scale;
+	j["time_opacity"] = logic.time_opacity;
 
 	j["ssb_fix"] = recorder.ssb_fix;
 	j["color_fix"] = recorder.color_fix;
@@ -236,22 +252,36 @@ void readConfig() {
 
 	logic.file_dialog = getOrDefault(j, "file_dialog", false);
 
+	logic.show_frame = getOrDefault(j, "show_frame", false);
 	logic.frame_counter_x = getOrDefault(j, "frame_counter_x", 50);
 	logic.frame_counter_y = getOrDefault(j, "frame_counter_y", 50);
+	logic.frame_counter_opacity = getOrDefault(j, "frame_counter_opacity", 40);
+	logic.frame_counter_scale = getOrDefault(j, "frame_counter_scale", 0.4);
 
+	logic.show_recording = getOrDefault(j, "show_recording", false);
+	logic.recording_label_x = getOrDefault(j, "recording_label_x", 50);
+	logic.recording_label_y = getOrDefault(j, "recording_label_y", 50);
+	logic.recording_label_opacity = getOrDefault(j, "recording_label_opacity", 40);
+	logic.recording_label_scale = getOrDefault(j, "recording_label_scale", 0.4);
+
+	logic.show_cps = getOrDefault(j, "show_cps", false);
 	logic.cps_counter_x = getOrDefault(j, "cps_counter_x", 30);
 	logic.cps_counter_y = getOrDefault(j, "cps_counter_y", 20);
+	logic.cps_counter_opacity = getOrDefault(j, "cps_counter_opacity", 40);
+	logic.cps_counter_scale = getOrDefault(j, "cps_counter_scale", 0.4);
 
 	logic.show_percent = getOrDefault(j, "show_percent", false);
 	logic.percent_counter_x = getOrDefault(j, "percent_counter_x", 5);
 	logic.percent_counter_y = getOrDefault(j, "percent_counter_y", 315);
 	logic.percent_accuracy = getOrDefault(j, "percent_accuracy", 1);
 	logic.percent_scale = getOrDefault(j, "percent_scale", 0.4);
+	logic.percent_opacity = getOrDefault(j, "percent_opacity", 40);
 
 	logic.time_counter_x = getOrDefault(j, "time_counter_x", 5);
 	logic.time_counter_y = getOrDefault(j, "time_counter_y", 302.5);
 	logic.time_scale = getOrDefault(j, "time_scale", 0.4);
 	logic.show_time = getOrDefault(j, "show_time", false);
+	logic.time_opacity = getOrDefault(j, "time_opacity", 40);
 
 	recorder.ssb_fix = getOrDefault(j, "ssb_fix", true);
 	recorder.color_fix = getOrDefault(j, "color_fix", true);
@@ -335,6 +365,16 @@ void terminationHandler()
 	}
 }
 
+bool isDirectoryEmpty(const std::string& path) {
+	if (!fs::is_directory(path)) {
+		std::cerr << "Error: Not a directory." << std::endl;
+		return false;
+	}
+
+	fs::directory_iterator dirIter(path);
+	return fs::begin(dirIter) == fs::end(dirIter);
+}
+
 DWORD WINAPI my_thread(void* hModule) {
 
 	MH_Initialize();
@@ -365,20 +405,44 @@ DWORD WINAPI my_thread(void* hModule) {
 		".echo/themes",
 		".echo/osu",
 		".echo/clickpacks",
-		".echo/clickpacks/format",
-		".echo/clickpacks/format/clicks",
-		".echo/clickpacks/format/releases",
-		".echo/clickpacks/format/soft_clicks",
-		".echo/clickpacks/format/soft_releases",
-		".echo/clickpacks/format/hard_clicks",
-		".echo/clickpacks/format/hard_releases",
-		".echo/clickpacks/format/micro_clicks",
-		".echo/clickpacks/format/micro_releases",
 	};
+
+	std::vector<std::string> clickbot_paths = {
+		".echo/clickpacks/example",
+		".echo/clickpacks/example/clicks",
+		".echo/clickpacks/example/releases",
+		".echo/clickpacks/example/soft_clicks",
+		".echo/clickpacks/example/soft_releases",
+		".echo/clickpacks/example/hard_clicks",
+		".echo/clickpacks/example/hard_releases",
+		".echo/clickpacks/example/micro_clicks",
+		".echo/clickpacks/example/micro_releases",
+	};
+
+	/*std::string directoryPath = ".tasbot/macro";
+
+	std::map<std::string, std::shared_ptr<Convertible>> options = {
+	{"TASBot", std::make_shared<TASBot>()}
+	};
+
+	for (const auto& entry : fs::directory_iterator(directoryPath)) {
+		if (entry.is_regular_file()) {
+			options["TASBot"]->import(entry.path().string());
+			Logic::get().sort_inputs();
+			Logic::get().write_file(entry.path().stem().string());
+			Logic::get().inputs.clear();
+		}
+	}*/
 
 	try {
 		for (auto& path : paths) {
 			std::filesystem::create_directory(path);
+		}
+
+		if (isDirectoryEmpty(".echo/clickpacks")) {
+			for (auto& path : clickbot_paths) {
+				std::filesystem::create_directory(path);
+			}
 		}
 
 		// Specify the directory path

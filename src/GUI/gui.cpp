@@ -1318,7 +1318,27 @@ void GUI::tools() {
 			}
 		}
 
-		ImGui::Checkbox("Auto-Export to Bot Location", &logic.export_to_bot_location);
+		ImGui::Checkbox("Auto-Export to Location", &logic.export_to_bot_location); ImGui::SameLine();
+
+		if (ImGui::Button("Batch Import")) {
+			auto& old_inputs = logic.inputs;
+			for (const auto& entry : fs::directory_iterator(options[current_option]->get_directory())) {
+				try {
+					if (entry.is_regular_file() && options[current_option]->get_type_filter().find(entry.path().extension().string()) != std::string::npos) {
+						options[current_option]->import(entry.path().string());
+						Logic::get().sort_inputs();
+						Logic::get().write_file(entry.path().stem().string());
+						Logic::get().inputs.clear();
+					}
+				}
+				catch (std::exception& e) {
+					logic.conversion_message = e.what();
+				}
+			}
+			logic.inputs = old_inputs;
+		} ImGui::SameLine();
+
+		HelpMarker("Batch Import is a tool that allows you to automatically convert every macro of a certain type (e.g. TASBot, MHR) to Echo.\nThis converts all the files of that type to an Echo file in the .echo folder immediately.\nThis feature does prevent overwriting old macros.");
 
 		if (ImGuiFileDialog::Instance()->Display("ConversionImport", ImGuiWindowFlags_NoCollapse, ImVec2(500, 200)))
 		{
@@ -1699,9 +1719,6 @@ void GUI::clickbot() {
 
 		ImGui::Checkbox("Enabled###enable_clickbot", &logic.clickbot_enabled);
 
-		if (!logic.clickbot_enabled)
-			ImGui::BeginDisabled();
-
 		const char* player_options[] = { "Settings For Player 1", "Settings For Player 2" };
 
 		ImGui::SameLine();
@@ -1815,26 +1832,34 @@ void GUI::clickbot() {
 				ImGui::EndTabItem();
 			}
 			if (ImGui::BeginTabItem("Volume", nullptr)) {
+				ImGui::PushItemWidth(200);
+				ImGui::DragFloat("Volume Multiplier", &logic.clickbot_volume_multiplier, 0.01, 0, 100, "%.1f");
+				ImGui::PopItemWidth();
+
 				if (selected_clickbot_player == 0) {
-					ImGui::PushItemWidth(200);
-					ImGui::DragFloat("Soft Clicks###soft_clicks_vol_p1", &logic.player_1_softs_volume, 0.01, 0, 500);
+					ImGui::PushItemWidth(125);
 
-					ImGui::DragFloat("Regular Clicks###reg_clicks_vol_p1", &logic.player_1_volume, 0.01, 0, 500);
+					ImGui::DragFloat("Soft Clicks###soft_clicks_vol_p1", &logic.player_1_softs_volume, 0.01, 0, 500, "%.1f");
+					ImGui::SameLine();
+					ImGui::DragFloat("Hard Clicks###hard_clicks_vol_p1", &logic.player_1_hards_volume, 0.01, 0, 500, "%.1f");
 
-					ImGui::DragFloat("Hard Clicks###hard_clicks_vol_p1", &logic.player_1_hards_volume, 0.01, 0, 500);
+					ImGui::DragFloat("Micro Clicks###micro_clicks_vol_p1", &logic.player_1_micros_volume, 0.01, 0, 500, "%.1f");
+					ImGui::SameLine();
+					ImGui::DragFloat("Regular Clicks###reg_clicks_vol_p1", &logic.player_1_volume, 0.01, 0, 500, "%.1f");
 
-					ImGui::DragFloat("Micro Clicks###micro_clicks_vol_p1", &logic.player_1_micros_volume, 0.01, 0, 500);
 					ImGui::PopItemWidth();
 				}
 				else {
-					ImGui::PushItemWidth(200);
-					ImGui::DragFloat("Soft Clicks###soft_clicks_vol_p2", &logic.player_2_softs_volume, 0.01, 0, 500);
+					ImGui::PushItemWidth(125);
 
-					ImGui::DragFloat("Regular Clicks###reg_clicks_vol_p2", &logic.player_2_volume, 0.01, 0, 500);
+					ImGui::DragFloat("Soft Clicks###soft_clicks_vol_p2", &logic.player_2_softs_volume, 0.01, 0, 500, "%.1f");
+					ImGui::SameLine();
+					ImGui::DragFloat("Hard Clicks###hard_clicks_vol_p2", &logic.player_2_hards_volume, 0.01, 0, 500, "%.1f");
 
-					ImGui::DragFloat("Hard Clicks###hard_clicks_vol_p2", &logic.player_2_hards_volume, 0.01, 0, 500);
+					ImGui::DragFloat("Micro Clicks###micro_clicks_vol_p2", &logic.player_2_micros_volume, 0.01, 0, 500, "%.1f");
+					ImGui::SameLine();
+					ImGui::DragFloat("Regular Clicks###reg_clicks_vol_p2", &logic.player_2_volume, 0.01, 0, 500, "%.1f");
 
-					ImGui::DragFloat("Micro Clicks###micro_clicks_vol_p2", &logic.player_2_micros_volume, 0.01, 0, 500);
 					ImGui::PopItemWidth();
 				}
 				ImGui::EndTabItem();
@@ -1842,46 +1867,55 @@ void GUI::clickbot() {
 			if (ImGui::BeginTabItem("Times", nullptr)) {
 
 				if (selected_clickbot_player == 0) {
+					ImGui::DragInt("Micro Clicks Time###micro_clicks_time_p1", &logic.player_1_micros_time, 0.1, 1);
+					ImGui::DragFloat("Soft Clicks Time###soft_clicks_time_p1", &logic.player_1_softs_time, 0.1, 0.01, 10000, "%.0f");
+					ImGui::DragFloat("Hard Clicks Time###hard_clicks_time_p1", &logic.player_1_hards_time, 0.01, 0.01);
+
+					ImGui::Separator();
+
 					ImGui::Text("Micro Times:");
 					ImGui::SameLine();
-					ImGui::Text("0 to %i", logic.player_1_micros_time);
+					ImGui::Text("0 to %ims", logic.player_1_micros_time);
 
 					ImGui::Text("Soft Times:");
 					ImGui::SameLine();
-					ImGui::Text("%i to %.3f", logic.player_1_micros_time, logic.player_1_softs_time);
+					ImGui::Text("%ims to %.3fms", logic.player_1_micros_time, logic.player_1_softs_time);
 
 					ImGui::Text("Regular Times:");
 					ImGui::SameLine();
-					ImGui::Text("%.3f to %.3f", logic.player_1_softs_time, logic.player_1_hards_time);
+					ImGui::Text("%.3fms to %.3fs", logic.player_1_softs_time, logic.player_1_hards_time);
 
 					ImGui::Text("Hard Times:");
 					ImGui::SameLine();
-					ImGui::Text("%.3f and up", logic.player_1_hards_time);
+					ImGui::Text("%.3fs and up", logic.player_1_hards_time);
 				}
 				else {
+					ImGui::DragInt("Micro Clicks Time###micro_clicks_time_p2", &logic.player_2_micros_time, 0.1, 1);
+					ImGui::DragFloat("Soft Clicks Time###soft_clicks_time_p2", &logic.player_2_softs_time, 0.1, 0.01, 10000, "%.0f");
+					ImGui::DragFloat("Hard Clicks Time###hard_clicks_time_p2", &logic.player_2_hards_time, 0.01, 0.01);
+
+					ImGui::Separator();
+
 					ImGui::Text("Micro Times:");
 					ImGui::SameLine();
-					ImGui::Text("0 to %i", logic.player_2_micros_time);
+					ImGui::Text("0 to %ims", logic.player_2_micros_time);
 
 					ImGui::Text("Soft Times:");
 					ImGui::SameLine();
-					ImGui::Text("%i to %.3f", logic.player_2_micros_time, logic.player_2_softs_time);
+					ImGui::Text("%ims to %.3fms", logic.player_2_micros_time, logic.player_2_softs_time);
 
 					ImGui::Text("Regular Times:");
 					ImGui::SameLine();
-					ImGui::Text("%.3f to %.3f", logic.player_2_softs_time, logic.player_2_hards_time);
+					ImGui::Text("%.3fms to %.3fs", logic.player_2_softs_time, logic.player_2_hards_time);
 
 					ImGui::Text("Hard Times:");
 					ImGui::SameLine();
-					ImGui::Text("%.3f and up", logic.player_2_hards_time);
+					ImGui::Text("%.3fs and up", logic.player_2_hards_time);
 				}
 				ImGui::EndTabItem();
 			}
 			ImGui::EndTabBar();
 		}
-
-		if (!logic.clickbot_enabled)
-			ImGui::EndDisabled();
 
 		if (docked)
 			ImGui::EndTabItem();
@@ -2424,6 +2458,7 @@ void GUI::main() {
 			ImGui::EndChild();
 			ImGui::Separator();
 
+			ImGui::BeginChild("PercentLabel", ImVec2(0, 125), false, ImGuiWindowFlags_AlwaysUseWindowPadding);
 			ImGui::Checkbox("Show Percent", &logic.show_percent);
 
 			CHECK_KEYBIND("showPercent");
@@ -2436,6 +2471,8 @@ void GUI::main() {
 			ImGui::DragFloat("Y###percent_y", &logic.percent_counter_y, 1);
 			ImGui::PopItemWidth();
 
+			ImGui::SameLine();
+
 			ImGui::PushItemWidth(150);
 			ImGui::InputInt("Accuracy###percent_acc", &logic.percent_accuracy, 1, 2);
 			ImGui::PopItemWidth();
@@ -2444,9 +2481,12 @@ void GUI::main() {
 			ImGui::DragFloat("Scale###percent_scale", &logic.percent_scale, 0.01, 10);
 			ImGui::PopItemWidth();
 
+			ImGui::SameLine();
+
 			ImGui::PushItemWidth(150);
 			ImGui::DragFloat("Opacity###percent_opacity", &logic.percent_opacity, 0.1, 0, 100);
 			ImGui::PopItemWidth();
+			ImGui::EndChild();
 
 			ImGui::EndPopup();
 		}
@@ -2554,6 +2594,7 @@ void GUI::main() {
 
 
 				std::string suffix = ".json";
+				logic.get_inputs().clear();
 				if (filePathName.size() >= suffix.size() && filePathName.rfind(suffix) == (filePathName.size() - suffix.size()))
 					logic.read_file_json(filePathName, true);
 				else
