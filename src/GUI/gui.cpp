@@ -805,6 +805,7 @@ void GUI::editor() {
 			}
 		}
 		else {
+			selectedInput = -1;
 			ImGui::Text("No Inputs");
 		}
 
@@ -2018,6 +2019,7 @@ void GUI::show_keybind_prompt(const std::string& buttonName) {
 	}
 }
 
+
 void GUI::main() {
 	auto& logic = Logic::get();
 	const ImVec2 buttonSize = { get_width(48), 0 };
@@ -2597,7 +2599,7 @@ void GUI::main() {
 
 
 				std::string suffix = ".json";
-				logic.get_inputs().clear();
+				logic.inputs.clear();
 				if (filePathName.size() >= suffix.size() && filePathName.rfind(suffix) == (filePathName.size() - suffix.size()))
 					logic.read_file_json(filePathName, true);
 				else

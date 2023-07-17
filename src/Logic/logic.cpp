@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <nlohmann/json.hpp>
 #include <fstream>
-#include <algorithm>  // for std::sort and std::min_element
+#include <algorithm>  // for std::sort and min_element
 #include <cmath>      // for std::abs
 #include <random>
 #include <cctype>
@@ -523,8 +523,7 @@ void Logic::read_file(const std::string& filename, bool is_path = false) {
     if (is_recording()) toggle_recording();
     if (!is_playing()) toggle_playing();
 
-    if (!is_path)
-        inputs.clear();
+    inputs.clear();
 
 
     if (file_format == "DEBUG") {
