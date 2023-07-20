@@ -41,6 +41,8 @@ public:
 
 	float input_fps = 60.f;
 
+	char inputTextBuffer[4096]; // Buffer to hold the user input
+
 	int offset_frames = 0;
 
 	float scheduler_dt = 60.f;

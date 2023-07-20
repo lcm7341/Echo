@@ -685,6 +685,51 @@ void GUI::ui_editor() {
 	}
 }
 
+bool compareInputVectors(const std::vector<Frame>& v1, const std::vector<Frame>& v2) {
+	if (v1.size() != v2.size()) {
+		return false; // Vectors have different sizes, they are not equal
+	}
+
+	for (size_t i = 0; i < v1.size(); i++) {
+		// Compare each element of the vectors
+		if (v1[i].number != v2[i].number ||
+			v1[i].pressingDown != v2[i].pressingDown ||
+			v1[i].isPlayer2 != v2[i].isPlayer2) {
+			return false; // Elements are different, vectors are not equal
+		}
+	}
+
+	return true; // All elements are equal, vectors are equal
+}
+
+std::string getOrdinalSuffix(int number) {
+	std::string suffix;
+	int lastDigit = number % 10;
+	int secondLastDigit = (number / 10) % 10;
+
+	if (number <= 0) {
+		return "No";
+	}
+
+	// Check for special cases where the suffix is "th"
+	if (secondLastDigit == 1 || lastDigit > 3 || lastDigit == 0) {
+		suffix = "th";
+	}
+	else if (lastDigit == 1) {
+		suffix = "st";
+	}
+	else if (lastDigit == 2) {
+		suffix = "nd";
+	}
+	else if (lastDigit == 3) {
+		suffix = "rd";
+	}
+
+	// Append the suffix to the number
+	std::string result = std::to_string(number) + suffix;
+	return result;
+}
+
 void GUI::editor() {
 	auto& logic = Logic::get();
 
@@ -695,11 +740,19 @@ void GUI::editor() {
 
 	const float editAreaHeight = 150.0f;
 
+	static bool plaintext_editing = false;
+
 	float tabWidth = ImGui::GetWindowContentRegionWidth() / 6.0f;
 	if (docked)
 		ImGui::SetNextItemWidth(tabWidth);
 
 	if (ImGui::BeginTabItem("Editor") || !docked) {
+		std::stringstream ss;
+		ss << logic.fps << "\n";
+		for (unsigned i = 0; i < inputs.size(); i++) {
+			ss << inputs[i].number << " " << inputs[i].pressingDown << " " << inputs[i].isPlayer2;
+			if (i != inputs.size() - 1) ss << "\n";
+		}
 
 		if (!docked) {
 			ImGui::SetNextWindowSizeConstraints(ImVec2(450 * ImGui::GetIO().FontGlobalScale * 2, 415 * ImGui::GetIO().FontGlobalScale * 2), ImVec2(550 * ImGui::GetIO().FontGlobalScale * 2, 515 * ImGui::GetIO().FontGlobalScale * 2));
@@ -710,31 +763,23 @@ void GUI::editor() {
 		float firstChildHeight = 300;
 
 		std::string inputs_area_text = "Inputs";
-		float inputs_area_text_width = ImGui::CalcTextSize(inputs_area_text.c_str()).x;
+		float halved_region_width = ImGui::GetWindowContentRegionWidth() * 0.5;
+		float quarter_region_width = halved_region_width / 2.f;
+		float inputs_area_text_width = quarter_region_width - (ImGui::CalcTextSize(inputs_area_text.c_str()).x / 2.f);
 
-		ImGui::SetCursorPosX((inputs_area_text_width + 55));
+		ImGui::SetCursorPosX(inputs_area_text_width + ImGui::GetStyle().ItemSpacing.x);
 
 		ImGui::Text("Inputs"); ImGui::SameLine();
 
 		std::string edit_area_text = "Edit Area";
-		float edit_area_text_width = ImGui::CalcTextSize(edit_area_text.c_str()).x;
+		float edit_area_text_width = (halved_region_width + quarter_region_width) - (ImGui::CalcTextSize(edit_area_text.c_str()).x / 2.f);
 		float edit_area_x = (ImGui::GetWindowContentRegionWidth() + edit_area_text_width) * 0.5;
 
-		ImGui::SetCursorPosX((edit_area_x + 55));
+		ImGui::SetCursorPosX(edit_area_text_width + ImGui::GetStyle().ItemSpacing.x);
 
 		ImGui::Text("Edit Area");
 
 		ImGui::Separator();
-
-		ImGui::Columns(2, "##Columns", false);
-
-		static bool isOffsetSet = false;
-
-		if (!isOffsetSet) {
-			ImGui::SetColumnOffset(1, ImGui::GetColumnOffset(1) + 5);
-			ImGui::SetColumnOffset(2, ImGui::GetColumnOffset(2) + 5);
-			isOffsetSet = true;
-		}
 
 		ImGuiStyle& style = ImGui::GetStyle();
 		ImVec4 tempColor = style.Colors[ImGuiCol_Header];
@@ -743,10 +788,9 @@ void GUI::editor() {
 
 		const ImVec2 oldFramePadding = style.FramePadding;
 
-		// Modify the style settings
-
-		ImGui::BeginChild("##List", ImVec2(0, (firstChildHeight - ImGui::GetFrameHeightWithSpacing() + 1) * ImGui::GetIO().FontGlobalScale * 2), true, ImGuiWindowFlags_AlwaysUseWindowPadding);
-		if (!inputs.empty()) {
+		ImGui::BeginChild("##List", ImVec2(ImGui::GetContentRegionAvail().x * 0.5, (firstChildHeight - ImGui::GetFrameHeightWithSpacing() + 1) * ImGui::GetIO().FontGlobalScale * 2), true, ImGuiWindowFlags_AlwaysUseWindowPadding);
+		
+		if (!inputs.empty() && !plaintext_editing) {
 			int closestFrameDiff = INT_MAX;
 			int closestInputIndex = -1;
 
@@ -796,12 +840,37 @@ void GUI::editor() {
 						int visibleInputs = ImGui::GetWindowHeight() / ImGui::GetItemRectSize().y;
 						int firstVisibleIndex = max(0, selectedIndex - visibleInputs / 2);
 						int scrollY = firstVisibleIndex * ImGui::GetItemRectSize().y + (ImGui::GetStyle().ItemSpacing.y * closestInputIndex); // DO NOT FUCK WITH THIS MATH DAWG IT TOOK ME 2 HOURS
-						
+
 						ImGui::SetScrollY(scrollY);
 					}
 				}
 
 				ImGui::PopStyleColor();
+			}
+
+		}
+		else if (plaintext_editing) {
+			selectedInput = -1;
+			strcpy(inputTextBuffer, ss.str().c_str());
+			if (ImGui::InputTextMultiline("##InputConfig", inputTextBuffer, sizeof(inputTextBuffer), ImVec2(-1.f, -1.f), ImGuiInputTextFlags_AllowTabInput)) {
+				std::stringstream ss(inputTextBuffer);
+				std::string line;
+				std::vector<Frame> newInputs;
+
+				if (std::getline(ss, line)) {
+					logic.fps = std::stoi(line);
+				}
+
+				while (std::getline(ss, line)) {
+					std::stringstream lineSS(line);
+					Frame input;
+
+					lineSS >> input.number >> input.pressingDown >> input.isPlayer2;
+
+					newInputs.push_back(input);
+				}
+
+				inputs = std::move(newInputs);
 			}
 		}
 		else {
@@ -810,27 +879,22 @@ void GUI::editor() {
 		}
 
 		ImGui::EndChild();
-		ImGui::NextColumn();
+		ImGui::SameLine();
 
 		ImGui::BeginChild("##EditArea", ImVec2(0, (firstChildHeight - ImGui::GetFrameHeightWithSpacing() + 1) * ImGui::GetIO().FontGlobalScale * 2), true, ImGuiWindowFlags_AlwaysUseWindowPadding);
 
-		if (selectedInput >= 0 && selectedInput < inputs.size()) {
-			ImGui::Text("Editing Input %d", selectedInput + 1); ImGui::SameLine();
-			if (ImGui::Button("Delete", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
-				inputs.erase(inputs.begin() + selectedInput);
-				if (selectedInput >= inputs.size()) selectedInput = inputs.size() - 1;
-				newInput = inputs[selectedInput];
-			}
+		if (selectedInput >= 0 && selectedInput < inputs.size() && !plaintext_editing) {
+			ImGui::Text("%s Input Selected", getOrdinalSuffix(selectedInput + 1).c_str());
 			ImGui::PushItemWidth(150);
 			ImGui::InputInt("Frame", (int*)&newInput.number);
 			ImGui::PopItemWidth();
 			ImGui::Checkbox("Down", &newInput.pressingDown);
 			ImGui::SameLine();
-			if (ImGui::Button("Move Up", ImVec2(ImGui::GetContentRegionAvail().x, 0)) && selectedInput > 0) {
+			ImGui::Checkbox("Player 2", &newInput.isPlayer2);
+			if (ImGui::Button("Move Up", ImVec2(ImGui::GetContentRegionAvail().x * 0.5, 0)) && selectedInput > 0) {
 				std::swap(inputs[selectedInput], inputs[selectedInput - 1]);
 				selectedInput--;
 			}
-			ImGui::Checkbox("Player 2", &newInput.isPlayer2);
 			ImGui::SameLine();
 			if (ImGui::Button("Move Down", ImVec2(ImGui::GetContentRegionAvail().x, 0)) && selectedInput < inputs.size() - 1) {
 				std::swap(inputs[selectedInput], inputs[selectedInput + 1]);
@@ -839,16 +903,12 @@ void GUI::editor() {
 			ImGui::Separator();
 			ImGui::Text("Current Frame: %i", logic.get_frame());
 			ImGui::Checkbox("Auto Scroll To Frame", &editor_auto_scroll);
+			ImGui::Checkbox("Edit Plain Text", &plaintext_editing);
 			inputs[selectedInput] = newInput;
 		}
 		else {
 			ImGui::BeginDisabled();
-			ImGui::Text("Editing Input %d", selectedInput + 1); ImGui::SameLine();
-			if (ImGui::Button("Delete", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
-				inputs.erase(inputs.begin() + selectedInput);
-				if (selectedInput >= inputs.size()) selectedInput = inputs.size() - 1;
-				newInput = inputs[selectedInput];
-			}
+			ImGui::Text("%s Input Selected", getOrdinalSuffix(selectedInput + 1).c_str());
 			ImGui::PushItemWidth(150);
 			int fake_frame_edit_value = 0;
 			bool fake_down_edit_value = false;
@@ -857,28 +917,28 @@ void GUI::editor() {
 			ImGui::PopItemWidth();
 			ImGui::Checkbox("Down", &fake_down_edit_value);
 			ImGui::SameLine();
-			if (ImGui::Button("Move Up", ImVec2(ImGui::GetContentRegionAvail().x, 0)) && selectedInput > 0) {
+			ImGui::Checkbox("Player 2", &fake_player_edit_value);
+			if (ImGui::Button("Move Up", ImVec2(ImGui::GetContentRegionAvail().x * 0.5, 0)) && selectedInput > 0) {
 				std::swap(inputs[selectedInput], inputs[selectedInput - 1]);
 				selectedInput--;
 			}
-			ImGui::Checkbox("Player 2", &fake_player_edit_value);
 			ImGui::SameLine();
 			if (ImGui::Button("Move Down", ImVec2(ImGui::GetContentRegionAvail().x, 0)) && selectedInput < inputs.size() - 1) {
 				std::swap(inputs[selectedInput], inputs[selectedInput + 1]);
 				selectedInput++;
 			}
 			ImGui::Separator();
-			ImGui::Text("Current Frame: %i", logic.get_frame());
 			ImGui::EndDisabled();
+			ImGui::Text("Current Frame: %i", logic.get_frame());
 			ImGui::Checkbox("Auto Scroll To Frame", &editor_auto_scroll);
+			ImGui::Checkbox("Edit Plain Text", &plaintext_editing);
 		}
 
 		ImGui::EndChild();
-		ImGui::EndColumns();
 
 		style.FramePadding = oldFramePadding;
 
-		if (ImGui::Button("Add Input", ImVec2(ImGui::GetWindowContentRegionWidth(), 0))) {
+		if (ImGui::Button("Add Input", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.5, 0))) {
 			if (selectedInput == -1) {
 				inputs.push_back(Frame());
 				selectedInput = inputs.size() - 1;
@@ -888,6 +948,20 @@ void GUI::editor() {
 			}
 			newInput = Frame();
 		}
+
+		ImGui::SameLine();
+
+		if (!(selectedInput >= 0 && selectedInput < inputs.size())) ImGui::BeginDisabled();
+
+		if (ImGui::Button("Delete Input", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
+			inputs.erase(inputs.begin() + selectedInput);
+			if (selectedInput >= inputs.size()) selectedInput = inputs.size() - 1;
+			newInput = inputs[selectedInput];
+		}
+
+		if (!(selectedInput >= 0 && selectedInput < inputs.size())) ImGui::EndDisabled();
+
+		ImGui::Separator();
 
 		ImGui::PushItemFlag(ImGuiItemFlags_NoTabStop, true);
 		///ImGui::SetNextItemWidth((ImGui::GetWindowContentRegionWidth() - ImGui::GetStyle().ItemSpacing.x) * 0.3f);
@@ -921,6 +995,34 @@ void GUI::editor() {
 
 		if (ImGui::IsItemHovered()) {
 			ImGui::SetTooltip("Randomly offsets all frames in replay from -input to +input");
+		}
+
+		if (ImGui::Button("Remove Player 1 Inputs", ImVec2(ImGui::GetContentRegionAvail().x * 0.5, 0))) {
+			logic.inputs.erase(std::remove_if(logic.inputs.begin(), logic.inputs.end(), [](const Frame& input) {
+				return !input.isPlayer2;
+				}), logic.inputs.end());
+		}
+
+		ImGui::SameLine();
+
+		if (ImGui::Button("Remove Player 2 Inputs", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
+			logic.inputs.erase(std::remove_if(logic.inputs.begin(), logic.inputs.end(), [](const Frame& input) {
+				return input.isPlayer2;
+				}), logic.inputs.end());
+		}
+
+		if (ImGui::Button("Flip Presses and Releases", ImVec2(ImGui::GetContentRegionAvail().x * 0.5, 0))) {
+			for (auto& input : logic.inputs) {
+				input.pressingDown = !input.pressingDown;
+			}
+		}
+
+		ImGui::SameLine();
+
+		if (ImGui::Button("Flip Player 1 and 2", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
+			for (auto& input : logic.inputs) {
+				input.isPlayer2 = !input.isPlayer2;
+			}
 		}
 
 		if (docked)
@@ -2329,27 +2431,22 @@ void GUI::main() {
 			ImGui::Separator();
 
 			if (!logic.cps_over_percents.empty()) {
-				if (logic.end_portal_position == 0) {
-					ImGui::Text("Only Echo Replays support this");
-				}
-				else {
-					for (unsigned i = 0; i < logic.cps_over_percents.size(); i++) {
-						float val = logic.cps_over_percents[i].first;
-						std::string rule = logic.cps_over_percents[i].second;
-						std::string percent = std::to_string(val);
+				for (unsigned i = 0; i < logic.cps_over_percents.size(); i++) {
+					float val = logic.cps_over_percents[i].first;
+					std::string rule = logic.cps_over_percents[i].second;
+					std::string percent = std::to_string(val);
 
-						// Truncate the string to have only 2 decimal places
-						size_t dot_pos = percent.find(".");
-						if (dot_pos != std::string::npos && dot_pos + 3 < percent.length()) {
-							percent = percent.substr(0, dot_pos + 3);
-						}
-
-						printf("%s\n", rule.c_str());
-
-						ImGui::Text("%s%%", percent.c_str());
-						ImGui::SameLine();
-						ImGui::Text("#%s%%", rule.c_str());
+					// Truncate the string to have only 2 decimal places
+					size_t dot_pos = percent.find(".");
+					if (dot_pos != std::string::npos && dot_pos + 3 < percent.length()) {
+						percent = percent.substr(0, dot_pos + 3);
 					}
+
+					printf("%s\n", rule.c_str());
+
+					ImGui::Text("%s%%", percent.c_str());
+					ImGui::SameLine();
+					ImGui::Text("#%s", rule.c_str());
 				}
 			}
 			else {

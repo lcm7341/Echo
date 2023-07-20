@@ -772,6 +772,8 @@ public:
 
 	bool is_over_orb = false;
 
+	float xPosForTimeValue = 0.f;
+
 	bool click_both_players = false;
 	bool swap_player_input = false;
 
