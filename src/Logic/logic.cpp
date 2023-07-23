@@ -72,7 +72,7 @@ void Logic::play_input(Frame& input) {
             playback_clicking = true;
             try {
                 Hooks::PlayLayer::pushButton(PLAYLAYER, 0, !input.isPlayer2 ^ gamevar);
-                //Hooks::PlayLayer::pushButton_h(PLAYLAYER, 0, 0, !input.isPlayer2 ^ gamevar);
+                Hooks::PlayLayer::pushButton_h(PLAYLAYER, 0, 0, !input.isPlayer2 ^ gamevar);
             }
             catch (std::exception& ex) {
                 printf("Clickbot error: %s\n", ex.what());
@@ -89,7 +89,7 @@ void Logic::play_input(Frame& input) {
         else {
             playback_releasing = true;
             Hooks::PlayLayer::releaseButton(PLAYLAYER, 0, !input.isPlayer2 ^ gamevar);
-            //Hooks::PlayLayer::releaseButton_h(PLAYLAYER, 0, 0, !input.isPlayer2 ^ gamevar);
+            Hooks::PlayLayer::releaseButton_h(PLAYLAYER, 0, 0, !input.isPlayer2 ^ gamevar);
             playback_releasing = false;
         }
     }
@@ -360,7 +360,7 @@ bool Logic::play_macro() {
 
             auto player = input.isPlayer2 ? PLAYLAYER->m_pPlayer2 : PLAYLAYER->m_pPlayer1;
             auto gamemode = CheckpointData::GetGamemode(player);
-            bool passes = gamemode != gd::kGamemodeBall && gamemode != gd::kGamemodeSpider && gamemode != gd::kGamemodeUfo && gamemode != gd::kGamemodeRobot;
+            bool passes = gamemode != gd::kGamemodeBall && gamemode != gd::kGamemodeSpider && gamemode != gd::kGamemodeUfo;
 
             if ((input.number <= current_frame && passes) || input.number == current_frame) {
                 if (input.number < current_frame && !is_over_orb)

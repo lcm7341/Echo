@@ -20,6 +20,8 @@ namespace Hooks {
 
 	inline int(__fastcall* removeCheckpoint)(gd::PlayLayer* self); int __fastcall removeCheckpoint_h(gd::PlayLayer* self);
 
+	inline bool(__fastcall* menuLayerInit)(gd::MenuLayer* self); bool __fastcall menuLayerInit_h(gd::MenuLayer* self);
+
 	// 0xe5d60
 	inline gd::GameObject* (__fastcall* powerOffObject)(gd::GameObject* self); gd::GameObject* __fastcall powerOffObject_h(gd::GameObject* self);
 

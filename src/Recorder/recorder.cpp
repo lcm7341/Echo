@@ -54,8 +54,8 @@ void Recorder::start(const std::string& path) {
     auto gm = gd::GameManager::sharedState();
     auto play_layer = gm->getPlayLayer();
     auto song_file = play_layer->m_level->getAudioFileName();
-    auto fade_in = play_layer->m_pLevelSettings->m_fadeIn;
-    auto fade_out = play_layer->m_pLevelSettings->m_fadeOut;
+    auto fade_in = true;
+    auto fade_out = true;
     auto bg_volume = gm->m_fBackgroundMusicVolume;
     auto sfx_volume = gm->m_fEffectsVolume;
     if (play_layer->m_level->songID == 0)
@@ -113,26 +113,44 @@ void Recorder::start(const std::string& path) {
         }
         auto temp_path = narrow(buffer) + "." + std::filesystem::path(path).filename().string();
         std::filesystem::rename(buffer, temp_path);
-        auto total_time = m_last_frame_t; // 1 frame too short?
+        auto total_time = m_last_frame_t - 1.f / m_fps; // 1 frame too short?
         {
             std::stringstream stream;
             stream << '"' << "ffmpeg\\ffmpeg.exe" << '"' << " -y -ss " << song_offset << " -i \"" << song_file
-                << "\" -i \"" << path << "\" -t " << total_time << " -c:v copy ";
+                << "\" -i \"" << path << "\" -t " << total_time << " -c:v libx264 -preset fast -crf 11 ";
+
+            // Video fade-in and fade-out
+            if (fade_in && v_fade_in_time > 0)
+                stream << "-vf \"fade=in:st=0:d=" << v_fade_in_time << ",";
+            if (fade_out && v_fade_out_time > 0)
+                stream << "fade=out:st=" << total_time - v_fade_out_time << ":d=" << v_fade_out_time << "\" ";
+
             if (!m_extra_audio_args.empty())
                 stream << m_extra_audio_args << " ";
-            stream << "-filter:a \"volume=1[0:a]";
-            if (!is_testmode)
-                stream << ";[0:a]afade=t=in:d=" << a_fade_in_time << "[0:a]";
+
+            stream << "-af \"volume=1";
+
+            // Audio fade-in
+            if (!is_testmode && fade_in && a_fade_in_time > 0)
+                stream << ",afade=t=in:st=0:d=" << a_fade_in_time;
+
+            // Audio fade-out
             if (fade_out && a_fade_out_time > 0 && m_finished_level)
-                stream << ";[0:a]afade=t=out:d=" << a_fade_out_time << ":st=" << (total_time + m_after_end_duration - 3.5f) << "[0:a]";
-            std::cout << "in " << fade_in << " out " << fade_out << std::endl;
-            stream << "\" \"" << temp_path << "\" ";
+                stream << ",afade=t=out:st=" << total_time - a_fade_out_time << ":d=" << a_fade_out_time;
+            else if (fade_out && a_fade_out_time > 0 && !m_finished_level)
+                stream << ",afade=t=out:st=" << total_time - a_fade_out_time << ":d=" << a_fade_out_time;
+
+            stream << "\" ";
+
+            stream << "\"" << temp_path << "\" ";
+
             auto process = subprocess::Popen(stream.str());
             if (process.close()) {
                 logic.error = "Error adding music!";
                 return;
             }
         }
+
         std::filesystem::remove(widen(path));
         std::filesystem::rename(temp_path, widen(path));
         }).detach();
@@ -219,15 +237,15 @@ void Recorder::handle_recording(gd::PlayLayer* play_layer, float dt) {
         }
         auto frame_dt = 1. / static_cast<double>(m_fps);
 
-        if (Logic::get().completed_level) {
+        if (Logic::get().completed_level || play_layer->m_isDead) {
             Logic::get().tfx2_calculated += dt;
         }
 
         auto time = (ssb_fix ? Logic::get().tfx2_calculated : play_layer->m_time) + m_extra_t - m_last_frame_t;
 
         if (time >= frame_dt) {
-            gd::FMODAudioEngine::sharedEngine()->setMusicTime(
-                play_layer->m_time + m_song_start_offset);
+            gd::FMODAudioEngine::sharedEngine()->setBackgroundMusicTime(
+                play_layer->timeForXPos2(play_layer->m_pPlayer1->m_position.x, true) + m_song_start_offset);
             m_extra_t = time - frame_dt;
             m_last_frame_t = ssb_fix ? Logic::get().tfx2_calculated : play_layer->m_time;
             capture_frame();

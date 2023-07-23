@@ -41,7 +41,15 @@ public:
 
 	float input_fps = 60.f;
 
-	char inputTextBuffer[4096]; // Buffer to hold the user input
+	struct Point
+	{
+		double x;
+		double y;
+	};
+
+	std::vector<Point> clickedPoints;
+
+	char inputTextBuffer[65535]; // Buffer to hold the user input
 
 	int offset_frames = 0;
 

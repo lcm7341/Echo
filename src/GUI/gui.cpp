@@ -33,6 +33,153 @@
 #include <imgui_demo.cpp>
 #include <format>
 #include "../Logic/speedhack.h"
+#include "implot/implot.h"
+#include "implot/implot_internal.h"
+
+double evalExpression(const std::vector<std::string>& tokens, std::map<std::string, double>& variables, int& index);
+
+double evalExpression(const std::vector<std::string>& tokens, std::map<std::string, double>& variables, int& index);
+
+std::vector<std::string> tokenizeExpression(const std::string& expression)
+{
+	std::vector<std::string> tokens;
+	std::string token;
+	for (char c : expression)
+	{
+		if (std::isspace(c))
+		{
+			if (!token.empty())
+			{
+				tokens.push_back(token);
+				token.clear();
+			}
+		}
+		else if (std::isalnum(c) || c == '.')
+		{
+			token += c;
+		}
+		else
+		{
+			if (!token.empty())
+			{
+				tokens.push_back(token);
+				token.clear();
+			}
+			tokens.push_back(std::string(1, c));
+		}
+	}
+	if (!token.empty())
+	{
+		tokens.push_back(token);
+	}
+	return tokens;
+}
+
+double evalVariable(const std::string& token, std::map<std::string, double>& variables)
+{
+	if (variables.find(token) != variables.end())
+	{
+		return variables[token];
+	}
+	else
+	{
+		std::cout << "Variable " << token << " is not defined. Enter a value for " << token << ": ";
+		double value;
+		std::cin >> value;
+		variables[token] = value;
+		return value;
+	}
+}
+
+double evalFunction(const std::string& token, const std::vector<std::string>& tokens, std::map<std::string, double>& variables, int& index)
+{
+	if (token == "cos")
+	{
+		++index;
+		double result = evalExpression(tokens, variables, index);
+		return cos(result);
+	}
+	else if (token == "sqrt")
+	{
+		++index;
+		double result = evalExpression(tokens, variables, index);
+		return sqrt(result);
+	}
+	else
+	{
+		std::cout << "Unknown function: " << token << std::endl;
+		return 0.0;
+	}
+}
+
+double evalOperator(const std::string& token, double left, double right)
+{
+	if (token == "+")
+	{
+		return left + right;
+	}
+	else if (token == "-")
+	{
+		return left - right;
+	}
+	else if (token == "*")
+	{
+		return left * right;
+	}
+	else if (token == "/")
+	{
+		return left / right;
+	}
+	else if (token == "^")
+	{
+		return pow(left, right);
+	}
+	else
+	{
+		std::cout << "Unknown operator: " << token << std::endl;
+		return 0.0;
+	}
+}
+
+double evalExpression(const std::vector<std::string>& tokens, std::map<std::string, double>& variables, int& index)
+{
+	double result = 0.0;
+	while (index < tokens.size())
+	{
+		const std::string& token = tokens[index];
+		++index;
+
+		if (std::isdigit(token[0]))
+		{
+			result = std::stod(token);
+		}
+		else if (std::isalpha(token[0]))
+		{
+			if (tokens[index] == "(") // Function call
+			{
+				result = evalFunction(token, tokens, variables, index);
+			}
+			else // Variable
+			{
+				result = evalVariable(token, variables);
+			}
+		}
+		else if (token == "(")
+		{
+			result = evalExpression(tokens, variables, index);
+		}
+		else if (token == ")")
+		{
+			return result;
+		}
+		else if (token == "+" || token == "-" || token == "*" || token == "/" || token == "^")
+		{
+			double right = evalExpression(tokens, variables, index);
+			result = evalOperator(token, result, right);
+		}
+	}
+	return result;
+}
 
 std::string echo_version = "Echo v0.9b";
 
@@ -1743,17 +1890,12 @@ void GUI::tools() {
 		HelpMarker("Saving debug information allows for bugfixing and checking accuracy in the replay.");
 
 		ImGui::SameLine();
-
-		if (logic.format != logic.DEBUG && logic.format != logic.META_DBG) ImGui::BeginDisabled();
-
 		if (ImGui::Button("Open Debug Console")) {
 			// Allows for debugging, can be removed later
 			AllocConsole();
 			freopen("CONOUT$", "w", stdout);  // Redirects stdout to the new console
 			std::printf("Opened Debugging Console");
 		}
-
-		if (logic.format != logic.DEBUG && logic.format != logic.META_DBG) ImGui::EndDisabled();
 
 		if (docked)
 			ImGui::EndTabItem();
@@ -1882,6 +2024,7 @@ void GUI::clickbot() {
 
 					ImGui::Checkbox("Soft Clicks###soft_clicks_p1", &logic.player_1_softs); ImGui::SameLine();
 					ImGui::Checkbox("Hard Clicks###hard_clicks_p1", &logic.player_1_hards);
+					ImGui::SameLine();
 
 					ImGui::Checkbox("Micro Clicks###micro_clicks_p1", &logic.player_1_micros);
 				}
@@ -1928,6 +2071,7 @@ void GUI::clickbot() {
 
 					ImGui::Checkbox("Soft Clicks###soft_clicks_p2", &logic.player_2_softs); ImGui::SameLine();
 					ImGui::Checkbox("Hard Clicks###hard_clicks_p2", &logic.player_2_hards);
+					ImGui::SameLine();
 
 					ImGui::Checkbox("Micro Clicks###micro_clicks_p2", &logic.player_2_micros);
 				}
@@ -1935,7 +2079,7 @@ void GUI::clickbot() {
 			}
 			if (ImGui::BeginTabItem("Volume", nullptr)) {
 				ImGui::PushItemWidth(200);
-				ImGui::DragFloat("Volume Multiplier", &logic.clickbot_volume_multiplier, 0.01, 0, 100, "%.1f");
+				ImGui::DragFloat("Volume Multiplier", &logic.clickbot_volume_mult_saved, 0.01, 0, 100, "%.1f");
 				ImGui::PopItemWidth();
 
 				if (selected_clickbot_player == 0) {
@@ -1963,6 +2107,61 @@ void GUI::clickbot() {
 					ImGui::DragFloat("Regular Clicks###reg_clicks_vol_p2", &logic.player_2_volume, 0.01, 0, 500, "%.1f");
 
 					ImGui::PopItemWidth();
+				}
+
+				static char inputBuffer[256];
+				static bool typing_alg = false;
+				ImGui::PushItemWidth(250);
+				if (ImGui::InputText("Algorithm", inputBuffer, sizeof(inputBuffer))) typing_alg = true;
+				else typing_alg = false;
+				ImGui::PopItemWidth();
+				ImGui::SameLine();
+				HelpMarker("The clickbot algorithm is a mathematical expression to change the volume multiplier as the level goes on.\nThe current defined functions are: cos(), sqrt()\nThe current variables are: x (% in level)");
+
+				ImGui::SameLine();
+				ImGui::Text("Result: %f", logic.clickbot_volume_multiplier);
+				static std::string expression;
+				static std::vector<std::string> tokens = tokenizeExpression(expression);
+				static std::map<std::string, double> variables;
+
+				variables["x"] = PLAYLAYER ? PLAYLAYER->m_pPlayer1->getPositionX() / PLAYLAYER->m_endPortal->getPositionX() * 100.f : 0.f;
+
+				expression = "0+";
+				expression += inputBuffer;
+				tokens = tokenizeExpression(expression);
+
+				int index = 0;
+
+				logic.clickbot_volume_multiplier = logic.clickbot_volume_mult_saved * evalExpression(tokens, variables, index);
+
+				// Graph
+				ImGui::Separator();
+				static ImPlotAxisFlags flags = ImPlotAxisFlags_NoTickLabels;
+				static float values[101];
+				if (ImPlot::BeginPlot("Volume Multiplier Graph", "X", "Y", ImVec2(-1, 250), ImPlotFlags_None, ImPlotAxisFlags_NoLabel, ImPlotAxisFlags_NoLabel))
+				{
+					if (typing_alg) {
+						double maxValue = 0.0;
+						for (int i = 0; i <= 100; ++i)
+						{
+							double x = i;
+							variables["x"] = x;
+
+							int index = 0;
+							double result = evalExpression(tokens, variables, index);
+							values[i] = result;
+
+							if (result > maxValue)
+							{
+								maxValue = result;
+							}
+						}
+					}
+					ImPlot::PushStyleColor(ImPlotCol_Line, ImGui::GetStyle().Colors[ImGuiCol_TitleBgActive]); // Red color
+					ImPlot::PlotLine("Volume", values, 101);
+					ImPlot::PopStyleColor();
+
+					ImPlot::EndPlot();
 				}
 				ImGui::EndTabItem();
 			}
@@ -2781,6 +2980,9 @@ void readBinds() {
     Logic::get().keybinds.SetAction(#name, std::move(name))
 
 void GUI::init() {
+	
+	ImPlot::CreateContext();
+
 	std::unique_ptr<KeybindableBase> audioSpeedHackAction = std::unique_ptr<KeybindableBase>(new Keybindable([this]() {
 		auto& audiospeedhack = AudiopitchHack::getInstance();
 		bool isEnabled = audiospeedhack.isEnabled();
@@ -3007,4 +3209,5 @@ void GUI::init() {
 	colors[ImGuiCol_NavWindowingHighlight] = ImVec4(1.00f, 1.00f, 1.00f, 0.70f);
 	colors[ImGuiCol_NavWindowingDimBg] = ImVec4(0.80f, 0.80f, 0.80f, 0.20f);
 	colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.80f, 0.80f, 0.80f, 0.35f);
+	//ImPlot::DestroyContext();
 }

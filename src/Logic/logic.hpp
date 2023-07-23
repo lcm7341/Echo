@@ -389,6 +389,7 @@ public:
 	float player_1_volume = 1.f;
 	float player_2_volume = 1.f;
 	float clickbot_volume_multiplier = 1.f;
+	float clickbot_volume_mult_saved = 1.f;
 
 	std::string player_1_path;
 	std::string player_2_path;
