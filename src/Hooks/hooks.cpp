@@ -982,7 +982,6 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
 
     logic.clickbot_now = self->m_time;
     logic.clickbot_start = self->m_time;
-    self->m_time = self->timeForXPos(self->m_pPlayer1->getPositionX());
 
     printf("\n");
 
@@ -1118,14 +1117,26 @@ void __fastcall Hooks::PlayerObject_ringJump_h(gd::PlayerObject* self, int, gd::
     PlayerObject_ringJump(self, ring);
     auto& logic = Logic::get();
     if ((logic.is_recording() || logic.is_playing()) && *reinterpret_cast<bool*>(reinterpret_cast<uintptr_t>(ring) + 0x2ca)) {
-        logic.activated_objects.push_back(ring);
+        if (self->m_bHasBeenActivated)
+            logic.activated_objects.push_back(ring);
+        if (self->m_bHasBeenActivatedP2)
+            logic.activated_objects_p2.push_back(ring);
     }
 }
 
 void __fastcall Hooks::bumpPlayer_h(gd::GJBaseGameLayer* self, gd::PlayerObject* player, gd::GameObject* object)
 {
+    auto& logic = Logic::get();
     if (Logic::get().hacks.trajectory && TrajectorySimulation::getInstance()->shouldInterrumpHooks())
         return;
+
+    if (logic.is_recording() || logic.is_playing()) {
+        if (object->m_bHasBeenActivated)
+            logic.activated_objects.push_back(object);
+        if (object->m_bHasBeenActivatedP2)
+            logic.activated_objects_p2.push_back(object);
+    }
+
     bumpPlayer(self, player, object);
 }
 
@@ -1155,7 +1166,10 @@ void __fastcall Hooks::GameObject_activateObject_h(gd::GameObject* self, int, gd
     GameObject_activateObject(self, player);
     auto& logic = Logic::get();
     if ((logic.is_recording() || logic.is_playing()) && *reinterpret_cast<bool*>(reinterpret_cast<uintptr_t>(self) + 0x2ca)) {
-        logic.activated_objects.push_back(self);
+        if (self->m_bHasBeenActivated)
+            logic.activated_objects.push_back(self);
+        if (self->m_bHasBeenActivatedP2)
+            logic.activated_objects_p2.push_back(self);
     }
 }
 
