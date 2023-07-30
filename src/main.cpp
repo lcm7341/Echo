@@ -99,8 +99,6 @@ void writeConfig() {
 
 	j["audio_speedhack"] = audiospeedhack.isEnabled();
 
-	j["use_json"] = logic.use_json_for_files;
-
 	j["autoclicker"]["press_interval"] = Autoclicker::get().getFramesBetweenPresses();
 	j["autoclicker"]["release_interval"] = Autoclicker::get().getFramesBetweenReleases();
 	j["autoclicker"]["player_1"] = logic.autoclicker_player_1;
@@ -236,8 +234,6 @@ void readConfig() {
 	auto& audiospeedhack = AudiopitchHack::getInstance();
 
 	audiospeedhack.setEnabled(getOrDefault(j, "audio_speedhack", true));
-
-	logic.use_json_for_files = getOrDefault(j, "use_json", false);
 
 	Autoclicker::get().setFramesBetweenPresses(getOrDefault(j["autoclicker"], "press_interval", 50));
 	Autoclicker::get().setFramesBetweenReleases(getOrDefault(j["autoclicker"], "release_interval", 50));

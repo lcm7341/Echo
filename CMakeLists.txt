@@ -3,8 +3,8 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 project(Echo)
-set(Echo_VERSION_MAJOR 0)
-set(Echo_VERSION_MINOR 9)
+set(Echo_VERSION_MAJOR 1)
+set(Echo_VERSION_MINOR 0)
 
 set(CMAKE_SHARED_LIBRARY_SUFFIX " v${Echo_VERSION_MAJOR}.${Echo_VERSION_MINOR}.dll")
 
@@ -20,7 +20,7 @@ file(
   src/*.hpp
 )
 
-add_library(Echo SHARED ${SOURCE_FILES}  "src/Logic/speedhack.h" "src/Logic/speedhack.cpp" "src/Clickbot/clickbot.hpp" "src/Clickbot/clickbot.cpp" "src/Logic/Conversions/mhr.h" "src/GUI/implot/implot.h" "src/GUI/implot/implot_internal.h")
+add_library(Echo SHARED ${SOURCE_FILES}  "src/Logic/speedhack.h" "src/Logic/speedhack.cpp" "src/Clickbot/clickbot.hpp" "src/Clickbot/clickbot.cpp" "src/Logic/Conversions/mhr.h" "src/GUI/implot/implot.h" "src/GUI/implot/implot_internal.h" "src/Logic/Conversions/json.h")
 
 add_dependencies(Echo
     increment_version_number

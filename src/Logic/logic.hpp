@@ -428,6 +428,8 @@ public:
 	std::chrono::duration<double> total_recording_time = std::chrono::duration<double>::zero();
 	int total_attempt_count = 1;
 
+	std::string rename_format = "_#";
+
 	Recorder recorder;
 	std::vector<Frame> inputs;
 

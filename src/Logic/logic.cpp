@@ -403,33 +403,41 @@ void Logic::set_replay_pos(unsigned idx) {
 #define w_b(var) file.write(reinterpret_cast<char*>(&var), sizeof(var));
 #define r_b(var) file.read(reinterpret_cast<char*>(&var), sizeof(var));
 
-std::pair<std::string, std::string> generateNewFileName(const std::string& fileName, std::string ext) {
+std::pair<std::string, std::string> generateNewFileName(const std::string& fileName, std::string ext, bool json = false) {
+    auto& logic = Logic::get();
+    std::string rename_format = logic.rename_format;
+
     std::string dir = ".echo\\";
     std::string baseName = fs::path(fileName).stem().string();
+    if (json) baseName = fs::path(fileName).stem().stem().string();
     std::string extension = fs::path(fileName).extension().string();
+
+    size_t hashPos = rename_format.find('#');
+    size_t formatLength = rename_format.length();
 
     std::string newFileName = dir + baseName + ext;
     int count = 1;
 
-    size_t underscorePos = newFileName.find_last_of('_');
-    if (underscorePos != std::string::npos) {
-        std::string suffix = newFileName.substr(underscorePos + 1);
+    while (fs::exists(newFileName)) {
+        size_t pos = newFileName.length() - ext.length() - formatLength;
+        std::string suffix = newFileName.substr(pos + hashPos + 1, formatLength - hashPos - 1);
         try {
             count = std::stoi(suffix) + 1;
-            newFileName.erase(underscorePos); // Remove the existing suffix
-            newFileName = newFileName + "_" + std::to_string(count) + ext;
         }
         catch (std::invalid_argument&) {
             // ignore and just use the default count value of 1
         }
+
+        std::stringstream ss;
+        ss << std::setw(formatLength - hashPos - 1) << std::setfill('0') << count;
+        std::string formattedCount = ss.str();
+        newFileName.replace(pos + hashPos + 1, formatLength - hashPos - 1, formattedCount);
     }
 
-    while (fs::exists(newFileName)) {
-        newFileName = dir + baseName + "_" + std::to_string(count) + ext;
-        count++;
-    }
+    if (json)
+        return { newFileName, fs::path(newFileName).stem().stem().string() };
 
-    return {newFileName, fs::path(newFileName).stem().string()};
+    return { newFileName, fs::path(newFileName).stem().string() };
 }
 
 void Logic::write_file(const std::string& filename) {
@@ -593,7 +601,7 @@ void Logic::write_file_json(const std::string& filename) {
     std::string ext = ".echo.json";
     std::string base = filename;
 
-    auto newFileName = generateNewFileName(base, ext);
+    auto newFileName = generateNewFileName(base, ext, true);
 
     std::string full_filename = newFileName.first;
     std::string newBase = newFileName.second;

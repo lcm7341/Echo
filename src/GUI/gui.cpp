@@ -27,6 +27,7 @@
 #include "../Logic/Conversions/tasbot.h"
 #include "../Logic/Conversions/mhr_json.h"
 #include "../Logic/Conversions/mhr.h"
+#include "../Logic/Conversions/json.h"
 #include "../Logic/Conversions/osu.h"
 #include "../Logic/Conversions/plaintext.h"
 #include "../Hooks/hooks.hpp"
@@ -181,7 +182,7 @@ double evalExpression(const std::vector<std::string>& tokens, std::map<std::stri
 	return result;
 }
 
-std::string echo_version = "Echo v0.9b";
+std::string echo_version = "Echo v1.0b";
 
 int getRandomInt(int N) {
 	// Seed the random number generator with current time
@@ -1495,7 +1496,8 @@ std::map<std::string, std::shared_ptr<Convertible>> options = {
 	{"Osu", std::make_shared<Osu>()},
 	{"Mega Hack Replay JSON", std::make_shared<MHRJSON>()},
 	{"Mega Hack Replay", std::make_shared<MHR>()},
-	{"Plain Text", std::make_shared<PlainText>()}
+	{"Plain Text", std::make_shared<PlainText>()},
+	{"JSON", std::make_shared<JSON>()}
 };
 
 void GUI::tools() {
@@ -2794,15 +2796,30 @@ void GUI::main() {
 
 		ImGui::Separator();
 
-		ImGui::Checkbox("Use JSON", &logic.use_json_for_files);
-
-		CHECK_KEYBIND("useJSON");
-
-		ImGui::SameLine();
-
 		ImGui::Checkbox("File Browser", &logic.file_dialog);
 
 		CHECK_KEYBIND("useDialog");
+		ImGui::SameLine();
+
+		bool open_rename_modal = true;
+
+		if (ImGui::Button("Overwrite Settings")) {
+			ImGui::OpenPopup("Overwrite Name Format");
+		}
+
+		if (ImGui::BeginPopupModal("Overwrite Name Format", &open_rename_modal, ImGuiWindowFlags_AlwaysAutoResize)) {
+
+			ImGui::PushItemWidth(200);
+			ImGui::InputText("Renaming Format", &logic.rename_format);
+			ImGui::PopItemWidth();
+
+			ImGui::SameLine();
+
+			HelpMarker("The rename format prevents accidental deletion of important replays by renaming the ones that would otherwise overwrite each other.\nFor example, the format '_#' will rename ReplayName.echo to ReplayName_1.echo.");
+
+			ImGui::EndPopup();
+		}
+
 		ImGui::SameLine();
 
 		bool open_modal = true;
