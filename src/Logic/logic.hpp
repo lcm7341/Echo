@@ -59,6 +59,7 @@ struct ObjectData {
 	float rotY;
 	float velX;
 	float velY;
+	float rotation;
 
 	float speed1; // m_unk2F4
 	float speed2; // m_unk2F8
@@ -224,57 +225,6 @@ struct ObjectData {
 	FIELD(float, m_unk69C) \
 	FIELD(double, m_lastJumpTime) \
 	FIELD(double, m_unknown20) \
-	FIELD(gd::GameObject*, m_objectSnappedTo) \
-	FIELD(gd::GJRobotSprite*, m_robotSprite) \
-	FIELD(gd::GJSpiderSprite*, m_spiderSprite) \
-	PLFIELD(bool, unk39D) \
-	PLFIELD(bool, unk39E) \
-	PLFIELD(bool, unk534) \
-	PLFIELD(bool, unk4C4) \
-	PLFIELD(bool, m_disableGravityEffect) \
-	PLFIELD(bool, unk39F) \
-	PLFIELD(bool, unk42A) \
-	PLFIELD(bool, unk42B) \
-	PLFIELD(bool, unk2ED) \
-	PLFIELD(bool, unk2EC) \
-	PLFIELD(bool, unk42C) \
-	PLFIELD(bool, m_isCameraShaking) \
-	PLFIELD(bool, unk496) \
-	PLFIELD(bool, unk497) \
-	PLFIELD(bool, unk49C) \
-	PLFIELD(bool, m_bHasCheated) \
-	PLFIELD(bool, unk2DC) \
-	PLFIELD(bool, unknown5e4) \
-	PLFIELD(int, unk2E8) \
-	PLFIELD(int, unk2D8) \
-	PLFIELD(int, unk2E4) \
-	PLFIELD(int, unk2E0) \
-	PLFIELD(int, m_ballFrameSeed) \
-	PLFIELD(float, unk3B8) \
-	PLFIELD(float, m_cameraX) \
-	PLFIELD(float, unknown5ec) \
-	PLFIELD(float, m_lockGroundToCamera) \
-	PLFIELD(float, unknown5f4) \
-	PLFIELD(float, unk2FC) \
-	PLFIELD(float, m_currentShakeStrength) \
-	PLFIELD(float, m_currentShakeInterval) \
-	PLFIELD(float, unk300) \
-	PLFIELD(float, unk304) \
-	PLFIELD(float, unk308) \
-	PLFIELD(float, unk30C) \
-	PLFIELD(double, unk508) \
-	PLFIELD(double, unk4E8) \
-	PLFIELD(double, unk4E0) \
-	PLFIELD(double, m_lastShakeTime) \
-	PLFIELD(cocos2d::CCArray*, unk354) \
-	PLFIELD(cocos2d::CCArray*, unk358) \
-	PLFIELD(cocos2d::CCArray*, unk35C) \
-	PLFIELD(cocos2d::CCArray*, unk360) \
-	PLFIELD(cocos2d::CCArray*, unk37C) \
-	PLFIELD(cocos2d::CCArray*, unk498) \
-	PLFIELD(cocos2d::CCArray*, unk4D4) \
-	PLFIELD(gd::GJGroundLayer*, m_bottomGround) \
-	PLFIELD(gd::GJGroundLayer*, m_topGround) \
 
 struct CheckpointData {
 	#define PLFIELD(type, name) type name;
@@ -296,6 +246,7 @@ struct CheckpointData {
 
 		data.m_rotation = player->getRotation();
 		data.gamemode = GetGamemode(player);
+	
 		return data;
 	}
 
@@ -349,6 +300,7 @@ struct Checkpoint {
 	size_t activated_objects_p2_size;
 	std::map<int, ObjectData> objects;
 	double calculated_xpos;
+	std::vector<CCAction*> actions;
 };
 
 struct Replay {
@@ -439,12 +391,11 @@ public:
 	std::vector<std::pair<float, std::string>> cps_over_percents;
 	std::vector<std::pair<float, std::string>> cps_over_percents_p2;
 
-
 	float fps = 60.f;
-	char macro_name[1000] = "output";
+	char macro_name[1000] = "Replay";
 
 	std::string error = "";
-	std::string conversion_message = "Waiting... Use the panel above to export/import";
+	std::string conversion_message = "Waiting... Use the panel above to export/import!";
 
 	std::chrono::steady_clock::time_point start = std::chrono::steady_clock::time_point();
 

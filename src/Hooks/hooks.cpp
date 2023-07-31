@@ -1217,6 +1217,7 @@ int __fastcall Hooks::createCheckpoint_h(gd::PlayLayer* self) {
                     data.posY = obj->getPositionY();
                     data.rotX = obj->getRotationX();
                     data.rotY = obj->getRotationY();
+                    data.rotation = obj->getRotation();
                     data.velX = obj->getSkewX();
                     data.velY = obj->getSkewY();
                     data.speed1 = obj->m_unk2F4;
@@ -1367,7 +1368,18 @@ int __fastcall Hooks::createCheckpoint_h(gd::PlayLayer* self) {
         }
     }*/
 
-    logic.save_checkpoint({ logic.get_frame(), checkpointData1, checkpointData2, logic.activated_objects.size(), logic.activated_objects_p2.size(), childData, logic.calculated_xpos });
+    std::vector<CCAction*> actions;
+
+    unsigned action_amount = PLAYLAYER->numberOfRunningActions();
+
+    for (int i = 0; i < action_amount; i++) {
+        if (PLAYLAYER->getActionByTag(i)) {
+            actions.push_back(PLAYLAYER->getActionByTag(i));
+        }
+    }
+
+
+    logic.save_checkpoint({ logic.get_frame(), checkpointData1, checkpointData2, logic.activated_objects.size(), logic.activated_objects_p2.size(), childData, logic.calculated_xpos, actions });
 
     return createCheckpoint(self);
 }
