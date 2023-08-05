@@ -335,6 +335,8 @@ public:
 
 	HacksStr hacks;
 
+	std::string algorithm = "1";
+
 	bool export_to_bot_location = false;
 
 	bool clickbot_enabled = false;

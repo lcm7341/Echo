@@ -117,7 +117,7 @@ void Recorder::start(const std::string& path) {
         {
             std::stringstream stream;
             stream << '"' << "ffmpeg\\ffmpeg.exe" << '"' << " -y -ss " << song_offset << " -i \"" << song_file
-                << "\" -i \"" << path << "\" -t " << total_time << " -c:v libx264 -preset fast -crf 10 ";
+                << "\" -i \"" << path << "\" -t " << total_time << " -c:v " << ((v_fade_in_time > 0 || v_fade_out_time > 0 || a_fade_in_time > 0 || a_fade_out_time > 0) ? "libx264 -preset fast -crf 10" : "copy") << " ";
 
             // Video fade-in and fade-out
             if (fade_in && v_fade_in_time > 0)

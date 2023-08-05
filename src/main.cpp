@@ -173,6 +173,32 @@ void writeConfig() {
 
 	j["clickbot_enabled"] = logic.clickbot_enabled;
 
+	j["volume_multiplier"] = logic.clickbot_volume_mult_saved;
+	j["p1_softs"] = logic.player_1_softs;
+	j["p2_softs"] = logic.player_2_softs;
+	j["p1_softs_time"] = logic.player_1_softs_time;
+	j["p2_softs_time"] = logic.player_2_softs_time;
+	j["p1_softs_volume"] = logic.player_1_softs_volume;
+	j["p2_softs_volume"] = logic.player_2_softs_volume;
+
+	j["p1_hards"] = logic.player_1_hards;
+	j["p2_hards"] = logic.player_2_hards;
+	j["p1_hards_time"] = logic.player_1_hards_time;
+	j["p2_hards_time"] = logic.player_2_hards_time;
+	j["p1_hards_volume"] = logic.player_1_hards_volume;
+	j["p2_hards_volume"] = logic.player_2_hards_volume;
+
+	j["p1_micros"] = logic.player_1_micros;
+	j["p2_micros"] = logic.player_2_micros;
+	j["p1_micros_time"] = logic.player_1_micros_time;
+	j["p2_micros_time"] = logic.player_2_micros_time;
+	j["p1_micros_volume"] = logic.player_1_micros_volume;
+	j["p2_micros_volume"] = logic.player_2_micros_volume;
+	
+	j["p1_clickpack"] = logic.player_1_path;
+	j["p2_clickpack"] = logic.player_2_path;
+	j["algorithm"] = logic.algorithm;
+
 	for (const auto& binding : logic.keybinds.bindings) {
 		const std::string& action = binding.first;
 		const Keybind& keybind = binding.second.first;
@@ -309,6 +335,33 @@ void readConfig() {
 	GUI::get().editor_auto_scroll = getOrDefault(j, "editor_auto_scroll", true);
 
 	logic.clickbot_enabled = getOrDefault(j, "clickbot_enabled", false);
+	
+	logic.clickbot_volume_mult_saved = getOrDefault(j, "volume_multiplier", logic.clickbot_volume_mult_saved);
+
+	logic.player_1_softs = getOrDefault(j, "p1_softs", logic.player_1_softs);
+	logic.player_2_softs = getOrDefault(j, "p2_softs", logic.player_2_softs);
+	logic.player_1_softs_time = getOrDefault(j, "p1_softs_time", logic.player_1_softs_time);
+	logic.player_2_softs_time = getOrDefault(j, "p2_softs_time", logic.player_2_softs_time);
+	logic.player_1_softs_volume = getOrDefault(j, "p1_softs_volume", logic.player_1_softs_volume);
+	logic.player_2_softs_volume = getOrDefault(j, "p2_softs_volume", logic.player_2_softs_volume);
+
+	logic.player_1_hards = getOrDefault(j, "p1_hards", logic.player_1_hards);
+	logic.player_2_hards = getOrDefault(j, "p2_hards", logic.player_2_hards);
+	logic.player_1_hards_time = getOrDefault(j, "p1_hards_time", logic.player_1_hards_time);
+	logic.player_2_hards_time = getOrDefault(j, "p2_hards_time", logic.player_2_hards_time);
+	logic.player_1_hards_volume = getOrDefault(j, "p1_hards_volume", logic.player_1_hards_volume);
+	logic.player_2_hards_volume = getOrDefault(j, "p2_hards_volume", logic.player_2_hards_volume);
+
+	logic.player_1_micros = getOrDefault(j, "p1_micros", logic.player_1_micros);
+	logic.player_2_micros = getOrDefault(j, "p2_micros", logic.player_2_micros);
+	logic.player_1_micros_time = getOrDefault(j, "p1_micros_time", logic.player_1_micros_time);
+	logic.player_2_micros_time = getOrDefault(j, "p2_micros_time", logic.player_2_micros_time);
+	logic.player_1_micros_volume = getOrDefault(j, "p1_micros_volume", logic.player_1_micros_volume);
+	logic.player_2_micros_volume = getOrDefault(j, "p2_micros_volume", logic.player_2_micros_volume);
+
+	logic.player_1_path = getOrDefault(j, "p1_clickpack", logic.player_1_path);
+	logic.player_2_path = getOrDefault(j, "p2_clickpack", logic.player_2_path);
+	logic.algorithm = getOrDefault(j, "algorithm", logic.algorithm);
 
 	file.close();
 }

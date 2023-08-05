@@ -194,8 +194,8 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
         g_disable_render = true;
 
         // min(static_cast<int>(g_left_over / target_dt), 50) <- super fast but i think its inaccurate
-        //const int times = min(round((dt + g_left_over) / target_dt), 150);
-        const int times = min(static_cast<int>(g_left_over / target_dt), 50);
+        const int times = min(round((dt + g_left_over) / target_dt), 150);
+        //const int times = min(static_cast<int>(g_left_over / target_dt), 50);
 
         for (int i = 0; i < times; i++) {
             if (i == times - 1) {
@@ -494,11 +494,18 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
             char out[24];
             sprintf_s(out, "CPS: %i/%i", logic.count_presses_in_last_second(false), logic.count_presses_in_last_second(true));
             cps_counter->setString(out);
-            if (logic.current_cps > logic.max_cps) {
+
+            if (self->m_pPlayer1->m_isHolding || self->m_pPlayer1->m_isHolding2 || self->m_pPlayer2->m_isHolding || self->m_pPlayer2->m_isHolding2) {
+                cps_counter->setColor({ 0, 255, 77 });
+            }
+            else if (logic.current_cps > logic.max_cps) {
                 cps_counter->setColor({ 255, 0, 0 });
             }
             else if (logic.over_max_cps) {
                 cps_counter->setColor({ 255, 72, 0 });
+            }
+            else {
+                cps_counter->setColor({ 255, 255, 255 });
             }
             cps_counter->setAnchorPoint({ 0, 0.5 });
             cps_counter->setPosition(logic.cps_counter_x, logic.cps_counter_y);
@@ -671,7 +678,7 @@ int __fastcall Hooks::PlayLayer::pushButton_h(gd::PlayLayer* self, int, int idk,
     auto& logic = Logic::get();
 
     if (!logic.is_playing() && !logic.is_recording()) {
-        logic.live_inputs.push_back({ logic.get_frame(), true, button, self->getPositionY(), self->getPositionX(), self->getRotation(), 0.f, 0.f });
+        logic.live_inputs.push_back({ logic.get_frame(), true, !button, self->getPositionY(), self->getPositionX(), self->getRotation(), 0.f, 0.f });
     }
 
     if ((logic.clickbot_enabled && !logic.is_playing()) || (logic.clickbot_enabled && logic.playback_clicking)) {
@@ -684,6 +691,11 @@ int __fastcall Hooks::PlayLayer::pushButton_h(gd::PlayLayer* self, int, int idk,
 
         logic.clickbot_now = self->m_time;
         logic.cycleTime = logic.clickbot_now - logic.clickbot_start;
+        bool oldButton = button;
+        if (!self->m_level->twoPlayerMode) {
+            button = true;
+        }
+        
         bool micros = button ? logic.player_1_micros : logic.player_2_micros;
         bool softs = button ? logic.player_1_softs : logic.player_2_softs;
         bool hards = button ? logic.player_1_hards : logic.player_2_hards;
@@ -748,6 +760,8 @@ int __fastcall Hooks::PlayLayer::pushButton_h(gd::PlayLayer* self, int, int idk,
         else {
             Clickbot::clickChannel2->setPaused(false);
         }
+        Clickbot::system->update();
+        button = oldButton;
     }
 
     if (logic.playback_clicking) return 0;
@@ -827,6 +841,10 @@ int __fastcall Hooks::PlayLayer::releaseButton_h(gd::PlayLayer* self, int, int i
             Clickbot::inited = true;
         }
 
+        bool oldButton = button;
+        if (!self->m_level->twoPlayerMode) {
+            button = true;
+        }
         logic.clickbot_now = self->m_time;
         logic.cycleTime = logic.clickbot_now - logic.clickbot_start;
         if (logic.cycleTime <= (button ? logic.player_1_micros_time / 1000.f : logic.player_2_micros_time / 1000.f))
@@ -893,6 +911,7 @@ int __fastcall Hooks::PlayLayer::releaseButton_h(gd::PlayLayer* self, int, int i
             Clickbot::releaseChannel2->setPaused(false);
         }
         Clickbot::system->update();
+        button = oldButton;
     }
 
     if (logic.playback_releasing) return 0;

@@ -600,11 +600,11 @@ void GUI::ui_editor() {
 	if (docked)
 		ImGui::SetNextItemWidth(tabWidth);
 
-	if (ImGui::BeginTabItem("Style") || !docked) {
+	if (ImGui::BeginTabItem("Theme") || !docked) {
 		static float window_scale = 1.0f;
 
 		if (!docked) {
-			ImGui::Begin("Style", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+			ImGui::Begin("Theme", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
 
 			style_pos = ImGui::GetWindowPos();
 		}
@@ -2112,8 +2112,9 @@ void GUI::clickbot() {
 				}
 
 				static char inputBuffer[256];
+				strcpy(inputBuffer, logic.algorithm.c_str());
 				static bool typing_alg = false;
-				ImGui::PushItemWidth(250);
+				ImGui::PushItemWidth(200);
 				if (ImGui::InputText("Algorithm", inputBuffer, sizeof(inputBuffer))) typing_alg = true;
 				else typing_alg = false;
 				ImGui::PopItemWidth();
@@ -2131,6 +2132,7 @@ void GUI::clickbot() {
 				expression = "0+";
 				expression += inputBuffer;
 				tokens = tokenizeExpression(expression);
+				logic.algorithm = inputBuffer;
 
 				int index = 0;
 
@@ -2996,6 +2998,21 @@ void readBinds() {
     })); \
     Logic::get().keybinds.SetAction(#name, std::move(name))
 
+void appendToFile(double percent, const std::string& filename) {
+	std::ofstream outputFile;
+	outputFile.open(filename, std::ios::app); // Open the file in append mode
+
+	if (!outputFile) {
+		std::cerr << "Error opening file: " << filename << std::endl;
+		return;
+	}
+
+	// Append the value of 'percent' to the file
+	outputFile << percent << std::endl;
+
+	outputFile.close();
+}
+
 void GUI::init() {
 	
 	ImPlot::CreateContext();
@@ -3093,6 +3110,13 @@ void GUI::init() {
 		}
 		}));
 
+	std::unique_ptr<KeybindableBase> outputPercentAction = std::unique_ptr<KeybindableBase>(new Keybindable([this]() {
+		if (PLAYLAYER) {
+			float percent = min(100.f, (PLAYLAYER->m_pPlayer1->getPositionX() / PLAYLAYER->m_endPortal->getPositionX()) * 100.f);
+			appendToFile(percent, "PERCENTS.txt");
+		}
+		}));
+
 	Logic::get().keybinds.SetAction("audioHack", std::move(audioSpeedHackAction));
 
 	Logic::get().keybinds.SetAction("anticheat", std::move(anticheatAction));
@@ -3105,6 +3129,8 @@ void GUI::init() {
 	Logic::get().keybinds.SetAction("togglePlaying", std::move(playingAction));
 	Logic::get().keybinds.SetAction("advancing", std::move(advanceAction));
 	Logic::get().keybinds.SetAction("resetLevel", std::move(resetAction));
+
+	Logic::get().keybinds.SetAction("outputPercents", std::move(outputPercentAction));
 
 	SET_BIND(realTimeMode, Logic::get().real_time_mode);
 	
@@ -3132,7 +3158,9 @@ void GUI::init() {
 	SET_BIND(menuBind, show_window);
 	SET_BIND(showRecord, Logic::get().show_recording);
 
-	Logic::get().keybinds.GetKeybind("menuBind").SetKey(90, false, true, false);
+	Logic::get().keybinds.GetKeybind("menuBind").SetKey(164, false, false, true);
+
+	//Logic::get().keybinds.GetKeybind("outputPercents").SetKey(77, false, false, false); // doki percents shit for Title Wave
 
 	readBinds();
 
