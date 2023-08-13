@@ -51,9 +51,9 @@ public:
     void export_to(const std::string& filename) override {
         auto& logic = Logic::get();
         std::string dir = ".echo/";
-        std::string ext = ".json";
+        std::string ext = ".mhr.json";
 
-        if (logic.export_to_bot_location) dir = "macros/";
+        if (logic.export_to_bot_location) dir = "macros\\";
 
         std::string full_filename = dir + filename + ext;
 

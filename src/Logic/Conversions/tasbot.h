@@ -3,27 +3,62 @@
 #ifndef TASBOT_H
 #define TASBOT_H
 
+#include <simdjson.h>
+using namespace simdjson;
 using json = nlohmann::json;
+
 class TASBot : public Convertible {
 public:
 
     void import(const std::string& filename) override {
         auto& logic = Logic::get();
 
+        // Step 1: Read the JSON file into memory
         std::ifstream file(filename);
+        if (!file.is_open()) {
+            std::cerr << "Failed to open file: " << filename << std::endl;
+            return;
+        }
 
-        nlohmann::json state;
-        file >> state;
+        std::string jsonString((std::istreambuf_iterator<char>(file)),
+            std::istreambuf_iterator<char>());
+        file.close();
 
-        logic.fps = state["fps"].get<double>();
+        // Step 2: Use simdjson API to parse the JSON data
+        simdjson::dom::parser parser;
+        simdjson::dom::element root;
+        simdjson::error_code error = parser.parse(jsonString).get(root);
+        if (error) {
+            std::cerr << "Error parsing JSON: " << error << std::endl;
+            return;
+        }
 
+        // Step 3: Access the data from the parsed JSON
+        // Get the "fps" value
+        double fps;
+        if (root["fps"].is_double()) {
+            fps = root["fps"].get_double().value();
+            logic.fps = fps;
+        }
+
+        // Clear the existing inputs
         logic.inputs.clear();
-        for (auto& json_input : state["macro"]) {
-            Frame input;
-            input.number = json_input["frame"].get<unsigned>();
-            int player1Click = json_input["player_1"]["click"].get<int>();
-            int player2Click = json_input["player_2"]["click"].get<int>();
-            float xPosition = json_input["player_1"]["x_position"].get<float>();
+
+        // Iterate over the "macro" array
+        simdjson::dom::array macroArray = root["macro"].get_array();
+        for (simdjson::dom::object macro : macroArray) {
+            Frame input;    
+
+            // Get the "frame" value
+            unsigned frame;
+            frame = static_cast<unsigned>(macro["frame"].get_uint64().value());
+            input.number = frame;
+
+            // Access "click" and "x_position" values for "player_1"
+            int player1Click;
+            float xPosition;
+            player1Click = static_cast<int>(macro["player_1"]["click"].get_int64().value());
+            xPosition = static_cast<float>(macro["player_1"]["x_position"].get_double().value());
 
             if (player1Click == 1) {
                 input.pressingDown = true;
@@ -37,6 +72,10 @@ public:
                 input.xPosition = xPosition;
                 logic.inputs.push_back(input);
             }
+
+            int player2Click;
+            player2Click = static_cast<int>(macro["player_2"]["click"].get_int64().value());
+            xPosition = static_cast<float>(macro["player_2"]["x_position"].get_double().value());
 
             if (player2Click == 1) {
                 input.pressingDown = true;
@@ -55,7 +94,6 @@ public:
         logic.offset_frames(1);
 
         logic.conversion_message = ""; // Clearing
-        file.close();
     }
 
     void export_to(const std::string& filename) override {

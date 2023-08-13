@@ -36,6 +36,19 @@ struct Frame {
 	double xVelocity;
 };
 
+struct ShakeFrame {
+	float m_currentShakeStrength;
+	float m_currentShakeInterval;
+	double m_lastShakeTime;
+	cocos2d::CCPoint unk3D8;
+	int number;
+};
+
+struct FPSFrame {
+	double fps;
+	int number;
+};
+
 struct HacksStr
 {
 	bool showHitboxes = false, showDecorations = false;
@@ -333,9 +346,17 @@ public:
 
 	FORMATS format = META;
 
+	std::vector<ShakeFrame> shakes;
+	unsigned shakes_pos = 0;
+
+	std::vector<FPSFrame> framerates;
+	unsigned framerates_pos = 0;
+
 	HacksStr hacks;
 
 	std::string algorithm = "1";
+
+	bool currently_pressing = false;
 
 	bool export_to_bot_location = false;
 

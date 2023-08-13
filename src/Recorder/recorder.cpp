@@ -244,8 +244,10 @@ void Recorder::handle_recording(gd::PlayLayer* play_layer, float dt) {
         auto time = (ssb_fix ? Logic::get().tfx2_calculated : play_layer->m_time) + m_extra_t - m_last_frame_t;
 
         if (time >= frame_dt) {
+            if (!Logic::get().completed_level) {
             gd::FMODAudioEngine::sharedEngine()->setBackgroundMusicTime(
                 play_layer->timeForXPos2(play_layer->m_pPlayer1->m_position.x, true) + m_song_start_offset);
+            }
             m_extra_t = time - frame_dt;
             m_last_frame_t = ssb_fix ? Logic::get().tfx2_calculated : play_layer->m_time;
             capture_frame();

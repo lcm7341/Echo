@@ -8,6 +8,7 @@
 #include <random>
 #include <cctype>
 #include <regex>
+#include <ShObjIdl.h>
 
 using json = nlohmann::json;
 
@@ -69,6 +70,8 @@ void Logic::play_input(Frame& input) {
         live_inputs.push_back(input);
 
         if (input.pressingDown) {
+
+            currently_pressing = true;
             playback_clicking = true;
             try {
                 Hooks::PlayLayer::pushButton(PLAYLAYER, 0, !input.isPlayer2 ^ gamevar);
@@ -360,7 +363,7 @@ bool Logic::play_macro() {
 
             auto player = input.isPlayer2 ? PLAYLAYER->m_pPlayer2 : PLAYLAYER->m_pPlayer1;
             auto gamemode = CheckpointData::GetGamemode(player);
-            bool passes = gamemode != gd::kGamemodeBall && gamemode != gd::kGamemodeSpider && gamemode != gd::kGamemodeUfo;
+            bool passes = gamemode != gd::kGamemodeBall && gamemode != gd::kGamemodeSpider && gamemode != gd::kGamemodeUfo && gamemode != gd::kGamemodeCube;
 
             if ((input.number <= current_frame && passes) || input.number == current_frame) {
                 if (input.number < current_frame && !is_over_orb)
@@ -407,7 +410,7 @@ std::pair<std::string, std::string> generateNewFileName(const std::string& fileN
     auto& logic = Logic::get();
     std::string rename_format = logic.rename_format;
 
-    std::string dir = ".echo\\";
+    std::string dir = json ? ".echo\\converted\\" : ".echo\\replays\\";
     std::string baseName = fs::path(fileName).stem().string();
     if (json) baseName = fs::path(fileName).stem().stem().string();
     std::string extension = fs::path(fileName).extension().string();
@@ -497,7 +500,7 @@ void Logic::write_file(const std::string& filename) {
 }
 
 void Logic::read_file(const std::string& filename, bool is_path = false) {
-    std::string dir = ".echo\\";
+    std::string dir = ".echo\\replays\\";
     std::string ext = ".echo";
 
     std::string full_filename = is_path ? filename : dir + filename + ext;
@@ -574,6 +577,13 @@ void Logic::read_file(const std::string& filename, bool is_path = false) {
             r_b(input.xVelocity);
             r_b(input.yPosition);
             r_b(input.rotation);
+        }
+        else {
+            input.xPosition = 0;
+            input.yVelocity = 0;
+            input.xVelocity = 0;
+            input.yPosition = 0;
+            input.rotation = 0;
         }
 
         if (file.eof()) {
@@ -683,7 +693,7 @@ void Logic::write_file_json(const std::string& filename) {
 }
 
 void Logic::read_file_json(const std::string& filename, bool is_path = false) {
-    std::string dir = ".echo\\";
+    std::string dir = ".echo\\replays\\";
     std::string ext = ".echo.json";
 
     std::string full_filename = is_path ? filename : dir + filename + ext;
@@ -787,12 +797,16 @@ void Logic::handle_checkpoint_data() {
 
             // PLAYLAYER->m_cameraPos = data.camera;
 
+            data.player_1_data.apply(PLAYLAYER->m_pPlayer1);
+            data.player_2_data.apply(PLAYLAYER->m_pPlayer2);
+            return;
+
             if (PLAYLAYER->m_pObjectLayer) {
                 auto layer = static_cast<CCLayer*>(PLAYLAYER->getChildren()->objectAtIndex(2));
                 float xp = -layer->getPositionX() / layer->getScale();
                 cast_function caster = make_cast<gd::GameObject, CCObject>();
 
-                for (int s = PLAYLAYER->sectionForPos(xp) - (5 / layer->getScale()); s < PLAYLAYER->sectionForPos(xp) + (6 / layer->getScale()); ++s) {
+                for (int s = PLAYLAYER->sectionForPos(xp) - 5 ; s < PLAYLAYER->sectionForPos(xp) + 6; ++s) {
                     if (s < 0)
                         continue;
                     if (s >= PLAYLAYER->m_sectionObjects->count())
@@ -802,7 +816,7 @@ void Logic::handle_checkpoint_data() {
                     {
                         auto obj = static_cast<gd::GameObject*>(section->objectAtIndex(i));
                         if (obj) {
-                            if (obj->m_nObjectType == gd::kGameObjectTypeDecoration) continue;
+                            //if (obj->m_nObjectType == gd::kGameObjectTypeDecoration) continue;
                             for (const auto& pair : data.objects) {
                                 const ObjectData& nodeData = pair.second;
                                 obj->setPositionX(nodeData.posX);
@@ -818,6 +832,7 @@ void Logic::handle_checkpoint_data() {
                                 obj->m_unk33C = nodeData.speed3;
                                 obj->m_unk340 = nodeData.speed4;
                                 obj->m_unk390 = nodeData.speed5;*/
+
                                 // I HATE GEOMETRY DASH
                                 //obj->m_bUnk3 = nodeData.m_bUnk3;
                                 //obj->m_bIsBlueMaybe = nodeData.m_bIsBlueMaybe;
@@ -919,6 +934,7 @@ void Logic::handle_checkpoint_data() {
                                 //obj->m_nEditorLayer2 = nodeData.m_nEditorLayer2;
                                 //obj->m_unk414 = nodeData.m_unk414;
                                 //obj->m_obFirstPosition = nodeData.m_obFirstPosition;
+                                //section->replaceObjectAtIndex(i, obj);
                             }
                         }
                     }

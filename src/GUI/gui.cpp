@@ -30,6 +30,7 @@
 #include "../Logic/Conversions/json.h"
 #include "../Logic/Conversions/osu.h"
 #include "../Logic/Conversions/plaintext.h"
+#include "../Logic/Conversions/zbotf.h"
 #include "../Hooks/hooks.hpp"
 #include <imgui_demo.cpp>
 #include <format>
@@ -235,6 +236,14 @@ void delay(int milliseconds) {
 	}
 }
 
+template<typename T>
+T checkProperty(const json& j, const std::string& key, const T& defaultValue) {
+	if (j.contains(key) && !j[key].is_null()) {
+		return j[key].get<T>();
+	}
+	return defaultValue;
+}
+
 void GUI::draw() {
 	Logic::get().processKeybinds();
 	if (!g_has_imported)
@@ -251,18 +260,20 @@ void GUI::draw() {
 	auto end = std::chrono::steady_clock::now();
 	auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - Logic::get().start);
 
-	if (duration.count() >= Logic::get().frame_advance_hold_duration * Logic::get().speedhack && Logic::get().start != std::chrono::steady_clock::time_point()) {
-		Logic::get().frame_advance = false;
-		bool old_real_time = Logic::get().real_time_mode;
-		Logic::get().real_time_mode = false;
-		Hooks::CCScheduler_update_h(gd::GameManager::sharedState()->getScheduler(), 0, 1.f / Logic::get().fps);
-		Logic::get().frame_advance = true;
-		Logic::get().real_time_mode = old_real_time;
-		delay(Logic::get().frame_advance_delay);
-		Logic::get().holding_frame_advance = true;
-	}
-	else {
-		Logic::get().holding_frame_advance = false;
+	if (PLAYLAYER) {
+		if (duration.count() >= Logic::get().frame_advance_hold_duration * Logic::get().speedhack && Logic::get().start != std::chrono::steady_clock::time_point()) {
+			Logic::get().frame_advance = false;
+			bool old_real_time = Logic::get().real_time_mode;
+			Logic::get().real_time_mode = false;
+			Hooks::CCScheduler_update_h(gd::GameManager::sharedState()->getScheduler(), 0, 1.f / Logic::get().fps);
+			Logic::get().frame_advance = true;
+			Logic::get().real_time_mode = old_real_time;
+			delay(Logic::get().frame_advance_delay);
+			Logic::get().holding_frame_advance = true;
+		}
+		else {
+			Logic::get().holding_frame_advance = false;
+		}
 	}
 
 	/*Speedhack::SetSpeed(1.f);
@@ -327,7 +338,7 @@ void GUI::draw() {
 		//io.FontGlobalScale = io.DisplaySize.x / 2000; // wee bit bigger than 1920
 
 		if (docked) {
-			ImGui::Begin(full_title.str().c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoFocusOnAppearing);
+			ImGui::Begin(full_title.str().c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize);
 
 			if (ImGui::BeginTabBar("TabBar", ImGuiTabBarFlags_Reorderable | ImGuiTabBarFlags_SaveSettings)) {
 				main();
@@ -429,6 +440,8 @@ void GUI::import_theme(std::string path) {
 	style.ItemInnerSpacing.y = json["ItemInnerSpacingY"];
 	style.TouchExtraPadding.x = json["TouchExtraPaddingX"];
 	style.TouchExtraPadding.y = json["TouchExtraPaddingY"];
+	style.WindowPadding.x = checkProperty(json, "WindowPaddingX", 8);
+	style.WindowPadding.y = checkProperty(json, "WindowPaddingY", 8);
 	style.IndentSpacing = json["IndentSpacing"];
 	style.ScrollbarSize = json["ScrollbarSize"];
 	style.GrabMinSize = json["GrabMinSize"];
@@ -510,6 +523,8 @@ void GUI::export_theme(std::string path, bool custom_path) {
 	json["ItemInnerSpacingY"] = style.ItemInnerSpacing.y;
 	json["TouchExtraPaddingX"] = style.TouchExtraPadding.x;
 	json["TouchExtraPaddingY"] = style.TouchExtraPadding.y;
+	json["WindowPaddingX"] = style.WindowPadding.x;
+	json["WindowPaddingY"] = style.WindowPadding.y;
 	json["IndentSpacing"] = style.IndentSpacing;
 	json["ScrollbarSize"] = style.ScrollbarSize;
 	json["GrabMinSize"] = style.GrabMinSize;
@@ -631,7 +646,7 @@ void GUI::ui_editor() {
 
 		ImGui::PushItemWidth(150);
 
-		ImGui::DragFloat("Global Scale", &io.FontGlobalScale, 0.01, 0.1, 3.f, "%.2f");
+		ImGui::DragFloat("Global Scale", &io.FontGlobalScale, 0.01, 0.01, 3.0, "%.1f");
 
 		ImGui::PopItemWidth();
 
@@ -660,7 +675,7 @@ void GUI::ui_editor() {
 			{
 
 				//ImGui::SetNextWindowSizeConstraints(ImVec2(-1, 350 * io.FontGlobalScale * 2), ImVec2(-1, 350 * io.FontGlobalScale * 2));
-				ImGui::BeginChild("##sizes", ImVec2(-1, 350 * io.FontGlobalScale * 2), true, ImGuiWindowFlags_AlwaysAutoResize);
+				ImGui::BeginChild("##sizes", ImVec2(-1, 350 * io.FontGlobalScale * 2.f), true, ImGuiWindowFlags_AlwaysAutoResize);
 				ImGui::Text("Main");
 				ImGui::PushItemWidth(200);
 				ImGui::SliderFloat2("WindowPadding", (float*)&style.WindowPadding, 0.0f, 20.0f, "%.0f");
@@ -715,7 +730,7 @@ void GUI::ui_editor() {
 				static ImGuiColorEditFlags alpha_flags = 0;
 
 				//ImGui::SetNextWindowSizeConstraints(ImVec2(500, 500), ImVec2(500, 500));
-				ImGui::BeginChild("##colors", ImVec2(-1, 350 * io.FontGlobalScale * 2), true, ImGuiWindowFlags_AlwaysAutoResize);
+				ImGui::BeginChild("##colors", ImVec2(-1, 350 * io.FontGlobalScale * 2.f), true, ImGuiWindowFlags_AlwaysAutoResize);
 				ImGui::PushItemWidth(250);
 				if (filter.PassFilter("Player 1 In Editor")) {
 					ImGui::PushID(998);
@@ -903,7 +918,7 @@ void GUI::editor() {
 		}
 
 		if (!docked) {
-			ImGui::SetNextWindowSizeConstraints(ImVec2(450 * ImGui::GetIO().FontGlobalScale * 2, 415 * ImGui::GetIO().FontGlobalScale * 2), ImVec2(550 * ImGui::GetIO().FontGlobalScale * 2, 515 * ImGui::GetIO().FontGlobalScale * 2));
+			ImGui::SetNextWindowSizeConstraints(ImVec2(450 * ImGui::GetIO().FontGlobalScale * 2.f, 415 * ImGui::GetIO().FontGlobalScale * 2.f), ImVec2(550 * ImGui::GetIO().FontGlobalScale * 2.f, 515 * ImGui::GetIO().FontGlobalScale * 2.f));
 			ImGui::Begin("Editor", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
 
 			editor_pos = ImGui::GetWindowPos();
@@ -936,8 +951,13 @@ void GUI::editor() {
 
 		const ImVec2 oldFramePadding = style.FramePadding;
 
-		ImGui::BeginChild("##List", ImVec2(ImGui::GetContentRegionAvail().x * 0.5, (firstChildHeight - ImGui::GetFrameHeightWithSpacing() + 1) * ImGui::GetIO().FontGlobalScale * 2), true, ImGuiWindowFlags_AlwaysUseWindowPadding);
+		ImGui::BeginChild("##List", ImVec2(ImGui::GetContentRegionAvail().x * 0.5, (firstChildHeight - ImGui::GetFrameHeightWithSpacing() + 1) * ImGui::GetIO().FontGlobalScale * 2.f), true, ImGuiWindowFlags_AlwaysUseWindowPadding);
 		
+		if (reload_inputs) {
+			selectedInput = -1;
+			reload_inputs = false;
+		}
+
 		if (!inputs.empty() && !plaintext_editing) {
 			int closestFrameDiff = INT_MAX;
 			int closestInputIndex = -1;
@@ -1029,7 +1049,7 @@ void GUI::editor() {
 		ImGui::EndChild();
 		ImGui::SameLine();
 
-		ImGui::BeginChild("##EditArea", ImVec2(0, (firstChildHeight - ImGui::GetFrameHeightWithSpacing() + 1) * ImGui::GetIO().FontGlobalScale * 2), true, ImGuiWindowFlags_AlwaysUseWindowPadding);
+		ImGui::BeginChild("##EditArea", ImVec2(0, (firstChildHeight - ImGui::GetFrameHeightWithSpacing() + 1) * ImGui::GetIO().FontGlobalScale * 2.f), true, ImGuiWindowFlags_AlwaysUseWindowPadding);
 
 		if (selectedInput >= 0 && selectedInput < inputs.size() && !plaintext_editing) {
 			ImGui::Text("%s Input Selected", getOrdinalSuffix(selectedInput + 1).c_str());
@@ -1196,6 +1216,7 @@ void GUI::renderer() {
 	float tabWidth = ImGui::GetWindowContentRegionWidth() / 6.0f;
 	if (docked)
 		ImGui::SetNextItemWidth(tabWidth);
+
 	if (ImGui::BeginTabItem("Render") || !docked) {
 
 		if (!docked) {
@@ -1373,7 +1394,7 @@ void GUI::sequential_replay() {
 	if (ImGui::BeginTabItem("Sequence") || !docked) {
 
 		if (!docked) {
-			ImGui::SetNextWindowSizeConstraints({ 375 * ImGui::GetIO().FontGlobalScale * 2, 330 * ImGui::GetIO().FontGlobalScale * 2 }, { 375 * ImGui::GetIO().FontGlobalScale * 2, 350 * ImGui::GetIO().FontGlobalScale * 2 });
+			ImGui::SetNextWindowSizeConstraints({ 375 * ImGui::GetIO().FontGlobalScale * 2.f, 330 * ImGui::GetIO().FontGlobalScale * 2.f }, { 375 * ImGui::GetIO().FontGlobalScale * 2.f, 350 * ImGui::GetIO().FontGlobalScale * 2.f });
 			ImGui::Begin("Sequence", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
 
 			sequence_pos = ImGui::GetWindowPos();
@@ -1493,11 +1514,11 @@ static int selected_inverse_click = 0; // Index of "Both" option (auto selected)
 
 std::map<std::string, std::shared_ptr<Convertible>> options = {
 	{"TASBot", std::make_shared<TASBot>()},
-	{"Osu", std::make_shared<Osu>()},
 	{"Mega Hack Replay JSON", std::make_shared<MHRJSON>()},
 	{"Mega Hack Replay", std::make_shared<MHR>()},
 	{"Plain Text", std::make_shared<PlainText>()},
-	{"JSON", std::make_shared<JSON>()}
+	{"JSON", std::make_shared<JSON>()},
+	{"ZBot Frame", std::make_shared<ZBF>()}
 };
 
 void GUI::tools() {
@@ -1558,8 +1579,10 @@ void GUI::tools() {
 
 		ImGui::SameLine();
 
-		if (ImGui::Button("Export")) {
-			std::string filename = logic.macro_name;
+		if (ImGui::Button("Export", ImVec2(ImGui::GetContentRegionAvail().x, 0.f))) {
+			std::string filename = "converted\\";
+			filename += logic.macro_name;
+			if (logic.export_to_bot_location) filename = logic.macro_name;
 			try {
 				options[current_option]->export_to(filename);
 				logic.conversion_message = "Success! Exported " + filename + " as a " + options[current_option]->get_type_filter() + " file";
@@ -1589,7 +1612,7 @@ void GUI::tools() {
 			logic.inputs = old_inputs;
 		} ImGui::SameLine();
 
-		HelpMarker("Batch Import is a tool that allows you to automatically convert every macro of a certain type (e.g. TASBot, MHR) to Echo.\nThis converts all the files of that type to an Echo file in the .echo folder immediately.\nThis feature does prevent overwriting old macros.");
+		HelpMarker("Batch Import automatically converts every macro of a certain type (e.g. TASBot, MHR) to Echo.\nThis feature prevents overwriting old macros.\nDepending on the amount and size of the macros, it may take a while.");
 
 		if (ImGuiFileDialog::Instance()->Display("ConversionImport", ImGuiWindowFlags_NoCollapse, ImVec2(500, 200)))
 		{
@@ -1599,6 +1622,7 @@ void GUI::tools() {
 				logic.conversion_message = "";
 				try {
 					options[current_option]->import(ImGuiFileDialog::Instance()->GetFilePathName());
+					reload_inputs = true;
 					logic.sort_inputs();
 					if (logic.conversion_message == "")
 						logic.conversion_message = "Success! Imported replay as a " + current_option + " file";
@@ -1615,7 +1639,7 @@ void GUI::tools() {
 		ImGui::Separator();
 
 		if (ImGui::Button("Merge With Replay")) {
-			ImGuiFileDialog::Instance()->OpenDialog("MergeReplay", "Choose File", ".echo,.json", ".echo/");
+			ImGuiFileDialog::Instance()->OpenDialog("MergeReplay", "Choose File", ".echo,.json", ".echo/replays/");
 		}
 
 		if (ImGuiFileDialog::Instance()->Display("MergeReplay", ImGuiWindowFlags_NoCollapse, ImVec2(500, 200)))
@@ -1734,7 +1758,7 @@ void GUI::tools() {
 		}
 		CHECK_KEYBIND("anticheat");
 
-		ImGui::SameLine(0, docked ? 100 : -1);
+		ImGui::SameLine(0, docked ? 80 : -1);
 
 		if (ImGui::Checkbox("Modify Respawn Time", &logic.respawn_time_modified)) {
 			if (logic.respawn_time_modified) {
@@ -1848,7 +1872,7 @@ void GUI::tools() {
 
 		ImGui::Separator();
 
-		ImGui::Checkbox("Frame Advance", &logic.frame_advance); ImGui::SameLine(0, docked ? 75 : -1);
+		ImGui::Checkbox("Frame Advance", &logic.frame_advance); ImGui::SameLine(0, docked ? 50 : -1);
 
 		CHECK_KEYBIND("frameAdvance");
 
@@ -1944,7 +1968,6 @@ void ShowFolderDropdown(const fs::path& directoryPath, std::string selectedFolde
 		ImGui::EndCombo();
 	}
 }
-
 
 void GUI::clickbot() {
 	auto& logic = Logic::get();
@@ -2891,9 +2914,10 @@ void GUI::main() {
 				else {
 					logic.read_file(logic.macro_name, false);
 				}
+				reload_inputs = true;
 			}
 			else {
-				ImGuiFileDialog::Instance()->OpenDialog("ImportNormal", "Choose File", ".echo,.json", ".echo/");
+				ImGuiFileDialog::Instance()->OpenDialog("ImportNormal", "Choose File", ".echo,.json", ".echo/replays/");
 			}
 			input_fps = logic.fps;
 			CCDirector::sharedDirector()->setAnimationInterval(1.f / GUI::get().input_fps);
@@ -2920,6 +2944,7 @@ void GUI::main() {
 				else
 					logic.read_file(filePathName, true);
 
+				reload_inputs = true;
 				input_fps = logic.fps;
 				CCDirector::sharedDirector()->setAnimationInterval(1.f / GUI::get().input_fps);
 
@@ -3180,7 +3205,7 @@ void GUI::init() {
 	style.IndentSpacing = 21;
 	style.ItemSpacing = { 8, 8 };
 
-	ImGui::GetIO().FontGlobalScale /= 2;
+	ImGui::GetIO().FontGlobalScale /= 2.0f;
 
 	style.ScrollbarSize = 14;
 	style.GrabMinSize = 8;

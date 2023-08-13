@@ -16,6 +16,7 @@
 #include <stdexcept>
 #include "Logic/convertible.h";
 #include "Logic/Conversions/tasbot.h"
+#include <unordered_set>
 
 using json = nlohmann::json;
 
@@ -199,6 +200,8 @@ void writeConfig() {
 	j["p2_clickpack"] = logic.player_2_path;
 	j["algorithm"] = logic.algorithm;
 
+	j["auto_export_to_location"] = logic.export_to_bot_location;
+
 	for (const auto& binding : logic.keybinds.bindings) {
 		const std::string& action = binding.first;
 		const Keybind& keybind = binding.second.first;
@@ -332,9 +335,9 @@ void readConfig() {
 	GUI::get().style_pos.x = getOrDefault(j, "style_pos_x", 1425);
 	GUI::get().style_pos.y = getOrDefault(j, "style_pos_y", 35);
 
-	GUI::get().editor_auto_scroll = getOrDefault(j, "editor_auto_scroll", true);
+	GUI::get().editor_auto_scroll = getOrDefault(j, "editor_auto_scroll", GUI::get().editor_auto_scroll);
 
-	logic.clickbot_enabled = getOrDefault(j, "clickbot_enabled", false);
+	logic.clickbot_enabled = getOrDefault(j, "clickbot_enabled", logic.clickbot_enabled);
 	
 	logic.clickbot_volume_mult_saved = getOrDefault(j, "volume_multiplier", logic.clickbot_volume_mult_saved);
 
@@ -362,6 +365,8 @@ void readConfig() {
 	logic.player_1_path = getOrDefault(j, "p1_clickpack", logic.player_1_path);
 	logic.player_2_path = getOrDefault(j, "p2_clickpack", logic.player_2_path);
 	logic.algorithm = getOrDefault(j, "algorithm", logic.algorithm);
+
+	logic.export_to_bot_location = getOrDefault(j, "auto_export_to_location", logic.export_to_bot_location);
 
 	file.close();
 }
@@ -424,6 +429,88 @@ bool isDirectoryEmpty(const std::string& path) {
 	return fs::begin(dirIter) == fs::end(dirIter);
 }
 
+void moveFilesToReplaysDirectory() {
+	// Define the source and destination directories
+	fs::path sourceDir = ".echo";
+	fs::path destinationDir = ".echo/replays";
+
+	// Check if the source directory exists
+	if (!fs::exists(sourceDir)) {
+		std::cout << "Source directory does not exist.\n";
+		return;
+	}
+
+	// Create the destination directory if it doesn't exist
+	if (!fs::exists(destinationDir)) {
+		if (!fs::create_directory(destinationDir)) {
+			std::cout << "Error creating the destination directory.\n";
+			return;
+		}
+	}
+
+	// Iterate through files in the source directory
+	for (const auto& entry : fs::directory_iterator(sourceDir)) {
+		const auto& filePath = entry.path();
+		const std::string filename = filePath.filename().string();
+		const std::string extension = filePath.extension().string();
+
+		// Check if the file ends with ".echo.json"
+		bool isEchoJson = false;
+		if (filename.length() >= 10) if (filename.substr(filename.length() - 10) == ".echo.json") isEchoJson = true;
+		if (extension == ".echo" || isEchoJson) {
+			try {
+				// Move the file to the destination directory
+				fs::rename(filePath, destinationDir / filePath.filename());
+				std::cout << "Moved: " << filePath.filename() << "\n";
+			}
+			catch (const fs::filesystem_error& e) {
+				std::cout << "Error moving " << filePath.filename() << ": " << e.what() << "\n";
+			}
+		}
+	}
+}
+
+void moveFilesToConvertedDirectory() {
+	// Define the source and destination directories
+	fs::path sourceDir = ".echo";
+	fs::path destinationDir = ".echo/converted";
+
+	// Check if the source directory exists
+	if (!fs::exists(sourceDir)) {
+		std::cout << "Source directory does not exist.\n";
+		return;
+	}
+
+	// Create the destination directory if it doesn't exist
+	if (!fs::exists(destinationDir)) {
+		if (!fs::create_directory(destinationDir)) {
+			std::cout << "Error creating the destination directory.\n";
+			return;
+		}
+	}
+
+	// Set containing valid extensions to check against
+	std::unordered_set<std::string> validExtensions = { ".zbf", ".json", ".txt", ".mhr" };
+
+	// Iterate through files in the source directory
+	for (const auto& entry : fs::directory_iterator(sourceDir)) {
+		const auto& filePath = entry.path();
+		const std::string extension = filePath.extension().string();
+
+		// Check if the file ends with a valid extension
+		if (validExtensions.count(extension) > 0) {
+			try {
+				// Move the file to the destination directory
+				fs::rename(filePath, destinationDir / filePath.filename());
+				std::cout << "Moved: " << filePath.filename() << "\n";
+			}
+			catch (const fs::filesystem_error& e) {
+				std::cout << "Error moving " << filePath.filename() << ": " << e.what() << "\n";
+			}
+		}
+	}
+}
+
 DWORD WINAPI my_thread(void* hModule) {
 
 	MH_Initialize();
@@ -452,8 +539,9 @@ DWORD WINAPI my_thread(void* hModule) {
 		".echo/renders",
 		".echo/settings",
 		".echo/themes",
-		".echo/osu",
 		".echo/clickpacks",
+		".echo/replays",
+		".echo/converted",
 	};
 
 	std::vector<std::string> clickbot_paths = {
@@ -468,20 +556,8 @@ DWORD WINAPI my_thread(void* hModule) {
 		".echo/clickpacks/example/micro_releases",
 	};
 
-	/*std::string directoryPath = ".tasbot/macro";
-
-	std::map<std::string, std::shared_ptr<Convertible>> options = {
-	{"TASBot", std::make_shared<TASBot>()}
-	};
-
-	for (const auto& entry : fs::directory_iterator(directoryPath)) {
-		if (entry.is_regular_file()) {
-			options["TASBot"]->import(entry.path().string());
-			Logic::get().sort_inputs();
-			Logic::get().write_file(entry.path().stem().string());
-			Logic::get().inputs.clear();
-		}
-	}*/
+	moveFilesToReplaysDirectory();
+	moveFilesToConvertedDirectory();
 
 	try {
 		for (auto& path : paths) {

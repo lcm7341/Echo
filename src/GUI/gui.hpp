@@ -63,6 +63,8 @@ public:
 
 	bool editor_auto_scroll = true;
 
+	bool reload_inputs = false; // bro fuck off with statics
+
 	std::string keybind_prompt = "";
 	std::string keybind_prompt_cache = "";
 	ImVec4 popup_bg_color = { 0, 0, 0, 60 };

@@ -5,6 +5,7 @@
 #include "../GUI/gui.hpp"
 #include "../Logic/speedhack.h"
 #include "../Hack/trajectorysimulation.hpp"
+#include <filesystem>
 
 #define FRAME_LABEL_ID 82369 + 1 //random value :P
 #define CPS_LABEL_ID 82369 + 2 //random value :P
@@ -31,6 +32,8 @@ void Hooks::init_hooks() {
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x20b830), removeCheckpoint_h, reinterpret_cast<void**>(&removeCheckpoint));
 
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x1907b0), menuLayerInit_h, reinterpret_cast<void**>(&menuLayerInit));
+
+    HOOK(0x20D3C0, PlayLayer::pauseGame);
 
     //MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x20a1a0), PlayLayer::destroyPlayer_h, reinterpret_cast<void**>(&PlayLayer::destroyPlayer));
 
@@ -61,6 +64,28 @@ void Hooks::init_hooks() {
     MH_CreateHook(GetProcAddress(GetModuleHandleA("libcocos2d.dll"), "?update@CCScheduler@cocos2d@@UAEXM@Z"), CCScheduler_update_h, reinterpret_cast<void**>(&CCScheduler_update));
 
     MH_EnableHook(MH_ALL_HOOKS);
+}
+
+void patch(void* loc, std::vector<std::uint8_t> bytes) { // skidded from replaybot
+    auto size = bytes.size();
+    DWORD old_prot;
+    VirtualProtect(loc, size, PAGE_EXECUTE_READWRITE, &old_prot);
+    memcpy(loc, bytes.data(), size);
+    VirtualProtect(loc, size, old_prot, &old_prot);
+}
+
+void __fastcall Hooks::PlayLayer::pauseGame_h(gd::PlayLayer* self, int, bool idk) { // also skidded, but its the pause/unpause fix for playback
+    auto addr = reinterpret_cast<void*>(gd::base + 0x20D43C);
+    auto& logic = Logic::get();
+
+    bool should_patch = logic.is_playing();
+    if (should_patch)
+        patch(addr, { 0x83, 0xC4, 0x04, 0x90, 0x90 });
+
+    pauseGame(self, idk);
+
+    if (should_patch)
+        patch(addr, { 0xe8, 0x2f, 0x7b, 0xfe, 0xff });
 }
 
 bool g_disable_render = false;
@@ -166,6 +191,8 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
                 logic.autoclicker = false;
             }
         }
+        dt = 1.f / logic.fps;
+        return CCScheduler_update(self, dt);
     }
 
     auto& audiospeedhack = AudiopitchHack::getInstance();
@@ -183,13 +210,13 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
             if ((logic.get_frame() / logic.fps) < 1.f || (1.f / dt) < logic.recorder.m_fps || !logic.recorder.real_time_rendering || logic.autoclicker) {
                 CCDirector::sharedDirector()->setAnimationInterval(1.f / logic.fps);
                 dt = 1.f / logic.fps;
+                g_disable_render = false;
                 return CCScheduler_update(self, dt);
             }
         }
 
-        const float target_dt = 1.f / logic.get_fps() / logic.speedhack;
-
-        float speedhack = logic.speedhack;
+        float speedhack = self->getTimeScale();
+        const float target_dt = 1.f / logic.get_fps() / speedhack;
 
         g_disable_render = true;
 
@@ -204,8 +231,6 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
             CCScheduler_update(self, target_dt);
         }
         g_left_over += dt - target_dt * times;
-
-        return;
     }
     else {
         return CCScheduler_update(self, dt);
@@ -495,7 +520,7 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
             sprintf_s(out, "CPS: %i/%i", logic.count_presses_in_last_second(false), logic.count_presses_in_last_second(true));
             cps_counter->setString(out);
 
-            if (self->m_pPlayer1->m_isHolding || self->m_pPlayer1->m_isHolding2 || self->m_pPlayer2->m_isHolding || self->m_pPlayer2->m_isHolding2) {
+            if (logic.currently_pressing) {
                 cps_counter->setColor({ 0, 255, 77 });
             }
             else if (logic.current_cps > logic.max_cps) {
@@ -597,12 +622,6 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
 
     logic.is_over_orb = false;
 
-    if (self->m_isPracticeMode && logic.is_recording()) {
-        self->m_currentShakeStrength = 0;
-        self->m_currentShakeInterval = 0;
-        self->m_isCameraShaking = false;
-        self->m_lastShakeTime = 0;
-    }
 
     update(self, dt);
 
@@ -699,7 +718,16 @@ int __fastcall Hooks::PlayLayer::pushButton_h(gd::PlayLayer* self, int, int idk,
         bool micros = button ? logic.player_1_micros : logic.player_2_micros;
         bool softs = button ? logic.player_1_softs : logic.player_2_softs;
         bool hards = button ? logic.player_1_hards : logic.player_2_hards;
-        if (logic.cycleTime <= (button ? logic.player_1_micros_time / 1000.f : logic.player_2_micros_time / 1000.f) && micros)
+
+        std::string player_path = button ? logic.player_1_path : logic.player_2_path;
+        std::string soft_clicks_path = player_path + "\\" + "soft_clicks";
+        bool soft_clicks_path_exists = std::filesystem::is_directory(soft_clicks_path);
+        std::string micro_clicks_path = player_path + "\\" + "micro_clicks";
+        bool micro_clicks_path_exists = std::filesystem::is_directory(micro_clicks_path);
+        std::string hard_clicks_path = player_path + "\\" + "hard_clicks";
+        bool hard_clicks_path_exists = std::filesystem::is_directory(hard_clicks_path);
+        
+        if (logic.cycleTime <= (button ? logic.player_1_micros_time / 1000.f : logic.player_2_micros_time / 1000.f) && micros && micro_clicks_path_exists)
         {
             std::string path = Clickbot::pickRandomFile(button ? logic.player_1_path : logic.player_2_path, "micro_clicks");
             logic.clickbot_start = self->m_time;
@@ -713,7 +741,7 @@ int __fastcall Hooks::PlayLayer::pushButton_h(gd::PlayLayer* self, int, int idk,
                 Clickbot::clickChannel2->setVolume((float)(logic.player_2_micros_volume * 5 * logic.clickbot_volume_multiplier));
             }
         }
-        else if (logic.cycleTime <= (button ? logic.player_1_softs_time / 1000.f : logic.player_2_softs_time / 1000.f) && softs)
+        else if (logic.cycleTime <= (button ? logic.player_1_softs_time / 1000.f : logic.player_2_softs_time / 1000.f) && softs && soft_clicks_path_exists)
         {
             std::string path = Clickbot::pickRandomFile(button ? logic.player_1_path : logic.player_2_path, "soft_clicks");
             logic.clickbot_start = self->m_time;
@@ -727,7 +755,7 @@ int __fastcall Hooks::PlayLayer::pushButton_h(gd::PlayLayer* self, int, int idk,
                 Clickbot::clickChannel2->setVolume((float)(logic.player_2_softs_volume * 5 * logic.clickbot_volume_multiplier));
             }
         }
-        else if (logic.cycleTime >= (button ? logic.player_1_hards_time : logic.player_2_hards_time) && hards) {
+        else if (logic.cycleTime >= (button ? logic.player_1_hards_time : logic.player_2_hards_time) && hards && hard_clicks_path_exists) {
             std::string path = Clickbot::pickRandomFile(button ? logic.player_1_path : logic.player_2_path, "hard_clicks");
             logic.clickbot_start = self->m_time;
             Clickbot::system->createSound(path.c_str(), FMOD_DEFAULT, nullptr, button ? &Clickbot::clickSound : &Clickbot::clickSound2);
@@ -794,7 +822,8 @@ int __fastcall Hooks::PlayLayer::pushButton_h(gd::PlayLayer* self, int, int idk,
     if (!button && self->m_pPlayer2->m_isDashing) {
         return 0;
     }
-
+    
+    logic.currently_pressing = true;
     if (logic.click_both_players && self->m_level->twoPlayerMode) {
         logic.record_input(true, !button);
         pushButton(self, idk, !button);
@@ -832,6 +861,8 @@ int __fastcall Hooks::PlayLayer::pushButton_h(gd::PlayLayer* self, int, int idk,
 
 int __fastcall Hooks::PlayLayer::releaseButton_h(gd::PlayLayer* self, int, int idk, bool button) {
     auto& logic = Logic::get();
+    
+    logic.currently_pressing = false;
 
     if ((logic.clickbot_enabled && !logic.is_playing()) || (logic.clickbot_enabled && logic.playback_releasing)) {
         if (!Clickbot::inited)
@@ -847,7 +878,20 @@ int __fastcall Hooks::PlayLayer::releaseButton_h(gd::PlayLayer* self, int, int i
         }
         logic.clickbot_now = self->m_time;
         logic.cycleTime = logic.clickbot_now - logic.clickbot_start;
-        if (logic.cycleTime <= (button ? logic.player_1_micros_time / 1000.f : logic.player_2_micros_time / 1000.f))
+
+        bool micros = button ? logic.player_1_micros : logic.player_2_micros;
+        bool softs = button ? logic.player_1_softs : logic.player_2_softs;
+        bool hards = button ? logic.player_1_hards : logic.player_2_hards;
+
+        std::string player_path = button ? logic.player_1_path : logic.player_2_path;
+        std::string soft_clicks_path = player_path + "\\" + "soft_clicks";
+        bool soft_clicks_path_exists = std::filesystem::is_directory(soft_clicks_path);
+        std::string micro_clicks_path = player_path + "\\" + "micro_clicks";
+        bool micro_clicks_path_exists = std::filesystem::is_directory(micro_clicks_path);
+        std::string hard_clicks_path = player_path + "\\" + "hard_clicks";
+        bool hard_clicks_path_exists = std::filesystem::is_directory(hard_clicks_path);
+
+        if (logic.cycleTime <= (button ? logic.player_1_micros_time / 1000.f : logic.player_2_micros_time / 1000.f) && micros && micro_clicks_path_exists)
         {
             std::string path = Clickbot::pickRandomFile(button ? logic.player_1_path : logic.player_2_path, "micro_clicks");
             logic.clickbot_start = self->m_time;
@@ -861,7 +905,7 @@ int __fastcall Hooks::PlayLayer::releaseButton_h(gd::PlayLayer* self, int, int i
                 Clickbot::releaseChannel2->setVolume((float)(logic.player_2_micros_volume * 5 * logic.clickbot_volume_multiplier));
             }
         }
-        else if (logic.cycleTime < button ? logic.player_1_softs_time / 1000.f : logic.player_2_softs_time / 1000.f)
+        else if (logic.cycleTime < button ? logic.player_1_softs_time / 1000.f : logic.player_2_softs_time / 1000.f && softs && soft_clicks_path_exists)
         {
             std::string path = Clickbot::pickRandomFile(button ? logic.player_1_path : logic.player_2_path, "soft_releases");
             logic.clickbot_start = self->m_time;
@@ -875,7 +919,7 @@ int __fastcall Hooks::PlayLayer::releaseButton_h(gd::PlayLayer* self, int, int i
                 Clickbot::releaseChannel2->setVolume((float)(logic.player_2_softs_volume * 5 * logic.clickbot_volume_multiplier));
             }
         }
-        else if (logic.cycleTime > button ? logic.player_1_hards_time : logic.player_2_hards_time) {
+        else if (logic.cycleTime > button ? logic.player_1_hards_time : logic.player_2_hards_time && hards && hard_clicks_path_exists) {
             std::string path = Clickbot::pickRandomFile(button ? logic.player_1_path : logic.player_2_path, "hard_releases");
             logic.clickbot_start = self->m_time;
             Clickbot::system->createSound(path.c_str(), FMOD_DEFAULT, nullptr, button ? &Clickbot::releaseSound : &Clickbot::releaseSound2);
@@ -999,13 +1043,41 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
     int ret = resetLevel(self); // calling the original function
     auto& logic = Logic::get();
 
+    logic.currently_pressing = false;
+
     logic.clickbot_now = self->m_time;
     logic.clickbot_start = self->m_time;
+
+    auto frame = logic.get_frame();
+
+    /*if (logic.is_recording()) {
+        auto it = std::remove_if(logic.shakes.begin(), logic.shakes.end(),
+            [frame](const ShakeFrame& input) {
+                return input.number >= frame;
+            });
+        logic.shakes.erase(it, logic.shakes.end());
+    }
+
+    if (logic.is_playing()) {
+        logic.shakes_pos = 0;
+    }*/
+
+    if (logic.is_recording()) {
+        logic.framerates.clear();
+    }
+
+    if (logic.is_playing()) {
+        logic.framerates_pos = 0;
+    }
 
     printf("\n");
 
     if (logic.is_playing() && !logic.inputs.empty()) {
-            logic.set_replay_pos(logic.find_closest_input());
+        if (logic.checkpoints.empty()) {
+            Hooks::PlayLayer::releaseButton(self, 0, false);
+            Hooks::PlayLayer::releaseButton(self, 0, true);
+        }
+        logic.set_replay_pos(logic.find_closest_input());
     }
 
     if (logic.is_recording()) logic.total_attempt_count++;
@@ -1064,8 +1136,9 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
     if (!self->m_isPracticeMode)
         logic.checkpoints.clear();
 
-    if (logic.is_recording() || logic.is_playing())
+    if (logic.is_recording() || logic.is_playing()) {
         logic.handle_checkpoint_data();
+    }
 
     // Section 3: Update Time and Activated Objects
     if (self->m_checkpoints->count() > 0) {

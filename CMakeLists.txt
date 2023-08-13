@@ -20,7 +20,7 @@ file(
   src/*.hpp
 )
 
-add_library(Echo SHARED ${SOURCE_FILES}  "src/Logic/speedhack.h" "src/Logic/speedhack.cpp" "src/Clickbot/clickbot.hpp" "src/Clickbot/clickbot.cpp" "src/Logic/Conversions/mhr.h" "src/GUI/implot/implot.h" "src/GUI/implot/implot_internal.h" "src/Logic/Conversions/json.h")
+add_library(Echo SHARED ${SOURCE_FILES}  "src/Logic/speedhack.h" "src/Logic/speedhack.cpp" "src/Clickbot/clickbot.hpp" "src/Clickbot/clickbot.cpp" "src/Logic/Conversions/mhr.h" "src/GUI/implot/implot.h" "src/GUI/implot/implot_internal.h" "src/Logic/Conversions/json.h" "src/Logic/Conversions/zbotf.h" )
 
 add_dependencies(Echo
     increment_version_number
@@ -34,6 +34,7 @@ CPMAddPackage("gh:nlohmann/json@3.10.5")
 CPMAddPackage("gh:HJfod/cocos-headers#bd2f1c0696255ed3455171f6042e04d99ad919e2")
 CPMAddPackage("gh:TsudaKageyu/minhook#423d1e45af2ed2719a5c31e990e935ef301ed9c3")
 CPMAddPackage("gh:maxnut/gd.h#244f3e193fcb708d6440bf2420b94fc384f48f08")
+CPMAddPackage("gh:simdjson/simdjson@3.2.2")
 
 target_include_directories(Echo PRIVATE
   libraries/imgui-hook
@@ -54,6 +55,7 @@ target_link_libraries(Echo
   ImGuiFileDialog
   opengl32
   nlohmann_json::nlohmann_json
+  simdjson
   ${CMAKE_SOURCE_DIR}/libraries/glew32.lib
   fmod
 )
