@@ -1,8 +1,4 @@
-#include <windows.h>
-#include <cocos2d.h>
-#include <gd.h>
 #include "hitboxnode.hpp"
-using namespace cocos2d;
 
 class TrajectorySimulation
 {

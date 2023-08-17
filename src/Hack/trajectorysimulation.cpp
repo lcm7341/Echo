@@ -1,5 +1,6 @@
 #include "trajectorysimulation.hpp"
 #include "hacks.h"
+#include "../Hooks/hooks.hpp"
 
 static HacksStr hacks = Logic::get().hacks;
 
@@ -40,6 +41,12 @@ void playerupdate(gd::PlayerObject* player, float dt)
 	reinterpret_cast<void(__thiscall*)(gd::PlayerObject*, float dt)>(gd::base + 0x1e8200)(player, dt);
 }
 
+void playerupdateshiprotation(gd::PlayerObject* player, float dt)
+{
+	__asm movss xmm1, dt;
+	reinterpret_cast<void(__thiscall*)(gd::PlayerObject*)>(gd::base + 0x1eba60)(player);
+}
+
 void playerupdateRotation(gd::PlayerObject* player, float dt)
 {
 	__asm movss xmm1, dt;
@@ -58,21 +65,16 @@ void TrajectorySimulation::simulationPerPlayer(gd::PlayerObject* player, gd::Pla
 		return;
 	auto playLayer = gd::GameManager::sharedState()->getPlayLayer();
 	auto winSize = cocos2d::CCDirector::sharedDirector()->getWinSize();
-	auto res = CheckpointData::create(playerBase);
 
 	if (playLayer->m_isDead) return;
 
 	bool isp1 = playLayer->m_pPlayer1 == player;
 
-	res.apply(player);
-	playLayer->pushButton(0, !isp1);
+	player->pushButton(0);
 
 	auto pl = gd::GameManager::sharedState()->getPlayLayer();
 
-	if (playerBase->m_vehicleSize < 1)
-	{
-		player->m_vehicleSize = 0.6f;
-	}
+	player->m_vehicleSize = playerBase->m_vehicleSize;
 
 	float ratio = (1.0f / 60.0f) / (dt);
 	float accuracyValue = (float)hacks.trajectoryAccuracy / 1000.0f;
@@ -81,20 +83,6 @@ void TrajectorySimulation::simulationPerPlayer(gd::PlayerObject* player, gd::Pla
 
 	rotateAction = nullptr;
 	float elapsed = 0.0f;
-
-	/*if (!playerBase->m_isOnGround && res.gamemode == gd::Gamemode::kGamemodeCube)
-	{
-		auto ac = static_cast<CCRotateBy*>(playerBase->getActionByTag(0));
-		if (ac)
-		{
-			rotateAction = runNormalRotation(player, isp1 ? PlayLayer::player1RotRate : PlayLayer::player2RotRate);
-			player->setRotation(isp1 ? ExternData::lastJumpRotP1 : ExternData::lastJumpRotP2);
-			rotateAction->startWithTarget(player);
-			elapsed = ac->getElapsed();
-			rotateAction->step(0);
-			rotateAction->step(elapsed);
-		}
-	}*/
 
 	const double delta60 = endDt * 60.0;
 
@@ -119,8 +107,10 @@ void TrajectorySimulation::simulationPerPlayer(gd::PlayerObject* player, gd::Pla
 			if (m_pDieInSimulation)
 				break;
 			playerupdate(player, stepDelta60);
+			playerupdateshiprotation(player, stepDelta60);
 			playercheckCollisions(playLayer, player, stepDelta60);
 			playerupdateSpecial(player, stepDelta);
+
 		}
 		if (rotateAction && !player->m_isOnGround)
 			rotateAction->step(endDt);
@@ -131,9 +121,7 @@ void TrajectorySimulation::simulationPerPlayer(gd::PlayerObject* player, gd::Pla
 	}
 
 	HitboxNode::getInstance()->drawForPlayer1(player);
-	res.apply(player);
-	isp1 = playLayer->m_pPlayer1 == player;
-	playLayer->pushButton(0, !isp1);
+	player->releaseButton(0);
 	m_pDieInSimulation = false;
 
 	if (rotateAction)
@@ -152,6 +140,7 @@ void TrajectorySimulation::simulationPerPlayer(gd::PlayerObject* player, gd::Pla
 			player->m_collisionLog->removeAllObjects();
 			player->m_collisionLog1->removeAllObjects();
 			playerupdate(player, stepDelta60);
+			playerupdateshiprotation(player, stepDelta60);
 			playercheckCollisions(playLayer, player, stepDelta60);
 			playerupdateSpecial(player, stepDelta);
 		}
@@ -164,7 +153,6 @@ void TrajectorySimulation::simulationPerPlayer(gd::PlayerObject* player, gd::Pla
 	}
 
 	HitboxNode::getInstance()->drawForPlayer1(player);
-	res.apply(player);
 	player->stopAction(rotateAction);
 }
 
@@ -248,6 +236,7 @@ void TrajectorySimulation::processMainSimulation(float dt)
 	m_pDieInSimulation = false;
 	if (playLayer->m_pPlayer2 && playLayer->m_bIsDualMode)
 		this->simulationPerPlayer(m_pPlayer2ForSimulation, playLayer->m_pPlayer2, dt);
+	m_pDieInSimulation = false;
 
 	if (safeCircles < playLayer->m_circleWaves->count())
 	{

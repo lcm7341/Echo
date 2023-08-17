@@ -365,10 +365,8 @@ bool Logic::play_macro() {
             auto gamemode = CheckpointData::GetGamemode(player);
             bool passes = gamemode != gd::kGamemodeBall && gamemode != gd::kGamemodeSpider && gamemode != gd::kGamemodeUfo && gamemode != gd::kGamemodeCube;
 
-            if ((input.number <= current_frame && passes) || input.number == current_frame) {
-                if (input.number < current_frame && !is_over_orb)
-                    play_input(input);
-                else if (input.number == current_frame) {
+            if (input.number == current_frame) {
+                if (input.number == current_frame) {
                     play_input(input);
                 }
             }
@@ -797,6 +795,13 @@ void Logic::handle_checkpoint_data() {
 
             // PLAYLAYER->m_cameraPos = data.camera;
 
+            if (is_playing()) {
+                PLAYLAYER->m_pPlayer1->m_isHolding = data.player_1_data.isHolding;
+                PLAYLAYER->m_pPlayer1->m_isHolding2 = data.player_1_data.isHolding2;
+                PLAYLAYER->m_pPlayer2->m_isHolding = data.player_2_data.isHolding;
+                PLAYLAYER->m_pPlayer2->m_isHolding2 = data.player_2_data.isHolding2;
+            }
+
             data.player_1_data.apply(PLAYLAYER->m_pPlayer1);
             data.player_2_data.apply(PLAYLAYER->m_pPlayer2);
             return;
@@ -943,6 +948,7 @@ void Logic::handle_checkpoint_data() {
 
             data.player_1_data.apply(PLAYLAYER->m_pPlayer1);
             data.player_2_data.apply(PLAYLAYER->m_pPlayer2);
+
         }
     }
 }

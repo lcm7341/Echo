@@ -51,13 +51,16 @@ struct FPSFrame {
 
 struct HacksStr
 {
-	bool showHitboxes = false, showDecorations = false;
-	float hitboxThickness = 1.f;
-	int hitboxOpacity = 200, borderOpacity = 255;
+	bool layoutMode = true;
+	bool showHitboxes = true, showDecorations = true;
+	float hitboxThickness = 0.4;
+	int hitboxOpacity = 0, borderOpacity = 255;
 
-	bool hitboxTrail = false, trajectory = false;
-	float hitboxTrailLength = 50.0f;
-	int trajectoryAccuracy = 10;
+	float backgroundColor[3] = { 40.f / 255.f, 125.f / 255.f, 1 }, blocksColor[3] = { 0, 102.f / 255.f, 1 };
+
+	bool hitboxTrail = true, trajectory = true;
+	float hitboxTrailLength = 0.f;
+	int trajectoryAccuracy = 100;
 
 	float solidHitboxColor[3] = { 0, 0, 1 }, slopeHitboxColor[3] = { 0, 0, 1 }, hazardHitboxColor[3] = { 1, 0, 0 }, portalHitboxColor[3] = { 1, 0.498f, 1 }, padHitboxColor[3] = { 0, 1, 1 },
 		ringHitboxColor[3] = { 0, 1, 1 }, collectibleHitboxColor[3] = { 0.87f, 0.87f, 0.87f }, modifierHitboxColor[3] = { 1, 1, 1 }, playerHitboxColor[3] = { 1, 0.247f, 0.247f },
@@ -247,6 +250,8 @@ struct CheckpointData {
 	#undef FIELD
 	float m_rotation;
 	gd::Gamemode gamemode;
+	bool isHolding;
+	bool isHolding2;
 
 	static CheckpointData create(gd::PlayerObject* player) {
 		CheckpointData data;
@@ -259,6 +264,9 @@ struct CheckpointData {
 
 		data.m_rotation = player->getRotation();
 		data.gamemode = GetGamemode(player);
+
+		data.isHolding = player->m_isHolding;
+		data.isHolding2 = player->m_isHolding2;
 	
 		return data;
 	}

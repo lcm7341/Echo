@@ -38,6 +38,9 @@ public:
 	virtual std::vector<cocos2d::CCPoint> triangleForObject(gd::GameObject* obj);
 	virtual std::vector<cocos2d::CCPoint> quadrilateralForObject(gd::GameObject* obj);
 
+
+	virtual void drawObjectWithRotation(gd::GameObject* obj);
+
 	std::deque<cocos2d::CCRect> boo1;
 	std::deque<cocos2d::CCRect> boo2;
 };

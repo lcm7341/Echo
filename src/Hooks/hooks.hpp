@@ -14,6 +14,17 @@ ret_type __fastcall name##_h(__VA_ARGS__);
 
 namespace Hooks {
 
+	namespace LevelEditorLayer {
+		inline void(__thiscall* draw)(gd::LevelEditorLayer* self);
+		void __fastcall drawHook(gd::LevelEditorLayer* self, void*);
+
+		inline void(__thiscall* onPlaytest)(gd::LevelEditorLayer* self);
+		void __fastcall onPlaytestHook(gd::LevelEditorLayer* self, void*);
+
+		inline void(__thiscall* exit)(CCLayer* self, CCObject* sender);
+		void __fastcall exitHook(CCLayer* self, void*, CCObject* sender);
+	}
+
 	inline void(__thiscall* CCScheduler_update)(CCScheduler* self, float dt); void __fastcall CCScheduler_update_h(CCScheduler* self, int, float dt);
 
 	inline int(__fastcall* createCheckpoint)(gd::PlayLayer* self); int __fastcall createCheckpoint_h(gd::PlayLayer* self);
@@ -32,7 +43,7 @@ namespace Hooks {
 	inline void (__fastcall* incrementJumps)(gd::PlayerObject* self); void __fastcall incrementJumps_h(gd::PlayerObject* self);
 
 	// 0x10ed50
-	inline void (__fastcall* bumpPlayer)(gd::GJBaseGameLayer* self, gd::PlayerObject* player, gd::GameObject* object); void __fastcall bumpPlayer_h(gd::GJBaseGameLayer* self, gd::PlayerObject* player, gd::GameObject* object);
+	_THISCALL_HOOK(bumpPlayer, void, gd::GJBaseGameLayer, gd::PlayerObject* player, gd::GameObject* object)
 
 	// 0x1f62c0
 	inline void (__fastcall* toggleDartMode)(gd::PlayerObject* self, bool toggle); void __fastcall toggleDartMode_h(gd::PlayerObject* self, bool toggle);

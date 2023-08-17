@@ -57,7 +57,7 @@ public:
 
 	char theme_name[1000] = "My Theme";
 
-	bool docked = false;
+	bool docked = true;
 
 	bool change_display_fps = false; // so it doesnt change when ur typing lol
 

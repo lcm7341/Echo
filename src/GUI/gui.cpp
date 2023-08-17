@@ -1400,15 +1400,15 @@ void GUI::sequential_replay() {
 			sequence_pos = ImGui::GetWindowPos();
 		}
 
-		ImGui::Checkbox("Enabled", &logic.sequence_enabled); ImGui::SameLine();
+		ImGui::Checkbox("Enable Sequence", &logic.sequence_enabled); ImGui::SameLine();
 
 		if (ImGui::Button("Remove All")) {
 			logic.replays.clear();
 		}
-
+		ImGui::SameLine();
 		static int all_offset = 0;
 
-		ImGui::PushItemWidth(200);
+		ImGui::PushItemWidth(125);
 		if (ImGui::InputInt("Offset All", &all_offset)) {
 			for (auto& replay : logic.replays) {
 				replay.max_frame_offset = all_offset;
@@ -1448,16 +1448,16 @@ void GUI::sequential_replay() {
 			Replay& selected_replay = logic.replays[selected_replay_index.value()];
 
 			ImGui::Text("Name: %s", &selected_replay.name);
-			ImGui::PushItemWidth(200);
-			ImGui::InputInt("Max Offset", &selected_replay.max_frame_offset, 1, 5);
-			ImGui::PopItemWidth();
-
+			ImGui::SameLine();
 			if (ImGui::Button("Remove")) {
 				logic.replays.erase(logic.replays.begin() + selected_replay_index.value());
 				selected_replay_index = std::nullopt;
 			}
+			ImGui::PushItemWidth(200);
+			ImGui::InputInt("Max Offset", &selected_replay.max_frame_offset, 1, 5);
+			ImGui::PopItemWidth();
+			ImGui::Separator();
 		}
-		else {
 			static std::string replay_name{};
 			static int amount = 1;
 
@@ -1475,13 +1475,15 @@ void GUI::sequential_replay() {
 				//TODO: catch this or whatever
 				logic.read_file(replay_name, false);
 
-				for (int i = 0; i < amount; i++) {
-					auto inputs = logic.get_inputs();
-					logic.replays.push_back(Replay{
-							replay_name,
-							0,
-							inputs
-						});
+				if (!logic.inputs.empty() && logic.error.empty()) {
+					for (int i = 0; i < amount; i++) {
+						auto inputs = logic.get_inputs();
+						logic.replays.push_back(Replay{
+								replay_name,
+								0,
+								inputs
+							});
+					}
 				}
 
 				logic.get_inputs() = old_actions;
@@ -1495,7 +1497,6 @@ void GUI::sequential_replay() {
 			ImGui::PushItemWidth(200);
 			ImGui::InputInt("Amount###macros", &amount);
 			ImGui::PopItemWidth();
-		}
 
 		//ImGui::EndChild();
 
@@ -1882,7 +1883,8 @@ void GUI::tools() {
 			logic.frame_advance = false;
 			Hooks::CCScheduler_update_h(gd::GameManager::sharedState()->getScheduler(), 0, 1.f / logic.fps);
 			logic.frame_advance = true;
-		} else logic.start = std::chrono::steady_clock::time_point();
+		}
+		else logic.start = std::chrono::steady_clock::time_point();
 
 		CHECK_KEYBIND("advancing");
 
@@ -2347,7 +2349,6 @@ void GUI::show_keybind_prompt(const std::string& buttonName) {
 	}
 }
 
-
 void GUI::main() {
 	auto& logic = Logic::get();
 	const ImVec2 buttonSize = { get_width(48), 0 };
@@ -2553,6 +2554,42 @@ void GUI::main() {
 		ImGui::SetCursorPosX(cursor_pos_x);
 
 		ImGui::Text("Macro Size: %i", logic.get_inputs().size());
+
+		ImGui::Checkbox("Layout Mode", &logic.hacks.layoutMode); ImGui::SameLine();
+		ImGui::Checkbox("Show Hitboxes", &logic.hacks.showHitboxes);
+
+		bool open_hitbox_modal = true;
+		if (ImGui::Button("Hitbox Settings###notboxsettings")) {
+			ImGui::OpenPopup("Hitbox Settings###boxsettings");
+		}
+
+		if (ImGui::BeginPopupModal("Hitbox Settings###boxsettings", &open_hitbox_modal, ImGuiWindowFlags_AlwaysAutoResize)) {
+
+			ImGui::Checkbox("Show Trajectory", &logic.hacks.trajectory);
+			ImGui::InputInt("Trajectory Accuracy", &logic.hacks.trajectoryAccuracy);
+
+			ImGui::Checkbox("Show Hitboxes", &logic.hacks.showHitboxes);
+			ImGui::InputFloat("Hitbox Thickness", &logic.hacks.hitboxThickness);
+			ImGui::Checkbox("Show Modifiers", &logic.hacks.showDecorations);
+			ImGui::Checkbox("Hitbox Trail", &logic.hacks.hitboxTrail);
+			ImGui::InputFloat("Trail Length", &logic.hacks.hitboxTrailLength);
+			ImGui::InputInt("Hitbox Opacity", &logic.hacks.hitboxOpacity);
+			ImGui::InputInt("Hitbox Border Opacity", &logic.hacks.borderOpacity);
+
+			ImGui::Text("Color Settings");
+			ImGui::ColorEdit3("Solids", logic.hacks.solidHitboxColor, ImGuiColorEditFlags_NoInputs);
+			ImGui::ColorEdit3("Slopes", logic.hacks.slopeHitboxColor, ImGuiColorEditFlags_NoInputs);
+			ImGui::ColorEdit3("Hazards", logic.hacks.hazardHitboxColor, ImGuiColorEditFlags_NoInputs);
+			ImGui::ColorEdit3("Portals", logic.hacks.portalHitboxColor, ImGuiColorEditFlags_NoInputs);
+			ImGui::ColorEdit3("Pads", logic.hacks.padHitboxColor, ImGuiColorEditFlags_NoInputs);
+			ImGui::ColorEdit3("Rings", logic.hacks.ringHitboxColor, ImGuiColorEditFlags_NoInputs);
+			ImGui::ColorEdit3("Collectibles", logic.hacks.collectibleHitboxColor, ImGuiColorEditFlags_NoInputs);
+			ImGui::ColorEdit3("Modifiers", logic.hacks.modifierHitboxColor, ImGuiColorEditFlags_NoInputs);
+			ImGui::ColorEdit3("Rotated Hitbox", logic.hacks.rotatedHitboxColor, ImGuiColorEditFlags_NoInputs);
+			ImGui::ColorEdit3("Center Hitbox", logic.hacks.centerHitboxColor, ImGuiColorEditFlags_NoInputs);
+			ImGui::ColorEdit3("Player", logic.hacks.playerHitboxColor, ImGuiColorEditFlags_NoInputs);
+			ImGui::EndPopup();
+		}
 
 		ImGui::PushItemFlag(ImGuiItemFlags_NoTabStop, true);
 		ImGui::SetNextItemWidth(150);

@@ -118,9 +118,15 @@ public:
         for (auto& input : logic.inputs) {
             json json_input;
             json_input["frame"] = input.number;
-            json_input["player_1"]["click"] = input.pressingDown ? 1 : 2;
+            if (!input.isPlayer2) {
+                json_input["player_1"]["click"] = input.pressingDown ? 1 : 2;
+                json_input["player_2"]["click"] = 0;
+            }
+            else {
+                json_input["player_2"]["click"] = input.pressingDown ? 1 : 2;
+                json_input["player_1"]["click"] = 0;
+            }
             json_input["player_1"]["x_position"] = input.xPosition;
-            json_input["player_2"]["click"] = input.isPlayer2 ? 1 : 2;
             json_input["player_2"]["x_position"] = input.xPosition;
             json_macro.push_back(json_input);
         }
