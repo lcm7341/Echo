@@ -190,6 +190,9 @@ void writeConfig() {
 	j["style_pos_x"] = GUI::get().style_pos.x;
 	j["style_pos_y"] = GUI::get().style_pos.y;
 
+	j["clickbot_pos_x"] = GUI::get().clickbot_pos.x;
+	j["clickbot_pos_y"] = GUI::get().clickbot_pos.y;
+
 	j["editor_auto_scroll"] = GUI::get().editor_auto_scroll;
 
 	j["clickbot_enabled"] = logic.clickbot_enabled;
@@ -452,6 +455,9 @@ void readConfig() {
 
 	GUI::get().style_pos.x = getOrDefault(j, "style_pos_x", 1425);
 	GUI::get().style_pos.y = getOrDefault(j, "style_pos_y", 35);
+
+	GUI::get().clickbot_pos.x = getOrDefault(j, "clickbot_pos_x", 1225);
+	GUI::get().clickbot_pos.y = getOrDefault(j, "clickbot_pos_y", 35);
 
 	GUI::get().editor_auto_scroll = getOrDefault(j, "editor_auto_scroll", GUI::get().editor_auto_scroll);
 

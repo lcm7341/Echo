@@ -28,7 +28,6 @@ HitboxNode* HitboxNode::getInstance()
 
 void HitboxNode::drawPolygonHitbox(std::vector<cocos2d::CCPoint> const& points, cocos2d::ccColor4B col)
 {
-	auto prev_a = col.a;
 	auto borderColor = ccc4FFromccc4B(col);
 	col.a = max(0, col.a - 150);
 	auto fillColor = (ccc4(col.r, col.g, col.b, Logic::get().hacks.fillHitboxes ? col.a : 0));

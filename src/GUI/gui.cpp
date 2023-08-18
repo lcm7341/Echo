@@ -183,7 +183,7 @@ double evalExpression(const std::vector<std::string>& tokens, std::map<std::stri
 	return result;
 }
 
-std::string echo_version = "Echo v1.0b";
+std::string echo_version = "Echo v1.0";
 
 int getRandomInt(int N) {
 	// Seed the random number generator with current time
@@ -1517,8 +1517,8 @@ static int selected_hitbox_color = 0;
 
 std::map<std::string, std::shared_ptr<Convertible>> options = {
 	{"TASBot", std::make_shared<TASBot>()},
-	{"Mega Hack Replay JSON", std::make_shared<MHRJSON>()},
-	{"Mega Hack Replay", std::make_shared<MHR>()},
+	{"MHR JSON", std::make_shared<MHRJSON>()},
+	{"MHR", std::make_shared<MHR>()},
 	{"Plain Text", std::make_shared<PlainText>()},
 	{"JSON", std::make_shared<JSON>()},
 	{"ZBot Frame", std::make_shared<ZBF>()}
@@ -1543,7 +1543,7 @@ void GUI::tools() {
 			ImGui::BeginDisabled();
 
 		static std::string current_option = "Plain Text";
-		ImGui::PushItemWidth(225);
+		ImGui::PushItemWidth(125);
 		if (ImGui::BeginCombo("Convert", current_option.c_str())) {
 			for (auto& option : options) {
 				bool is_selected = (current_option == option.first);
@@ -1567,18 +1567,9 @@ void GUI::tools() {
 
 		auto& style = ImGui::GetStyle();
 
-		if (current_option == "Osu") {
-			ImGui::BeginDisabled();
-
-			if (ImGui::Button("Import"))
-				ImGuiFileDialog::Instance()->OpenDialog("ConversionImport", "Choose File", options[current_option]->get_type_filter().c_str(), options[current_option]->get_directory().c_str(), 1, nullptr, ImGuiFileDialogFlags_HideColumnType);
-
-			ImGui::EndDisabled();
-		}
-		else {
-			if (ImGui::Button("Import"))
-				ImGuiFileDialog::Instance()->OpenDialog("ConversionImport", "Choose File", options[current_option]->get_type_filter().c_str(), options[current_option]->get_directory().c_str());
-		}
+		if (ImGui::Button("Import", ImVec2(ImGui::GetContentRegionAvail().x * 0.5, 0.f)))
+			ImGuiFileDialog::Instance()->OpenDialog("ConversionImport", "Choose File", options[current_option]->get_type_filter().c_str(), options[current_option]->get_directory().c_str());
+		
 
 		ImGui::SameLine();
 
@@ -1597,7 +1588,7 @@ void GUI::tools() {
 
 		ImGui::Checkbox("Auto-Export to Location", &logic.export_to_bot_location); ImGui::SameLine();
 
-		if (ImGui::Button("Batch Import")) {
+		if (ImGui::Button("Batch Import", ImVec2(ImGui::GetContentRegionAvail().x * (docked ? 0.9 : 0.7), 0.f))) {
 			auto& old_inputs = logic.inputs;
 			for (const auto& entry : fs::directory_iterator(options[current_option]->get_directory())) {
 				try {
@@ -1671,7 +1662,7 @@ void GUI::tools() {
 
 		const char* noclip_options[] = { "Off", "Player 1", "Player 2", "Both" };
 
-		ImGui::PushItemWidth(200);
+		ImGui::PushItemWidth(docked ? 200 : 175);
 		if (ImGui::BeginCombo("Noclip##dropdown_noclip", noclip_options[selected_noclip]))
 		{
 			for (int i = 0; i < IM_ARRAYSIZE(noclip_options); i++)
@@ -1708,18 +1699,18 @@ void GUI::tools() {
 
 		ImGui::PopItemWidth();
 
-		ImGui::Checkbox("Click Both Players", &logic.click_both_players);
+		ImGui::Checkbox("Click For Both Players", &logic.click_both_players);
 
 		CHECK_KEYBIND("clickBoth");
 		
 		ImGui::SameLine();
-		ImGui::Checkbox("Swap Player Input", &logic.swap_player_input);
+		ImGui::Checkbox("Swap Player Input Type", &logic.swap_player_input);
 		CHECK_KEYBIND("swapInput");
 
 		const char* inverse_options[] = { "Off", "Player 1", "Player 2", "Both" };
 
 		ImGui::PushItemWidth(200);
-		if (ImGui::BeginCombo("Inverse Inputs##dropdown_inverse", inverse_options[selected_inverse_click]))
+		if (ImGui::BeginCombo("Inverse Player Inputs##dropdown_inverse", inverse_options[selected_inverse_click]))
 		{
 			for (int i = 0; i < IM_ARRAYSIZE(inverse_options); i++)
 			{
@@ -1756,25 +1747,16 @@ void GUI::tools() {
 		ImGui::Separator();
 
 		bool antiCheatBypass = anticheatBypass.isActivated();
-		if (ImGui::Checkbox("Disable Anticheat", &antiCheatBypass)) {
+		if (ImGui::Checkbox("Disable Anti-Cheat", &antiCheatBypass)) {
 			antiCheatBypass ? anticheatBypass.activate() : anticheatBypass.deactivate();
 		}
 		CHECK_KEYBIND("anticheat");
 
-		ImGui::SameLine(0, docked ? 80 : -1);
+		ImGui::SameLine();
 
-		if (ImGui::Checkbox("Modify Respawn Time", &logic.respawn_time_modified)) {
-			if (logic.respawn_time_modified) {
-				Opcode opcode(Cheat::AntiCheatBypass);
-				opcode.ModifyFloatAtOffset(0x20A677, logic.speedhack);
-			}
-			else {
-				Opcode opcode(Cheat::AntiCheatBypass);
-				opcode.ModifyFloatAtOffset(0x20A677, 1.0f);
-			}
-		}
+		ImGui::Checkbox("Disable Shake Effects", &logic.disable_shakes);
 
-		CHECK_KEYBIND("modifyRespawn");
+		CHECK_KEYBIND("disableShakes");
 		
 		bool practiceActivated = practiceMusic.isActivated();
 		if (ImGui::Checkbox("Overwrite Practice Music", &practiceActivated)) {
@@ -1787,7 +1769,7 @@ void GUI::tools() {
 		}
 		CHECK_KEYBIND("practiceHack");
 
-		ImGui::SameLine(0, docked ? 35 : -1);
+		ImGui::SameLine();
 
 		bool noEscActivated = noEscape.isActivated();
 		if (ImGui::Checkbox("Ignore Escape", &noEscActivated)) {
@@ -1800,9 +1782,13 @@ void GUI::tools() {
 		}
 		CHECK_KEYBIND("noEsc");
 
+		ImGui::Checkbox("###layout_checkbox", &logic.hacks.layoutMode);
+
+		ImGui::SameLine();
+
 		bool open_layout_modal = true;
 
-		if (ImGui::Button("Layout Mode Settings###layout_settings", ImVec2(ImGui::GetContentRegionMax().x * 0.5, 0))) {
+		if (ImGui::Button("Layout Mode Settings###layout_settings", ImVec2(ImGui::GetContentRegionMax().x * 0.4, 0))) {
 			ImGui::OpenPopup("Layout Settings###layoutsettings2");
 		}
 
@@ -1813,9 +1799,12 @@ void GUI::tools() {
 			ImGui::ColorEdit3("Block Color", logic.hacks.blocksColor, ImGuiColorEditFlags_NoInputs);
 			ImGui::EndPopup();
 		}
-		
+
 		ImGui::SameLine();
 
+		ImGui::Checkbox("###hitbox_checkbox", &logic.hacks.showHitboxes);
+
+		ImGui::SameLine();
 		bool open_hitbox_modal = true;
 		if (ImGui::Button("Hitbox Settings###notboxsettings", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
 			ImGui::OpenPopup("Hitbox Settings###boxsettings");

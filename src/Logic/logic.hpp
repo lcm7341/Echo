@@ -369,6 +369,8 @@ public:
 
 	bool export_to_bot_location = false;
 
+	bool disable_shakes = false;
+
 	bool clickbot_enabled = false;
 	float player_1_volume = 1.f;
 	float player_2_volume = 1.f;

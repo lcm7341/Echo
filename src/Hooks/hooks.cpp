@@ -448,6 +448,13 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
     auto p = self->getChildren()->objectAtIndex(0);
     auto xp = self->m_pPlayer1->getPositionX();
 
+    if (logic.disable_shakes) {
+        self->m_currentShakeStrength = 0;
+        self->m_currentShakeInterval = 0;
+        self->m_isCameraShaking = false;
+        self->m_lastShakeTime = 0;
+    }
+
     // layout mode Shit ( it doesnt work with 0 opacity objects FSR.)
     /*for (int s = self->sectionForPos(xp) - 5; s < self->sectionForPos(xp) + 6; ++s)
     {
