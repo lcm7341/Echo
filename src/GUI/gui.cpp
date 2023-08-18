@@ -1513,6 +1513,8 @@ static int selected_playback = 0; // Index of "Both" option (auto selected)
 static int selected_autoclicker_player = 2; // Index of "Both" option (auto selected)
 static int selected_inverse_click = 0; // Index of "Both" option (auto selected)
 
+static int selected_hitbox_color = 0;
+
 std::map<std::string, std::shared_ptr<Convertible>> options = {
 	{"TASBot", std::make_shared<TASBot>()},
 	{"Mega Hack Replay JSON", std::make_shared<MHRJSON>()},
@@ -1797,6 +1799,75 @@ void GUI::tools() {
 			}
 		}
 		CHECK_KEYBIND("noEsc");
+
+		bool open_layout_modal = true;
+
+		if (ImGui::Button("Layout Mode Settings###layout_settings", ImVec2(ImGui::GetContentRegionMax().x * 0.5, 0))) {
+			ImGui::OpenPopup("Layout Settings###layoutsettings2");
+		}
+
+		if (ImGui::BeginPopupModal("Layout Settings###layoutsettings2", &open_layout_modal, ImGuiWindowFlags_AlwaysAutoResize)) {
+
+			ImGui::Checkbox("Layout Mode", &logic.hacks.layoutMode);
+			ImGui::ColorEdit3("Background Color", logic.hacks.backgroundColor, ImGuiColorEditFlags_NoInputs);
+			ImGui::ColorEdit3("Block Color", logic.hacks.blocksColor, ImGuiColorEditFlags_NoInputs);
+			ImGui::EndPopup();
+		}
+		
+		ImGui::SameLine();
+
+		bool open_hitbox_modal = true;
+		if (ImGui::Button("Hitbox Settings###notboxsettings", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
+			ImGui::OpenPopup("Hitbox Settings###boxsettings");
+		}
+
+		if (ImGui::BeginPopupModal("Hitbox Settings###boxsettings", &open_hitbox_modal, ImGuiWindowFlags_AlwaysAutoResize)) {
+
+			ImGui::Checkbox("Show Hitboxes", &logic.hacks.showHitboxes); ImGui::SameLine();
+			ImGui::Checkbox("Show Modifiers", &logic.hacks.showDecorations);
+			ImGui::Checkbox("Hitbox Trail", &logic.hacks.hitboxTrail); ImGui::SameLine();
+			ImGui::Checkbox("Fill Hitboxes", &logic.hacks.fillHitboxes);
+			ImGui::PushItemWidth(200);
+			ImGui::InputFloat("Hitbox Thickness", &logic.hacks.hitboxThickness);
+			ImGui::InputFloat("Trail Length", &logic.hacks.hitboxTrailLength);
+
+			const char* colors[] = { "Solids", "Slopes", "Hazards", "Portals", "Pads", "Rings", "Collectibles", "Modifiers", "Rotated Hitbox", "Center Hitbox", "Player" };
+
+			if (ImGui::BeginCombo("##dropdown_hitbox_color", colors[selected_hitbox_color]))
+			{
+				for (int i = 0; i < IM_ARRAYSIZE(colors); i++)
+				{
+					const bool isSelected = (selected_hitbox_color == i);
+					if (ImGui::Selectable(colors[i], isSelected))
+						selected_hitbox_color = i;
+
+					if (isSelected) {
+						ImGui::SetItemDefaultFocus();
+					}
+				}
+				ImGui::EndCombo();
+			} ImGui::PopItemWidth();
+			
+			ImGui::SameLine();
+
+			switch (selected_hitbox_color)
+			{
+			case 0: ImGui::ColorEdit4("###color1", logic.hacks.solidHitboxColor, ImGuiColorEditFlags_NoInputs); break;
+			case 1: ImGui::ColorEdit4("###color2", logic.hacks.slopeHitboxColor, ImGuiColorEditFlags_NoInputs); break;
+			case 2: ImGui::ColorEdit4("###color3", logic.hacks.hazardHitboxColor, ImGuiColorEditFlags_NoInputs); break;
+			case 3: ImGui::ColorEdit4("###color4", logic.hacks.portalHitboxColor, ImGuiColorEditFlags_NoInputs); break;
+			case 4: ImGui::ColorEdit4("###color5", logic.hacks.padHitboxColor, ImGuiColorEditFlags_NoInputs); break;
+			case 5: ImGui::ColorEdit4("###color6", logic.hacks.ringHitboxColor, ImGuiColorEditFlags_NoInputs); break;
+			case 6: ImGui::ColorEdit4("###color7", logic.hacks.collectibleHitboxColor, ImGuiColorEditFlags_NoInputs); break;
+			case 7: ImGui::ColorEdit4("###color8", logic.hacks.modifierHitboxColor, ImGuiColorEditFlags_NoInputs); break;
+			case 8: ImGui::ColorEdit4("###color9", logic.hacks.rotatedHitboxColor, ImGuiColorEditFlags_NoInputs); break;
+			case 9: ImGui::ColorEdit4("###color10", logic.hacks.centerHitboxColor, ImGuiColorEditFlags_NoInputs); break;
+			case 10: ImGui::ColorEdit4("###color11", logic.hacks.playerHitboxColor, ImGuiColorEditFlags_NoInputs); break;
+			default: break;
+			}
+
+			ImGui::EndPopup();
+		}
 
 		ImGui::Separator();
 
@@ -2554,42 +2625,6 @@ void GUI::main() {
 		ImGui::SetCursorPosX(cursor_pos_x);
 
 		ImGui::Text("Macro Size: %i", logic.get_inputs().size());
-
-		ImGui::Checkbox("Layout Mode", &logic.hacks.layoutMode); ImGui::SameLine();
-		ImGui::Checkbox("Show Hitboxes", &logic.hacks.showHitboxes);
-
-		bool open_hitbox_modal = true;
-		if (ImGui::Button("Hitbox Settings###notboxsettings")) {
-			ImGui::OpenPopup("Hitbox Settings###boxsettings");
-		}
-
-		if (ImGui::BeginPopupModal("Hitbox Settings###boxsettings", &open_hitbox_modal, ImGuiWindowFlags_AlwaysAutoResize)) {
-
-			ImGui::Checkbox("Show Trajectory", &logic.hacks.trajectory);
-			ImGui::InputInt("Trajectory Accuracy", &logic.hacks.trajectoryAccuracy);
-
-			ImGui::Checkbox("Show Hitboxes", &logic.hacks.showHitboxes);
-			ImGui::InputFloat("Hitbox Thickness", &logic.hacks.hitboxThickness);
-			ImGui::Checkbox("Show Modifiers", &logic.hacks.showDecorations);
-			ImGui::Checkbox("Hitbox Trail", &logic.hacks.hitboxTrail);
-			ImGui::InputFloat("Trail Length", &logic.hacks.hitboxTrailLength);
-			ImGui::InputInt("Hitbox Opacity", &logic.hacks.hitboxOpacity);
-			ImGui::InputInt("Hitbox Border Opacity", &logic.hacks.borderOpacity);
-
-			ImGui::Text("Color Settings");
-			ImGui::ColorEdit3("Solids", logic.hacks.solidHitboxColor, ImGuiColorEditFlags_NoInputs);
-			ImGui::ColorEdit3("Slopes", logic.hacks.slopeHitboxColor, ImGuiColorEditFlags_NoInputs);
-			ImGui::ColorEdit3("Hazards", logic.hacks.hazardHitboxColor, ImGuiColorEditFlags_NoInputs);
-			ImGui::ColorEdit3("Portals", logic.hacks.portalHitboxColor, ImGuiColorEditFlags_NoInputs);
-			ImGui::ColorEdit3("Pads", logic.hacks.padHitboxColor, ImGuiColorEditFlags_NoInputs);
-			ImGui::ColorEdit3("Rings", logic.hacks.ringHitboxColor, ImGuiColorEditFlags_NoInputs);
-			ImGui::ColorEdit3("Collectibles", logic.hacks.collectibleHitboxColor, ImGuiColorEditFlags_NoInputs);
-			ImGui::ColorEdit3("Modifiers", logic.hacks.modifierHitboxColor, ImGuiColorEditFlags_NoInputs);
-			ImGui::ColorEdit3("Rotated Hitbox", logic.hacks.rotatedHitboxColor, ImGuiColorEditFlags_NoInputs);
-			ImGui::ColorEdit3("Center Hitbox", logic.hacks.centerHitboxColor, ImGuiColorEditFlags_NoInputs);
-			ImGui::ColorEdit3("Player", logic.hacks.playerHitboxColor, ImGuiColorEditFlags_NoInputs);
-			ImGui::EndPopup();
-		}
 
 		ImGui::PushItemFlag(ImGuiItemFlags_NoTabStop, true);
 		ImGui::SetNextItemWidth(150);

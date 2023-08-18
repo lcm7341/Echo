@@ -96,6 +96,26 @@ void writeConfig() {
 
 	j["max_cps"] = logic.max_cps;
 
+	j["layout_mode"] = logic.hacks.layoutMode;
+	j["show_hitboxes"] = logic.hacks.showHitboxes;
+	j["show_modifiers"] = logic.hacks.showDecorations;
+	j["hitbox_thickness"] = logic.hacks.hitboxThickness;
+	j["fill_hitboxes"] = logic.hacks.fillHitboxes;
+	j["backgroundColor"] = { logic.hacks.backgroundColor[0], logic.hacks.backgroundColor[1], logic.hacks.backgroundColor[2] };
+	j["blocksColor"] = { logic.hacks.blocksColor[0], logic.hacks.blocksColor[1], logic.hacks.blocksColor[2] };
+
+	j["solidHitboxColor"] = { logic.hacks.solidHitboxColor[0], logic.hacks.solidHitboxColor[1], logic.hacks.solidHitboxColor[2], logic.hacks.solidHitboxColor[3] };
+	j["slopeHitboxColor"] = { logic.hacks.slopeHitboxColor[0], logic.hacks.slopeHitboxColor[1], logic.hacks.slopeHitboxColor[2], logic.hacks.slopeHitboxColor[3] };
+	j["hazardHitboxColor"] = { logic.hacks.hazardHitboxColor[0], logic.hacks.hazardHitboxColor[1], logic.hacks.hazardHitboxColor[2], logic.hacks.hazardHitboxColor[3] };
+	j["portalHitboxColor"] = { logic.hacks.portalHitboxColor[0], logic.hacks.portalHitboxColor[1], logic.hacks.portalHitboxColor[2], logic.hacks.portalHitboxColor[3] };
+	j["padHitboxColor"] = { logic.hacks.padHitboxColor[0], logic.hacks.padHitboxColor[1], logic.hacks.padHitboxColor[2], logic.hacks.padHitboxColor[3] };
+	j["ringHitboxColor"] = { logic.hacks.ringHitboxColor[0], logic.hacks.ringHitboxColor[1], logic.hacks.ringHitboxColor[2], logic.hacks.ringHitboxColor[3] };
+	j["collectibleHitboxColor"] = { logic.hacks.collectibleHitboxColor[0], logic.hacks.collectibleHitboxColor[1], logic.hacks.collectibleHitboxColor[2], logic.hacks.collectibleHitboxColor[3] };
+	j["modifierHitboxColor"] = { logic.hacks.modifierHitboxColor[0], logic.hacks.modifierHitboxColor[1], logic.hacks.modifierHitboxColor[2], logic.hacks.modifierHitboxColor[3] };
+	j["playerHitboxColor"] = { logic.hacks.playerHitboxColor[0], logic.hacks.playerHitboxColor[1], logic.hacks.playerHitboxColor[2], logic.hacks.playerHitboxColor[3] };
+	j["rotatedHitboxColor"] = { logic.hacks.rotatedHitboxColor[0], logic.hacks.rotatedHitboxColor[1], logic.hacks.rotatedHitboxColor[2], logic.hacks.rotatedHitboxColor[3] };
+	j["centerHitboxColor"] = { logic.hacks.centerHitboxColor[0], logic.hacks.centerHitboxColor[1], logic.hacks.centerHitboxColor[2], logic.hacks.centerHitboxColor[3] };
+
 	auto& audiospeedhack = AudiopitchHack::getInstance();
 
 	j["audio_speedhack"] = audiospeedhack.isEnabled();
@@ -259,6 +279,104 @@ void readConfig() {
 	recorder.color_fix = getOrDefault(j, "video_color_fix", true);
 
 	logic.max_cps = getOrDefault(j, "max_cps", 15);
+	
+	logic.hacks.layoutMode = getOrDefault(j, "layout_mode", false);
+	logic.hacks.showHitboxes = getOrDefault(j, "show_hitboxes", false);
+	logic.hacks.showDecorations = getOrDefault(j, "show_modifiers", true);
+	logic.hacks.hitboxThickness = getOrDefault(j, "hitbox_thickness", logic.hacks.hitboxThickness);
+	logic.hacks.fillHitboxes = getOrDefault(j, "fill_hitboxes", logic.hacks.fillHitboxes);
+
+	if (j.contains("backgroundColor")) {
+		auto colorArray = j["backgroundColor"];
+		for (int i = 0; i < 3; ++i) {
+			logic.hacks.backgroundColor[i] = colorArray[i];
+		}
+	}
+
+	if (j.contains("blocksColor")) {
+		auto colorArray = j["blocksColor"];
+		for (int i = 0; i < 3; ++i) {
+			logic.hacks.blocksColor[i] = colorArray[i];
+		}
+	}
+
+	if (j.contains("solidHitboxColor")) {
+		auto colorArray = j["solidHitboxColor"];
+		for (int i = 0; i < 4; i++) {
+			logic.hacks.solidHitboxColor[i] = colorArray[i];
+		}
+	}
+
+	if (j.contains("slopeHitboxColor")) {
+		auto colorArray = j["slopeHitboxColor"];
+		for (int i = 0; i < 4; ++i) {
+			logic.hacks.slopeHitboxColor[i] = colorArray[i];
+		}
+	}
+
+	if (j.contains("hazardHitboxColor")) {
+		auto colorArray = j["hazardHitboxColor"];
+		for (int i = 0; i < 4; ++i) {
+			logic.hacks.hazardHitboxColor[i] = colorArray[i];
+		}
+	}
+
+	if (j.contains("portalHitboxColor")) {
+		auto colorArray = j["portalHitboxColor"];
+		for (int i = 0; i < 4; ++i) {
+			logic.hacks.portalHitboxColor[i] = colorArray[i];
+		}
+	}
+
+	if (j.contains("padHitboxColor")) {
+		auto colorArray = j["padHitboxColor"];
+		for (int i = 0; i < 4; ++i) {
+			logic.hacks.padHitboxColor[i] = colorArray[i];
+		}
+	}
+
+	if (j.contains("ringHitboxColor")) {
+		auto colorArray = j["ringHitboxColor"];
+		for (int i = 0; i < 4; ++i) {
+			logic.hacks.ringHitboxColor[i] = colorArray[i];
+		}
+	}
+
+	if (j.contains("collectibleHitboxColor")) {
+		auto colorArray = j["collectibleHitboxColor"];
+		for (int i = 0; i < 4; ++i) {
+			logic.hacks.collectibleHitboxColor[i] = colorArray[i];
+		}
+	}
+
+	if (j.contains("modifierHitboxColor")) {
+		auto colorArray = j["modifierHitboxColor"];
+		for (int i = 0; i < 4; ++i) {
+			logic.hacks.modifierHitboxColor[i] = colorArray[i];
+		}
+	}
+
+	if (j.contains("playerHitboxColor")) {
+		auto colorArray = j["playerHitboxColor"];
+		for (int i = 0; i < 4; ++i) {
+			logic.hacks.playerHitboxColor[i] = colorArray[i];
+		}
+	}
+
+	if (j.contains("rotatedHitboxColor")) {
+		auto colorArray = j["rotatedHitboxColor"];
+		for (int i = 0; i < 4; ++i) {
+			logic.hacks.rotatedHitboxColor[i] = colorArray[i];
+		}
+	}
+
+	if (j.contains("centerHitboxColor")) {
+		auto colorArray = j["centerHitboxColor"];
+		for (int i = 0; i < 4; ++i) {
+			logic.hacks.centerHitboxColor[i] = colorArray[i];
+		}
+	}
+
 
 	auto& audiospeedhack = AudiopitchHack::getInstance();
 

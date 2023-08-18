@@ -61,6 +61,12 @@ namespace Hooks {
 
 	namespace PlayLayer {
 
+		inline void(__thiscall* lightningFlash)(gd::PlayLayer* self, CCPoint p, _ccColor3B c);
+		void __fastcall lightningFlash_h(gd::PlayLayer* self, void* edx, CCPoint p, _ccColor3B c);
+
+		inline void(__thiscall* triggerObject)(gd::EffectGameObject* self, gd::GJBaseGameLayer* idk);
+		void __fastcall triggerObject_h(gd::EffectGameObject* self, void*, gd::GJBaseGameLayer* idk);
+
 		_THISCALL_HOOK(pauseGame, void, gd::PlayLayer, bool)
 
 		inline bool(__thiscall* init)(gd::PlayLayer*, gd::GJGameLevel* level); bool __fastcall init_h(gd::PlayLayer* self, void* edx, gd::GJGameLevel* level);

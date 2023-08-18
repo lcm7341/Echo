@@ -42,17 +42,20 @@ void Hooks::init_hooks() {
 
     HOOK(0x20D3C0, PlayLayer::pauseGame);
 
+    MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x253D60), PlayLayer::triggerObject_h,
+        reinterpret_cast<void**>(&PlayLayer::triggerObject));
+    MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x1FFD80), PlayLayer::lightningFlash_h,
+        reinterpret_cast<void**>(&PlayLayer::lightningFlash));
+
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0xe5d60), powerOffObject_h, reinterpret_cast<void**>(&powerOffObject));
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0xeab20), playShineEffect_h, reinterpret_cast<void**>(&playShineEffect));
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x1e9a20), incrementJumps_h, reinterpret_cast<void**>(&incrementJumps));
     HOOK(0x10ed50, bumpPlayer);
     //MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x1f62c0), toggleDartMode_h, reinterpret_cast<void**>(&toggleDartMode));
-    MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x14ebc0), addPoint_h, reinterpret_cast<void**>(&addPoint));
+   /* MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x14ebc0), addPoint_h, reinterpret_cast<void**>(&addPoint));
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0xd1790), triggerObject_h, reinterpret_cast<void**>(&triggerObject));
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0xEF110), hasBeenActivatedByPlayer_h, reinterpret_cast<void**>(&hasBeenActivatedByPlayer));
-    MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x20d810), PlayLayer::onQuit_h, reinterpret_cast<void**>(&PlayLayer::onQuit));
-    MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x207d30), PlayLayer::flipGravity_h, reinterpret_cast<void**>(&PlayLayer::flipGravity));
-    MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x207e00), PlayLayer::playGravityEffect_h, reinterpret_cast<void**>(&PlayLayer::playGravityEffect));
+    MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x20d810), PlayLayer::onQuit_h, reinterpret_cast<void**>(&PlayLayer::onQuit));*/
 
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x1E4570), PauseLayer::init_h, reinterpret_cast<void**>(&PauseLayer::init));
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x20D810), PlayLayer::exitLevel_h, reinterpret_cast<void**>(&PlayLayer::exitLevel));
@@ -409,11 +412,32 @@ void __fastcall Hooks::LevelEditorLayer::onPlaytestHook(gd::LevelEditorLayer* se
     LevelEditorLayer::onPlaytest(self);
 }
 
+void __fastcall Hooks::PlayLayer::lightningFlash_h(gd::PlayLayer* self, void* edx, CCPoint p, _ccColor3B c)
+{
+    auto& logic = Logic::get();
+
+    if (!logic.hacks.layoutMode)
+        PlayLayer::lightningFlash(self, p, c);
+}
+
 void __fastcall Hooks::LevelEditorLayer::exitHook(CCLayer* self, void*, CCObject* sender)
 {
     LevelEditorLayer::exit(self, sender);
     HitboxNode::getInstance()->clearQueue();
 }
+
+void __fastcall Hooks::PlayLayer::triggerObject_h(gd::EffectGameObject* self, void*, gd::GJBaseGameLayer* idk)
+{
+    auto& logic = Logic::get();
+    if (logic.hacks.trajectory && TrajectorySimulation::getInstance()->shouldInterrumpHooks())
+        return;
+    auto id = self->m_nObjectID;
+    if (logic.hacks.layoutMode && (id == 899 || id == 1006 || id == 1007 || id == 105 || id == 29 || id == 56 || id == 915 ||
+        id == 30 || id == 58))
+        return;
+    PlayLayer::triggerObject(self, idk);
+}
+
 
 void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
     auto& logic = Logic::get();
@@ -665,11 +689,11 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
             sprite->setColor(color);
         }
 
-        /*if (logic.hacks.blocksColor[0] != logic.hacks.backgroundColor[0] || logic.hacks.blocksColor[1] != logic.hacks.backgroundColor[1] ||
+        if (logic.hacks.blocksColor[0] != logic.hacks.backgroundColor[0] || logic.hacks.blocksColor[1] != logic.hacks.backgroundColor[1] ||
             logic.hacks.blocksColor[2] != logic.hacks.backgroundColor[2])
         {
             changeBlockColor = true;
-        }*/
+        }
 
         self->m_currentShakeStrength = 0;
         self->m_currentShakeInterval = 0;
@@ -688,10 +712,11 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
                 auto o = static_cast<gd::GameObject*>(section->objectAtIndex(i));
 
                     auto block = static_cast<gd::GameObject*>(o);
-                    ccColor3B blockColor = { (GLubyte)(255),
-                                            (GLubyte)(255),
-                                            (GLubyte)(255) };
+                    ccColor3B blockColor = { (GLubyte)(logic.hacks.blocksColor[0] * 255),
+                                            (GLubyte)(logic.hacks.blocksColor[1] * 255),
+                                            (GLubyte)(logic.hacks.blocksColor[2] * 255) };
                     block->setColor(blockColor);
+
 
                 if (o->getType() == gd::GameObjectType::kGameObjectTypeDecoration &&
                     (o->m_nObjectID != 44 && o->m_nObjectID != 749 && o->m_nObjectID != 12 && o->m_nObjectID != 38 &&
@@ -700,11 +725,6 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
                         o->m_nObjectID != 1331))
                 {
                     o->setVisible(false);
-                }
-                else {
-                    o->setOpacity(255);
-                    o->setChildOpacity(255);
-                    o->setVisible(true);
                 }
             }
         }
