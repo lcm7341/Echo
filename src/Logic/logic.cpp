@@ -404,35 +404,58 @@ void Logic::set_replay_pos(unsigned idx) {
 #define w_b(var) file.write(reinterpret_cast<char*>(&var), sizeof(var));
 #define r_b(var) file.read(reinterpret_cast<char*>(&var), sizeof(var));
 
+int extractLastNumber(const std::string& str) {
+    std::regex regex("\\d+");
+    std::sregex_iterator iter(str.begin(), str.end(), regex);
+    std::sregex_iterator end;
+
+    int lastNumber = 0;
+    for (; iter != end; ++iter) {
+        lastNumber = std::stoi(iter->str());
+    }
+
+    return lastNumber;
+}
+
+std::string generateNewString(const std::string& input, int newNumber) {
+    std::string newString = input;
+    int lastNumber = extractLastNumber(newString);
+
+    if (lastNumber > 0) {
+        size_t pos = newString.find_last_of(std::to_string(lastNumber));
+        newString.replace(pos, std::to_string(lastNumber).length(), std::to_string(newNumber));
+    }
+
+    size_t hashPos = newString.find('#');
+    if (hashPos != std::string::npos) {
+        newString.replace(hashPos, 1, std::to_string(newNumber));
+    }
+
+    return newString;
+}
+
 std::pair<std::string, std::string> generateNewFileName(const std::string& fileName, std::string ext, bool json = false) {
     auto& logic = Logic::get();
-    std::string rename_format = logic.rename_format;
+    std::string rename_format = logic.rename_format; // _#
 
     std::string dir = json ? ".echo\\converted\\" : ".echo\\replays\\";
     std::string baseName = fs::path(fileName).stem().string();
     if (json) baseName = fs::path(fileName).stem().stem().string();
     std::string extension = fs::path(fileName).extension().string();
 
-    size_t hashPos = rename_format.find('#');
-    size_t formatLength = rename_format.length();
-
     std::string newFileName = dir + baseName + ext;
     int count = 1;
 
     while (fs::exists(newFileName)) {
-        size_t pos = newFileName.length() - ext.length() - formatLength;
-        std::string suffix = newFileName.substr(pos + hashPos + 1, formatLength - hashPos - 1);
-        try {
-            count = std::stoi(suffix) + 1;
+        int lastNumber = extractLastNumber(newFileName);
+        if (lastNumber >= 1) {
+            int newNumber = lastNumber + 1;
+            newFileName = generateNewString(newFileName, newNumber);
         }
-        catch (std::invalid_argument&) {
-            // ignore and just use the default count value of 1
+        else {
+            newFileName = dir + baseName + rename_format + ext;
+            newFileName = generateNewString(newFileName, 1);
         }
-
-        std::stringstream ss;
-        ss << std::setw(formatLength - hashPos - 1) << std::setfill('0') << count;
-        std::string formattedCount = ss.str();
-        newFileName.replace(pos + hashPos + 1, formatLength - hashPos - 1, formattedCount);
     }
 
     if (json)

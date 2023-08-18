@@ -1344,7 +1344,7 @@ void GUI::renderer() {
 
 		ImGui::Separator();
 
-		ImGui::PushItemWidth(175);
+		ImGui::PushItemWidth(170);
 		ImGui::InputText("Video Name", &logic.recorder.video_name);
 		ImGui::PopItemWidth();
 
@@ -1400,7 +1400,7 @@ void GUI::sequential_replay() {
 			sequence_pos = ImGui::GetWindowPos();
 		}
 
-		ImGui::Checkbox("Enable Sequence", &logic.sequence_enabled); ImGui::SameLine();
+		ImGui::Checkbox("Enable Sequence", &logic.sequence_enabled);
 
 		if (ImGui::Button("Remove All")) {
 			logic.replays.clear();
@@ -1408,7 +1408,7 @@ void GUI::sequential_replay() {
 		ImGui::SameLine();
 		static int all_offset = 0;
 
-		ImGui::PushItemWidth(125);
+		ImGui::PushItemWidth(175);
 		if (ImGui::InputInt("Offset All", &all_offset)) {
 			for (auto& replay : logic.replays) {
 				replay.max_frame_offset = all_offset;
@@ -1788,7 +1788,7 @@ void GUI::tools() {
 
 		bool open_layout_modal = true;
 
-		if (ImGui::Button("Layout Mode Settings###layout_settings", ImVec2(ImGui::GetContentRegionMax().x * 0.4, 0))) {
+		if (ImGui::Button("Layout Mode Settings###layout_settings", ImVec2(ImGui::GetContentRegionMax().x * 0.42, 0))) {
 			ImGui::OpenPopup("Layout Settings###layoutsettings2");
 		}
 

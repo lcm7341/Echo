@@ -233,8 +233,6 @@ void HitboxNode::drawForObject(gd::GameObject* obj)
 		switch (obj->m_nObjectID)
 		{
 		case 749:
-			color = { (GLubyte)(hacks.modifierHitboxColor[0] * 255.f), (GLubyte)(hacks.modifierHitboxColor[1] * 255.f),
-					 (GLubyte)(hacks.modifierHitboxColor[2] * 255.f), (GLubyte)(hacks.modifierHitboxColor[3] * 255.f) };
 			break;
 		default:
 			if (!hacks.showDecorations)
@@ -263,6 +261,9 @@ void HitboxNode::drawForObject(gd::GameObject* obj)
 		if (hacks.showDecorations) {
 			color = { (GLubyte)(hacks.modifierHitboxColor[0] * 255.f), (GLubyte)(hacks.modifierHitboxColor[1] * 255.f),
 					 (GLubyte)(hacks.modifierHitboxColor[2] * 255.f), (GLubyte)(hacks.modifierHitboxColor[3] * 255.f) };
+		}
+		else {
+			return;
 		}
 		break;
 	case gd::GameObjectType::kGameObjectTypeSlope:
