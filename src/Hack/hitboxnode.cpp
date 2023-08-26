@@ -355,12 +355,20 @@ void HitboxNode::drawObjectWithRotation(gd::GameObject* obj)
 	{
 	case gd::GameObjectType::kGameObjectTypeSolid:
 		color = { (GLubyte)(hacks.solidHitboxColor[0] * 255.f), (GLubyte)(hacks.solidHitboxColor[1] * 255.f),
-				 (GLubyte)(hacks.solidHitboxColor[2] * 255.f), (GLubyte)(hacks.solidHitboxColor[3] * 255.f) };
+				 (GLubyte)(hacks.solidHitboxColor[2] * 255.f) };
 		break;
 	case gd::GameObjectType::kGameObjectTypeDecoration:
 		if (hacks.showDecorations)
-			color = { (GLubyte)(hacks.modifierHitboxColor[0] * 255.f), (GLubyte)(hacks.modifierHitboxColor[1] * 255.f),
-					 (GLubyte)(hacks.modifierHitboxColor[2] * 255.f), (GLubyte)(hacks.modifierHitboxColor[3] * 255.f) };
+			color = ccc4(127, 127, 255, 255);
+		switch (obj->m_nObjectID)
+		{
+		case 749:
+			color = ccc4(255, 127, 0, 255);
+			break;
+		default:
+			if (!hacks.showDecorations)
+				return;
+		}
 		break;
 	case gd::GameObjectType::kGameObjectTypeInverseGravityPortal:
 	case gd::GameObjectType::kGameObjectTypeInverseMirrorPortal:
@@ -378,7 +386,7 @@ void HitboxNode::drawObjectWithRotation(gd::GameObject* obj)
 	case gd::GameObjectType::kGameObjectTypeRobotPortal:
 	case gd::GameObjectType::kGameObjectTypeSpiderPortal:
 	case gd::GameObjectType::kGameObjectTypeTeleportPortal:color = { (GLubyte)(hacks.portalHitboxColor[0] * 255.f), (GLubyte)(hacks.portalHitboxColor[1] * 255.f),
-				 (GLubyte)(hacks.portalHitboxColor[2] * 255.f), (GLubyte)(hacks.portalHitboxColor[3] * 255.f) };
+				 (GLubyte)(hacks.portalHitboxColor[2] * 255.f) };
 
 														  break;
 	case gd::GameObjectType::kGameObjectTypeModifier:
@@ -390,7 +398,7 @@ void HitboxNode::drawObjectWithRotation(gd::GameObject* obj)
 		case 203:
 		case 1334:
 			color = { (GLubyte)(hacks.modifierHitboxColor[0] * 255.f), (GLubyte)(hacks.modifierHitboxColor[1] * 255.f),
-					 (GLubyte)(hacks.modifierHitboxColor[2] * 255.f), (GLubyte)(hacks.modifierHitboxColor[3] * 255.f) };
+					 (GLubyte)(hacks.modifierHitboxColor[2] * 255.f) };
 			break;
 		default:
 			if (!hacks.showDecorations)
@@ -399,39 +407,41 @@ void HitboxNode::drawObjectWithRotation(gd::GameObject* obj)
 		break;
 	case gd::GameObjectType::kGameObjectTypeSlope:
 		color = { (GLubyte)(hacks.slopeHitboxColor[0] * 255.f), (GLubyte)(hacks.slopeHitboxColor[1] * 255.f),
-				 (GLubyte)(hacks.slopeHitboxColor[2] * 255.f), (GLubyte)(hacks.slopeHitboxColor[3] * 255.f) };
+				 (GLubyte)(hacks.slopeHitboxColor[2] * 255.f) };
 		this->drawPolygonHitbox(this->triangleForObject(obj), color);
 		return;
 	case gd::GameObjectType::kGameObjectTypeHazard:
 		color = { (GLubyte)(hacks.hazardHitboxColor[0] * 255.f), (GLubyte)(hacks.hazardHitboxColor[1] * 255.f),
-				 (GLubyte)(hacks.hazardHitboxColor[2] * 255.f), (GLubyte)(hacks.hazardHitboxColor[3] * 255.f) };
+				 (GLubyte)(hacks.hazardHitboxColor[2] * 255.f) };
 		break;
 
 	case gd::GameObjectType::kGameObjectTypeYellowJumpPad:
 	case gd::GameObjectType::kGameObjectTypePinkJumpPad:
 	case gd::GameObjectType::kGameObjectTypeGravityPad:
 	case gd::GameObjectType::kGameObjectTypeRedJumpPad:
+	case gd::GameObjectType::kGameObjectTypeYellowJumpRing:
 		color = { (GLubyte)(hacks.padHitboxColor[0] * 255.f), (GLubyte)(hacks.padHitboxColor[1] * 255.f),
-				 (GLubyte)(hacks.padHitboxColor[2] * 255.f), (GLubyte)(hacks.padHitboxColor[3] * 255.f) };
+				 (GLubyte)(hacks.padHitboxColor[2] * 255.f) };
 		break;
 
 	case gd::GameObjectType::kGameObjectTypePinkJumpRing:
-	case gd::GameObjectType::kGameObjectTypeYellowJumpRing:
 	case gd::GameObjectType::kGameObjectTypeGravityRing:
 	case gd::GameObjectType::kGameObjectTypeRedJumpRing:
 	case gd::GameObjectType::kGameObjectTypeGreenRing:
 	case gd::GameObjectType::kGameObjectTypeDashRing:
 	case gd::GameObjectType::kGameObjectTypeGravityDashRing:
-	case gd::GameObjectType::kGameObjectTypeDropRing:
 		color = { (GLubyte)(hacks.ringHitboxColor[0] * 255.f), (GLubyte)(hacks.ringHitboxColor[1] * 255.f),
-				 (GLubyte)(hacks.ringHitboxColor[2] * 255.f), (GLubyte)(hacks.ringHitboxColor[3] * 255.f) };
+				 (GLubyte)(hacks.ringHitboxColor[2] * 255.f) };
 		break;
 	case gd::GameObjectType::kGameObjectTypeSecretCoin:
 	case gd::GameObjectType::kGameObjectTypeUserCoin:
 	case gd::GameObjectType::kGameObjectTypeCustomRing:
 	case gd::GameObjectType::kGameObjectTypeCollectible:
 		color = { (GLubyte)(hacks.collectibleHitboxColor[0] * 255.f), (GLubyte)(hacks.collectibleHitboxColor[1] * 255.f),
-				 (GLubyte)(hacks.collectibleHitboxColor[2] * 255.f), (GLubyte)(hacks.collectibleHitboxColor[3] * 255.f) };
+				 (GLubyte)(hacks.collectibleHitboxColor[2] * 255.f) };
+		break;
+	case gd::GameObjectType::kGameObjectTypeDropRing:
+		color = ccc4(31, 31, 31, 255);
 		break;
 	default:
 		if (!hacks.showDecorations)

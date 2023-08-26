@@ -1662,7 +1662,7 @@ void GUI::tools() {
 
 		const char* noclip_options[] = { "Off", "Player 1", "Player 2", "Both" };
 
-		ImGui::PushItemWidth(docked ? 200 : 175);
+		ImGui::PushItemWidth(docked ? 150 : 175);
 		if (ImGui::BeginCombo("Noclip##dropdown_noclip", noclip_options[selected_noclip]))
 		{
 			for (int i = 0; i < IM_ARRAYSIZE(noclip_options); i++)
@@ -1698,6 +1698,10 @@ void GUI::tools() {
 		}
 
 		ImGui::PopItemWidth();
+
+		ImGui::SameLine();
+
+		ImGui::Checkbox("Real Time", &logic.real_time_mode);
 
 		ImGui::Checkbox("Click For Both Players", &logic.click_both_players);
 
@@ -2913,14 +2917,6 @@ void GUI::main() {
 		if (ImGui::Button("Reset Macro", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
 			if (!logic.inputs.empty()) {
 				ImGui::OpenPopup("Confirm Reset");
-
-				ImVec2 popupSize(200, 100);
-				ImVec2 popupPos(
-					(ImGui::GetIO().DisplaySize.x - popupSize.x) / 2.f,
-					(ImGui::GetIO().DisplaySize.y - popupSize.y) / 2.f
-				);
-
-				ImGui::SetNextWindowPos(popupPos);
 			}
 		}
 
@@ -3139,13 +3135,26 @@ void GUI::init() {
 		}));
 
 	std::unique_ptr<KeybindableBase> advanceAction = std::unique_ptr<KeybindableBase>(new Keybindable([this]() {
-		if (Logic::get().start == std::chrono::steady_clock::time_point())
-			Logic::get().start = std::chrono::steady_clock::now();
-		Logic::get().frame_advance = false;
-		Hooks::CCScheduler_update_h(gd::GameManager::sharedState()->getScheduler(), 0, 1.f / Logic::get().fps / Logic::get().speedhack);
-		Logic::get().frame_advance = true;
+		if (!ImGui::GetIO().WantTextInput && PLAYLAYER) {
+			if (Logic::get().start == std::chrono::steady_clock::time_point())
+				Logic::get().start = std::chrono::steady_clock::now();
+			Logic::get().frame_advance = false;
+			Hooks::CCScheduler_update_h(gd::GameManager::sharedState()->getScheduler(), 0, 1.f / Logic::get().fps / Logic::get().speedhack);
+			Logic::get().frame_advance = true;
+		}
 		}));
 
+	std::unique_ptr<KeybindableBase> beginAdvanceAction = std::unique_ptr<KeybindableBase>(new Keybindable([this]() {
+		if (!ImGui::GetIO().WantTextInput && PLAYLAYER) {
+			Logic::get().frame_advance = !Logic::get().frame_advance;
+		}
+		}));
+
+	std::unique_ptr<KeybindableBase> autoClicker = std::unique_ptr<KeybindableBase>(new Keybindable([this]() {
+		if (!ImGui::GetIO().WantTextInput && PLAYLAYER) {
+			Logic::get().autoclicker = !Logic::get().autoclicker;
+		}
+		}));
 
 	std::unique_ptr<KeybindableBase> renderingAction = std::unique_ptr<KeybindableBase>(new Keybindable([this]() {
 		Logic::get().recorder.m_recording = !Logic::get().recorder.m_recording;
@@ -3169,7 +3178,7 @@ void GUI::init() {
 		}
 
 		if (change) {
-			logic.toggle_playing();
+			logic.toggle_recording();
 			logic.sort_inputs();
 		}
 		}));
@@ -3214,6 +3223,7 @@ void GUI::init() {
 	Logic::get().keybinds.SetAction("toggleRecording", std::move(recordingAction));
 	Logic::get().keybinds.SetAction("togglePlaying", std::move(playingAction));
 	Logic::get().keybinds.SetAction("advancing", std::move(advanceAction));
+	Logic::get().keybinds.SetAction("frameAdvance", std::move(beginAdvanceAction));
 	Logic::get().keybinds.SetAction("resetLevel", std::move(resetAction));
 
 	Logic::get().keybinds.SetAction("outputPercents", std::move(outputPercentAction));
@@ -3238,9 +3248,7 @@ void GUI::init() {
 	SET_BIND(noOverwrite, Logic::get().no_overwrite);
 	SET_BIND(ignoreActions, Logic::get().ignore_actions_at_playback);
 	SET_BIND(modifyRespawn, Logic::get().respawn_time_modified);
-	SET_BIND(autoClicker, Logic::get().autoclicker);
 	SET_BIND(autoDisableClicker, Logic::get().autoclicker_auto_disable);
-	SET_BIND(frameAdvance, Logic::get().frame_advance);
 	SET_BIND(menuBind, show_window);
 	SET_BIND(showRecord, Logic::get().show_recording);
 

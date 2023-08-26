@@ -460,7 +460,7 @@ public:
 				ImGui::IsKeyPressed(keybind.GetKey().value(), false) &&
 				io.KeyCtrl == keybind.GetCtrl() &&
 				io.KeyShift == keybind.GetShift() &&
-				io.KeyAlt == keybind.GetAlt()) {
+				io.KeyAlt == keybind.GetAlt() && !ImGui::GetIO().WantTextInput) {
 				// Call the Keybindable stored in the map
 				keybindable->ran();
 			}

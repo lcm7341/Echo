@@ -34,13 +34,13 @@ double Logic::xpos_calculation() {
 
 void Logic::record_input(bool down, bool player1) {
     if (is_recording() || is_both()) {
-        auto twoplayer = PLAYLAYER->m_pLevelSettings->m_twoPlayerMode;
+        //auto twoplayer = PLAYLAYER->m_pLevelSettings->m_twoPlayerMode;
         player1 ^= 1 && gd::GameManager::sharedState()->getGameVariable("0010"); // what the fuck ?
         if (player1) {
-            add_input({ get_frame(), down, twoplayer && !player1, PLAYLAYER->m_pPlayer1->getPositionY(), PLAYLAYER->m_pPlayer1->getPositionX(), PLAYLAYER->m_pPlayer1->getRotation(), PLAYLAYER->m_pPlayer1->m_yAccel, PLAYLAYER->m_pPlayer1->m_xAccel });
+            add_input({ get_frame(), down, !player1, PLAYLAYER->m_pPlayer1->getPositionY(), PLAYLAYER->m_pPlayer1->getPositionX(), PLAYLAYER->m_pPlayer1->getRotation(), PLAYLAYER->m_pPlayer1->m_yAccel, PLAYLAYER->m_pPlayer1->m_xAccel });
         }
         else {
-            add_input({ get_frame(), down, twoplayer && !player1, PLAYLAYER->m_pPlayer2->getPositionY(), PLAYLAYER->m_pPlayer2->getPositionX(), PLAYLAYER->m_pPlayer2->getRotation(), PLAYLAYER->m_pPlayer2->m_yAccel, PLAYLAYER->m_pPlayer2->m_xAccel });
+            add_input({ get_frame(), down, !player1, PLAYLAYER->m_pPlayer2->getPositionY(), PLAYLAYER->m_pPlayer2->getPositionX(), PLAYLAYER->m_pPlayer2->getRotation(), PLAYLAYER->m_pPlayer2->m_yAccel, PLAYLAYER->m_pPlayer2->m_xAccel });
         }
     }
 }
@@ -74,7 +74,7 @@ void Logic::play_input(Frame& input) {
             currently_pressing = true;
             playback_clicking = true;
             try {
-                Hooks::PlayLayer::pushButton(PLAYLAYER, 0, !input.isPlayer2 ^ gamevar);
+                //Hooks::PlayLayer::pushButton(PLAYLAYER, 0, !input.isPlayer2 ^ gamevar);
                 Hooks::PlayLayer::pushButton_h(PLAYLAYER, 0, 0, !input.isPlayer2 ^ gamevar);
             }
             catch (std::exception& ex) {
@@ -91,7 +91,7 @@ void Logic::play_input(Frame& input) {
         }
         else {
             playback_releasing = true;
-            Hooks::PlayLayer::releaseButton(PLAYLAYER, 0, !input.isPlayer2 ^ gamevar);
+            //Hooks::PlayLayer::releaseButton(PLAYLAYER, 0, !input.isPlayer2 ^ gamevar);
             Hooks::PlayLayer::releaseButton_h(PLAYLAYER, 0, 0, !input.isPlayer2 ^ gamevar);
             playback_releasing = false;
         }
@@ -442,6 +442,17 @@ std::pair<std::string, std::string> generateNewFileName(const std::string& fileN
     std::string baseName = fs::path(fileName).stem().string();
     if (json) baseName = fs::path(fileName).stem().stem().string();
     std::string extension = fs::path(fileName).extension().string();
+
+    if (rename_format.empty()) {
+        std::string place = dir;
+        place += baseName;
+        place += ext;
+        return { place, fs::path(place).stem().string() };;
+    }
+
+    if (rename_format.find("#") == std::string::npos) {
+        rename_format += "#";
+    }
 
     std::string newFileName = dir + baseName + ext;
     int count = 1;
@@ -821,6 +832,15 @@ void Logic::handle_checkpoint_data() {
             if (is_playing()) {
                 PLAYLAYER->m_pPlayer1->m_isHolding = data.player_1_data.isHolding;
                 PLAYLAYER->m_pPlayer1->m_isHolding2 = data.player_1_data.isHolding2;
+                PLAYLAYER->m_pPlayer2->m_isHolding = data.player_2_data.isHolding;
+                PLAYLAYER->m_pPlayer2->m_isHolding2 = data.player_2_data.isHolding2;
+            }
+
+            if (click_inverse_p1) {
+                PLAYLAYER->m_pPlayer1->m_isHolding = data.player_1_data.isHolding;
+                PLAYLAYER->m_pPlayer1->m_isHolding2 = data.player_1_data.isHolding2;
+            }
+            if (click_inverse_p2) {
                 PLAYLAYER->m_pPlayer2->m_isHolding = data.player_2_data.isHolding;
                 PLAYLAYER->m_pPlayer2->m_isHolding2 = data.player_2_data.isHolding2;
             }

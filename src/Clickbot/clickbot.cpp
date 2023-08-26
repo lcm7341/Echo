@@ -38,6 +38,7 @@ namespace Clickbot
         std::vector<std::string> out;
         std::string path2 = ".echo\\clickpacks\\" + path + "\\" + folder;
         if (!fs::is_directory(path2)) path2 = ".echo\\clickpacks\\" + path + "\\" + convertToCamelCase(folder);
+        if (!fs::is_directory(path2)) return "";
         try
         {
             for (const auto& entry : std::filesystem::directory_iterator(path2))

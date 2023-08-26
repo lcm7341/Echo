@@ -83,6 +83,8 @@ void writeConfig() {
 
 	j["game_fps"] = logic.fps;
 
+	j["rename_format"] = logic.rename_format;
+
 	j["video_fps"] = recorder.m_fps;
 	j["video_width"] = recorder.m_width;
 	j["video_height"] = recorder.m_height;
@@ -269,6 +271,7 @@ void readConfig() {
 	file >> j;
 
 	logic.fps = getOrDefault(j, "game_fps", 60);
+	logic.rename_format = getOrDefault(j, "rename_format", logic.rename_format);
 	GUI::get().input_fps = logic.fps;
 	recorder.m_fps = getOrDefault(j, "video_fps", 60);
 	recorder.m_width = getOrDefault(j, "video_width", 1920);

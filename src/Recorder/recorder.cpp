@@ -62,6 +62,13 @@ void Recorder::start(const std::string& path) {
         song_file = CCFileUtils::sharedFileUtils()->fullPathForFilename(song_file.c_str(), false);
     auto is_testmode = play_layer->m_isTestMode;
     auto song_offset = m_song_start_offset;
+
+    if (!std::filesystem::exists("ffmpeg\\ffmpeg.exe")) {
+        logic.error = "FFmpeg not found! Download FFmpeg though the Echo installer!";
+        return;
+    }
+
+
     std::thread([&, path, song_file, fade_in, fade_out, bg_volume, sfx_volume, is_testmode, song_offset]() {
         std::stringstream stream;
         stream << '"' << "ffmpeg\\ffmpeg.exe" << '"' << " -y -f rawvideo -pix_fmt rgb24 -s " << m_width << "x" << m_height << " -r " << m_fps
@@ -227,8 +234,9 @@ void Recorder::handle_recording(gd::PlayLayer* play_layer, float dt) {
     Logic::get().completed_level = abs_value_difference <= 349.f || play_layer->m_hasCompletedLevel;
 
     auto tfx2 = play_layer->timeForXPos2(play_layer->m_pPlayer1->m_position.x, true);
-    if (Logic::get().tfx2_calculated == 0 || !Logic::get().completed_level) Logic::get().tfx2_calculated = tfx2;
-
+    if (Logic::get().tfx2_calculated == 0 || !Logic::get().completed_level && play_layer->m_playerStartPosition.x == 0.f) Logic::get().tfx2_calculated = tfx2;
+    else Logic::get().tfx2_calculated = play_layer->m_time;
+    
     if (!Logic::get().completed_level || m_after_end_extra_time < m_after_end_duration + 3.5) {
 
         if (Logic::get().completed_level) {
