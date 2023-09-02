@@ -183,7 +183,7 @@ double evalExpression(const std::vector<std::string>& tokens, std::map<std::stri
 	return result;
 }
 
-std::string echo_version = "Echo v1.0";
+std::string echo_version = "Echo v1.05 [BETA]";
 
 int getRandomInt(int N) {
 	// Seed the random number generator with current time

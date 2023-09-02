@@ -580,17 +580,24 @@ public:
 			if (last_input_itr != inputs.rend()) {
 				lastInput = *last_input_itr;
 				wasPressingDown = lastInput.pressingDown;
+				bool playerInverse = isPlayer2 ? click_inverse_p2 : click_inverse_p1;
 
 				// If the player is not currently pressing, but was pressing on the last input
 				if (!player->m_isHolding && wasPressingDown && !isDashing) {
 					if (lastInput.number != get_frame()) {
-						add_input({ get_frame(), false, isPlayer2 });
+						if (playerInverse && !wasPressingDown)
+							add_input({ get_frame(), false, isPlayer2 });
+						else if (!playerInverse)
+							add_input({ get_frame(), false, isPlayer2 });
 					}
 				}
 				// If the player is currently pressing, but was not pressing on the last input
 				else if (player->m_isHolding && !wasPressingDown && !isDashing) {
 					if (lastInput.number != get_frame()) {
-						add_input({ get_frame(), true, isPlayer2 });
+						if (playerInverse && wasPressingDown)
+							add_input({ get_frame(), true, isPlayer2 });
+						else if (!playerInverse)
+							add_input({ get_frame(), true, isPlayer2 });
 
 						// Handle Orb Checking
 						orbChecking(player->getPosition());

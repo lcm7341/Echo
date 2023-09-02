@@ -866,7 +866,28 @@ int __fastcall Hooks::PlayLayer::pushButton_h(gd::PlayLayer* self, int, int idk,
     }
 
     if (logic.is_playing() && !logic.clickbot_enabled) {
-        return pushButton(self, idk, button);
+        if (logic.is_playing() && logic.playback_clicking)
+            return pushButton(self, idk, button);
+        else if (logic.is_playing()) {
+            if (logic.ignore_actions_at_playback) {
+                if (!self->m_level->twoPlayerMode) {
+                    if (button && !logic.record_player_2)
+                        return 0;
+                    if (!button && !logic.record_player_1)
+                        return 0;
+                    if (logic.play_player_1 && logic.play_player_2)
+                        return 0;
+                }
+                else {
+                    if (button && !logic.record_player_1)
+                        return 0;
+                    if (!button && !logic.record_player_2)
+                        return 0;
+                    if (logic.play_player_1 && logic.play_player_2)
+                        return 0;
+                }
+            }
+        }
     }
 
     if (logic.clickbot_enabled && (!logic.is_playing() || logic.playback_clicking)) {
@@ -996,8 +1017,28 @@ int __fastcall Hooks::PlayLayer::pushButton_h(gd::PlayLayer* self, int, int idk,
         }
 
         button = oldButton;
-        if (logic.is_playing())
+        if (logic.is_playing() && logic.playback_clicking)
             return pushButton(self, idk, button);
+        else if (logic.is_playing()) {
+            if (logic.ignore_actions_at_playback) {
+                if (!self->m_level->twoPlayerMode) {
+                    if (button && !logic.record_player_2)
+                        return 0;
+                    if (!button && !logic.record_player_1)
+                        return 0;
+                    if (logic.play_player_1 && logic.play_player_2)
+                        return 0;
+                }
+                else {
+                    if (button && !logic.record_player_1)
+                        return 0;
+                    if (!button && !logic.record_player_2)
+                        return 0;
+                    if (logic.play_player_1 && logic.play_player_2)
+                        return 0;
+                }
+            }
+        }
     }
 
     if (logic.playback_clicking) return 0;
@@ -1072,8 +1113,29 @@ int __fastcall Hooks::PlayLayer::releaseButton_h(gd::PlayLayer* self, int, int i
     
     logic.currently_pressing = false;
 
-    if (logic.is_playing() && !logic.clickbot_enabled) {
-        return releaseButton(self, idk, button);
+    if (!logic.clickbot_enabled) {
+        if (logic.is_playing() && logic.playback_releasing)
+            return releaseButton(self, idk, button);
+        else if (logic.is_playing()) {
+            if (logic.ignore_actions_at_playback) {
+                if (!self->m_level->twoPlayerMode) {
+                    if (button && !logic.record_player_2)
+                        return 0;
+                    if (!button && !logic.record_player_1)
+                        return 0;
+                    if (logic.play_player_1 && logic.play_player_2)
+                        return 0;
+                }
+                else {
+                    if (button && !logic.record_player_1)
+                        return 0;
+                    if (!button && !logic.record_player_2)
+                        return 0;
+                    if (logic.play_player_1 && logic.play_player_2)
+                        return 0;
+                }
+            }
+        }
     }
 
     if ((logic.clickbot_enabled && !logic.is_playing()) || (logic.clickbot_enabled && logic.playback_releasing)) {
@@ -1175,8 +1237,28 @@ int __fastcall Hooks::PlayLayer::releaseButton_h(gd::PlayLayer* self, int, int i
         }
         Clickbot::system->update();
         button = oldButton;
-        if (logic.is_playing())
+        if (logic.is_playing() && logic.playback_releasing)
             return releaseButton(self, idk, button);
+        else if (logic.is_playing()) {
+            if (logic.ignore_actions_at_playback) {
+                if (!self->m_level->twoPlayerMode) {
+                    if (button && !logic.record_player_2)
+                        return 0;
+                    if (!button && !logic.record_player_1)
+                        return 0;
+                    if (logic.play_player_1 && logic.play_player_2)
+                        return 0;
+                }
+                else {
+                    if (button && !logic.record_player_1)
+                        return 0;
+                    if (!button && !logic.record_player_2)
+                        return 0;
+                    if (logic.play_player_1 && logic.play_player_2)
+                        return 0;
+                }
+            }
+        }
     }
 
     if (logic.playback_releasing) return 0;
