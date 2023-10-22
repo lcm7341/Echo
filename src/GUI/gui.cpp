@@ -1615,7 +1615,6 @@ void GUI::tools() {
 			{
 				logic.conversion_message = "";
 				try {
-					//logic.inputs.clear();
 					options[current_option]->import(ImGuiFileDialog::Instance()->GetFilePathName());
 					reload_inputs = true;
 					logic.sort_inputs();
@@ -2632,7 +2631,7 @@ void GUI::main() {
 			if (!logic.is_recording() && !logic.is_playing()) {
 				logic.fps = input_fps;
 				CCDirector::sharedDirector()->setAnimationInterval(1.f / logic.fps);
-			} 
+			}
 			else {
 				CCDirector::sharedDirector()->setAnimationInterval(1.f / input_fps);
 			}
