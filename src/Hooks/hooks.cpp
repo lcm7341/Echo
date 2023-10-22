@@ -153,7 +153,7 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
     auto& logic = Logic::get();
     auto play_layer = gd::GameManager::sharedState()->getPlayLayer();
 
-    if (!logic.is_recording() && !logic.is_playing()) g_disable_render = false;
+    if (!logic.is_recording() && !logic.is_playing()) return CCScheduler_update(self, dt);
 
     if (logic.frame_advance && !play_layer) logic.frame_advance = false;
 
@@ -459,6 +459,11 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
 
     static int offset = rand();
 
+    if (logic.is_recording()) {
+        gd::GameManager::sharedState()->setGameVariable("0027", false); // auto checkpoints
+        gd::GameManager::sharedState()->setGameVariable("0023", false); // smooth fix
+    }
+
     logic.clickbot_now = self->m_time;
     bool changeBlockColor = false;
     auto p = self->getChildren()->objectAtIndex(0);
@@ -470,37 +475,6 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
         self->m_isCameraShaking = false;
         self->m_lastShakeTime = 0;
     }
-
-    // layout mode Shit ( it doesnt work with 0 opacity objects FSR.)
-    /*for (int s = self->sectionForPos(xp) - 5; s < self->sectionForPos(xp) + 6; ++s)
-    {
-        if (s < 0)
-            continue;
-        if (s >= self->m_sectionObjects->count())
-            break;
-        auto section = static_cast<CCArray*>(self->m_sectionObjects->objectAtIndex(s));
-        for (size_t i = 0; i < section->count(); ++i)
-        {
-            auto o = static_cast<gd::GameObject*>(section->objectAtIndex(i));
-
-            if (o->getType() == gd::GameObjectType::kGameObjectTypeDecoration && o->isVisible() &&
-                (o->m_nObjectID != 44 && o->m_nObjectID != 749 && o->m_nObjectID != 12 && o->m_nObjectID != 38 &&
-                    o->m_nObjectID != 47 && o->m_nObjectID != 111 && o->m_nObjectID != 8 && o->m_nObjectID != 13 &&
-                    o->m_nObjectID != 660 && o->m_nObjectID != 745 && o->m_nObjectID != 101 && o->m_nObjectID != 99 &&
-                    o->m_nObjectID != 1331))
-            {
-                o->setVisible(false);
-            }
-            else {
-                o->setVisible(true);
-                o->setOpacity(255);
-            }
-        }
-        self->m_pPlayer1->setVisible(true);
-        self->m_pPlayer2->setVisible(true);
-        self->m_pPlayer1->setOpacity(255);
-        self->m_pPlayer2->setOpacity(255);
-    }*/
 
     if (self->m_isDead && logic.recorder.m_recording) {
         self->m_time += dt;
@@ -621,6 +595,7 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
 
     if (percent_label) {
         if (logic.show_percent) {
+            gd::GameManager::sharedState()->setGameVariable("0040", false);
             char out[24];
             std::stringstream stream;
             float percent = min(100.f, (self->m_pPlayer1->getPositionX() / self->m_endPortal->getPositionX()) * 100.f);
@@ -696,8 +671,7 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
     }
     update(self, dt);
 
-    if (Logic::get().hacks.trajectory)
-        TrajectorySimulation::getInstance()->processMainSimulation(dt);
+    //if (Logic::get().hacks.trajectory) TrajectorySimulation::getInstance()->processMainSimulation(dt);
 
     if (logic.hacks.layoutMode)
     {
