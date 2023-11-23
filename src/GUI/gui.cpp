@@ -183,7 +183,7 @@ double evalExpression(const std::vector<std::string>& tokens, std::map<std::stri
 	return result;
 }
 
-std::string echo_version = "Echo v1.05 [BETA]";
+std::string echo_version = "Echo v1.06";
 
 int getRandomInt(int N) {
 	// Seed the random number generator with current time
@@ -253,7 +253,8 @@ void GUI::draw() {
 	if (g_font) ImGui::PushFont(g_font);
 
 	if (PLAYLAYER && Logic::get().is_recording()) {
-		double frame_time = CCDirector::sharedDirector()->getAnimationInterval();
+		double frame_time = ImGui::GetIO().DeltaTime;
+		if (!Logic::get().real_time_mode && Logic::get().speedhack < 1.f) frame_time /= Logic::get().speedhack;
 		Logic::get().total_recording_time += std::chrono::duration<double>(frame_time);
 	}
 
@@ -966,7 +967,10 @@ void GUI::editor() {
 				int frameDiff = std::abs(static_cast<int>(inputs[i].number - logic.get_frame()));
 				if (frameDiff < closestFrameDiff) {
 					closestFrameDiff = frameDiff;
-					closestInputIndex = i;
+					if (editor_auto_scroll)
+						closestInputIndex = i;
+					else
+						closestInputIndex = selectedInput;
 				}
 			}
 
@@ -995,6 +999,7 @@ void GUI::editor() {
 				if (ImGui::Button(text.c_str(), ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
 					selectedInput = i;
 					newInput = inputs[i];
+					editor_auto_scroll = false;
 				}
 
 				// Automatically select the closest input to the current frame
@@ -1070,6 +1075,9 @@ void GUI::editor() {
 			}
 			ImGui::Separator();
 			ImGui::Text("Current Frame: %i", logic.get_frame());
+			if (ImGui::Button("Set to Current Frame")) {
+				newInput.number = logic.get_frame();
+			}
 			ImGui::Checkbox("Auto Scroll To Frame", &editor_auto_scroll);
 			ImGui::Checkbox("Edit Plain Text", &plaintext_editing);
 			inputs[selectedInput] = newInput;
@@ -1098,6 +1106,7 @@ void GUI::editor() {
 			ImGui::Separator();
 			ImGui::EndDisabled();
 			ImGui::Text("Current Frame: %i", logic.get_frame());
+			ImGui::Button("Set to Current Frame");
 			ImGui::Checkbox("Auto Scroll To Frame", &editor_auto_scroll);
 			ImGui::Checkbox("Edit Plain Text", &plaintext_editing);
 		}
@@ -1192,6 +1201,30 @@ void GUI::editor() {
 				input.isPlayer2 = !input.isPlayer2;
 			}
 		}
+
+		ImGui::Separator();
+
+		double total_seconds = logic.total_recording_time.count();
+
+		int hours = static_cast<int>(total_seconds / 3600);
+		int minutes = static_cast<int>((total_seconds - hours * 3600) / 60);
+		int seconds = static_cast<int>(total_seconds - hours * 3600 - minutes * 60);
+
+		// Format the time as HH:MM:SS
+		std::ostringstream oss;
+		oss << std::setfill('0');
+		oss << std::setw(2) << hours << ":"
+			<< std::setw(2) << minutes << ":"
+			<< std::setw(2) << seconds;
+
+		std::string time_str = oss.str();
+
+		int clicks_amt = 0;
+		for (auto& input : inputs)  if (input.pressingDown) clicks_amt++;
+
+		ImGui::Text("Recording Time: %s", time_str.c_str());
+		ImGui::Text("Total Attempts: %i", logic.total_attempt_count);
+		ImGui::Text("Clicks Count: %i", clicks_amt);
 
 		if (docked)
 			ImGui::EndTabItem();
@@ -2958,6 +2991,7 @@ void GUI::main() {
 				logic.write_file(logic.macro_name);
 			}
 		}
+		CHECK_KEYBIND("saveFile");
 
 		ImGui::SameLine();
 
@@ -2982,6 +3016,7 @@ void GUI::main() {
 			logic.format = logic.META;
 		}
 
+		CHECK_KEYBIND("loadFile");
 		if (ImGuiFileDialog::Instance()->Display("ImportNormal", ImGuiWindowFlags_NoCollapse, ImVec2(500, 200)))
 		{
 			if (ImGuiFileDialog::Instance()->IsOk())
@@ -3212,6 +3247,16 @@ void GUI::init() {
 		}
 		}));
 
+	std::unique_ptr<KeybindableBase> saveFileAction = std::unique_ptr<KeybindableBase>(new Keybindable([this]() {
+		auto& logic = Logic::get();
+		logic.write_file(logic.macro_name);
+		}));
+
+	std::unique_ptr<KeybindableBase> loadFileAction = std::unique_ptr<KeybindableBase>(new Keybindable([this]() {
+		auto& logic = Logic::get();
+		logic.read_file(logic.macro_name, logic.file_dialog);
+		}));
+
 	Logic::get().keybinds.SetAction("audioHack", std::move(audioSpeedHackAction));
 
 	Logic::get().keybinds.SetAction("anticheat", std::move(anticheatAction));
@@ -3227,6 +3272,8 @@ void GUI::init() {
 	Logic::get().keybinds.SetAction("resetLevel", std::move(resetAction));
 
 	Logic::get().keybinds.SetAction("outputPercents", std::move(outputPercentAction));
+	Logic::get().keybinds.SetAction("saveFile", std::move(saveFileAction));
+	Logic::get().keybinds.SetAction("loadFile", std::move(loadFileAction));
 
 	SET_BIND(realTimeMode, Logic::get().real_time_mode);
 	

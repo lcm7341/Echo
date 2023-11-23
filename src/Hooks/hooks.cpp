@@ -44,8 +44,8 @@ void Hooks::init_hooks() {
 
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x253D60), PlayLayer::triggerObject_h,
         reinterpret_cast<void**>(&PlayLayer::triggerObject));
-    MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x1FFD80), PlayLayer::lightningFlash_h,
-        reinterpret_cast<void**>(&PlayLayer::lightningFlash));
+    //MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x1FFD80), PlayLayer::lightningFlash_h,
+        //reinterpret_cast<void**>(&PlayLayer::lightningFlash));
 
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0xe5d60), powerOffObject_h, reinterpret_cast<void**>(&powerOffObject));
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0xeab20), playShineEffect_h, reinterpret_cast<void**>(&playShineEffect));
@@ -148,6 +148,8 @@ bool __fastcall Hooks::menuLayerInit_h(gd::MenuLayer* self) {
 
     return ret;
 }
+
+float g_left_over_time = 0.f;
 
 void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
     auto& logic = Logic::get();
