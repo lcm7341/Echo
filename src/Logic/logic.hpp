@@ -471,7 +471,7 @@ public:
 
 	bool show_frame = false;
 	bool show_cps = false;
-	bool show_percent = true;
+	bool show_percent = false;
 	int percent_accuracy = 1;
 	bool show_time = false;
 	bool show_recording = true;
@@ -507,30 +507,30 @@ public:
 
 	bool file_dialog = false;
 
-	float recording_label_x = 50.f;
-	float recording_label_y = 50.f;
-	float recording_label_scale = 0.4;
+	float recording_label_x = 0.f;
+	float recording_label_y = 15.f;
+	float recording_label_scale = 0.75;
 	float recording_label_opacity = 70;
 
-	float frame_counter_x = 50.f;
-	float frame_counter_y = 50.f;
+	float frame_counter_x = 3.f;
+	float frame_counter_y = 268.f;
 	float frame_counter_scale = 0.4;
-	float frame_counter_opacity = 70;
+	float frame_counter_opacity = 35;
 
-	float cps_counter_x = 30.f;
-	float cps_counter_y = 20.f;
+	float cps_counter_x = 3.f;
+	float cps_counter_y = 280.f;
 	float cps_counter_scale = 0.4;
-	float cps_counter_opacity = 70;
+	float cps_counter_opacity = 35;
 
-	float percent_counter_x = 5.f;
-	float percent_counter_y = 315.f;
-	float percent_scale = 0.4;
-	float percent_opacity = 70;
+	float percent_counter_x = 3.f;
+	float percent_counter_y = 310.f;
+	float percent_scale = 0.55;
+	float percent_opacity = 35;
 
-	float time_counter_x = 90.f;
-	float time_counter_y = 20.f;
+	float time_counter_x = 3.f;
+	float time_counter_y = 294.f;
 	float time_scale = 0.4;
-	float time_opacity = 70;
+	float time_opacity = 35;
 
 	unsigned frame_advance_hold_duration = 300; // ms
 	unsigned frame_advance_delay = 50; // ms

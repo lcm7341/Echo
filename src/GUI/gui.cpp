@@ -183,7 +183,7 @@ double evalExpression(const std::vector<std::string>& tokens, std::map<std::stri
 	return result;
 }
 
-std::string echo_version = "Echo v1.06";
+std::string echo_version = "Echo v1.1 [BETA]";
 
 int getRandomInt(int N) {
 	// Seed the random number generator with current time
@@ -206,6 +206,64 @@ int getRandomInt(int N) {
 
 	return randomInt;
 }
+
+bool GUI::ToggleButton(const char* str_id, bool* v, std::string id)
+{
+	ImVec2 p = ImGui::GetCursorScreenPos();
+	ImDrawList* draw_list = ImGui::GetWindowDrawList();
+
+	float height = ImGui::GetFrameHeight();
+	float width = height * 1.55f;
+	float radius = height * 0.50f;
+
+	if (id.empty())
+		ImGui::InvisibleButton(str_id, ImVec2(width, height));
+	else
+		ImGui::InvisibleButton(id.c_str(), ImVec2(width, height));
+
+	if (ImGui::IsItemClicked())
+		*v = !*v;
+
+	float t = *v ? 1.0f : 0.0f;
+
+	ImGuiContext& g = *GImGui;
+	float ANIM_SPEED = 0.08f;
+	if (id.empty()) {
+		if (g.LastActiveId == g.CurrentWindow->GetID(str_id))// && g.LastActiveIdTimer < ANIM_SPEED)
+		{
+			float t_anim = ImSaturate(g.LastActiveIdTimer / ANIM_SPEED);
+			t = *v ? (t_anim) : (1.0f - t_anim);
+		}
+	}
+	else {
+		if (g.LastActiveId == g.CurrentWindow->GetID(id.c_str()))// && g.LastActiveIdTimer < ANIM_SPEED)
+		{
+			float t_anim = ImSaturate(g.LastActiveIdTimer / ANIM_SPEED);
+			t = *v ? (t_anim) : (1.0f - t_anim);
+		}
+	}
+
+	ImU32 col_bg;
+	ImU32 circle_bg;
+	if (ImGui::IsItemHovered()) {
+		col_bg = ImGui::GetColorU32(*v ? toggle_checked_bg_hover : toggle_unchecked_bg_hover);
+		circle_bg = ImGui::GetColorU32(toggle_circle_hover);
+	}
+	else {
+		col_bg = ImGui::GetColorU32(*v ? toggle_checked_bg : toggle_unchecked_bg);
+		circle_bg = ImGui::GetColorU32(toggle_circle);
+	}
+
+	draw_list->AddRectFilled(p, ImVec2(p.x + width, p.y + height), col_bg, height * 0.5f);
+	draw_list->AddCircleFilled(ImVec2(p.x + radius + t * (width - radius * 2.0f), p.y + radius), radius - 1.5f, circle_bg);
+	std::string fuckyou = str_id;
+	if (!fuckyou.empty()) {
+		ImGui::SameLine();
+		ImGui::Text("%s", str_id);
+	}
+	return true;
+}
+ 
 #define PLAYLAYER gd::GameManager::sharedState()->getPlayLayer()
 
 namespace fs = std::filesystem;
@@ -249,6 +307,7 @@ void GUI::draw() {
 	if (!g_has_imported)
 		import_theme(".echo\\settings\\theme.ui");
 	g_has_imported = true;
+	strcpy(theme_name, "My Theme");
 
 	if (g_font) ImGui::PushFont(g_font);
 
@@ -408,6 +467,9 @@ void GUI::import_theme(std::string path) {
 
 	ImGuiStyle& style = ImGui::GetStyle();
 
+	auto file_name = fs::path(path).stem().string();
+	strcpy(theme_name, file_name.c_str());
+
 	if (!file.is_open())
 	{
 		printf("Failed to open theme.ui for reading");
@@ -487,11 +549,52 @@ void GUI::import_theme(std::string path) {
 		ImVec4 color(colorArray[0], colorArray[1], colorArray[2], colorArray[3]);
 		player_2_button_color = color;
 	}
+	if (json.contains("input_selected_color_p1")) {
+		auto colorArray = json["input_selected_color_p1"];
+		ImVec4 color(colorArray[0], colorArray[1], colorArray[2], colorArray[3]);
+		input_selected_color_p1 = color;
+	}
+	if (json.contains("input_selected_color_p2")) {
+		auto colorArray = json["input_selected_color_p2"];
+		ImVec4 color(colorArray[0], colorArray[1], colorArray[2], colorArray[3]);
+		input_selected_color_p2 = color;
+	}
 	if (json.contains("popup_bg_color")) {
 		auto colorArray = json["popup_bg_color"];
 		ImVec4 color(colorArray[0], colorArray[1], colorArray[2], colorArray[3]);
 		popup_bg_color = color;
 	}
+	if (json.contains("toggle_unchecked_bg")) {
+		auto colorArray = json["toggle_unchecked_bg"];
+		ImVec4 color(colorArray[0], colorArray[1], colorArray[2], colorArray[3]);
+		toggle_unchecked_bg = color;
+	}
+	if (json.contains("toggle_unchecked_bg_hover")) {
+		auto colorArray = json["toggle_unchecked_bg_hover"];
+		ImVec4 color(colorArray[0], colorArray[1], colorArray[2], colorArray[3]);
+		toggle_unchecked_bg_hover = color;
+	}
+	if (json.contains("toggle_checked_bg")) {
+		auto colorArray = json["toggle_checked_bg"];
+		ImVec4 color(colorArray[0], colorArray[1], colorArray[2], colorArray[3]);
+		toggle_checked_bg = color;
+	}
+	if (json.contains("toggle_checked_bg_hover")) {
+		auto colorArray = json["toggle_checked_bg_hover"];
+		ImVec4 color(colorArray[0], colorArray[1], colorArray[2], colorArray[3]);
+		toggle_checked_bg_hover = color;
+	}
+	if (json.contains("toggle_circle")) {
+		auto colorArray = json["toggle_circle"];
+		ImVec4 color(colorArray[0], colorArray[1], colorArray[2], colorArray[3]);
+		toggle_circle = color;
+	}
+	if (json.contains("toggle_circle_hover")) {
+		auto colorArray = json["toggle_circle_hover"];
+		ImVec4 color(colorArray[0], colorArray[1], colorArray[2], colorArray[3]);
+		toggle_circle_hover = color;
+	}
+
 	style.Colors[ImGuiCol_ModalWindowDimBg] = popup_bg_color;
 
 	for (int i = 0; i < ImGuiCol_COUNT; i++)
@@ -569,6 +672,18 @@ void GUI::export_theme(std::string path, bool custom_path) {
 
 	json["player_1_button_color"] = { player_1_button_color.x, player_1_button_color.y, player_1_button_color.z, player_1_button_color.w };
 	json["player_2_button_color"] = { player_2_button_color.x, player_2_button_color.y, player_2_button_color.z, player_2_button_color.w };
+	json["input_selected_color_p1"] = { input_selected_color_p1.x, input_selected_color_p1.y, input_selected_color_p1.z, input_selected_color_p1.w };
+	json["input_selected_color_p2"] = { input_selected_color_p2.x, input_selected_color_p2.y, input_selected_color_p2.z, input_selected_color_p2.w };
+
+	json["toggle_unchecked_bg"] = { toggle_unchecked_bg.x, toggle_unchecked_bg.y, toggle_unchecked_bg.z, toggle_unchecked_bg.w };
+	json["toggle_unchecked_bg_hover"] = { toggle_unchecked_bg_hover.x, toggle_unchecked_bg_hover.y, toggle_unchecked_bg_hover.z, toggle_unchecked_bg_hover.w };
+
+	json["toggle_checked_bg"] = { toggle_checked_bg.x, toggle_checked_bg.y, toggle_checked_bg.z, toggle_checked_bg.w };
+	json["toggle_checked_bg_hover"] = { toggle_checked_bg_hover.x, toggle_checked_bg_hover.y, toggle_checked_bg_hover.z, toggle_checked_bg_hover.w };
+
+	json["toggle_circle"] = { toggle_circle.x, toggle_circle.y, toggle_circle.z, toggle_circle.w };
+	json["toggle_circle_hover"] = { toggle_circle_hover.x, toggle_circle_hover.y, toggle_circle_hover.z, toggle_circle_hover.w };
+
 	json["popup_bg_color"] = { popup_bg_color.x, popup_bg_color.y, popup_bg_color.z, popup_bg_color.w };
 
 	// Save the json object to a file
@@ -626,7 +741,7 @@ void GUI::ui_editor() {
 		}
 
 		ImGui::PushItemWidth(150);
-		ImGui::InputText("", theme_name, MAX_PATH);
+		ImGui::InputText("Name", theme_name, MAX_PATH);
 		ImGui::PopItemWidth();
 
 		ImGui::SameLine();
@@ -641,7 +756,7 @@ void GUI::ui_editor() {
 			ImGuiFileDialog::Instance()->OpenDialog("ThemeImport", "Choose File", ".ui", ".echo/themes/");
 		}
 
-		ImGui::Checkbox("Docked Menu", &docked); ImGui::SameLine();
+		GUI::get().ToggleButton("Docked Menu", &docked); ImGui::SameLine();
 
 		ImGuiIO& io = ImGui::GetIO();
 
@@ -747,6 +862,68 @@ void GUI::ui_editor() {
 					ImGui::TextUnformatted("Player 2 In Editor");
 					ImGui::PopID();
 				}
+				if (filter.PassFilter("Player 1 In Editor (Selected)")) {
+					ImGui::PushID(997);
+					MyColorPicker(input_selected_color_p1, "Player 1 In Editor (Selected)");
+					ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
+					ImGui::TextUnformatted("Player 1 In Editor (Selected)");
+					ImGui::PopID();
+				}
+				if (filter.PassFilter("Player 2 In Editor (Selected)")) {
+					ImGui::PushID(996);
+					MyColorPicker(input_selected_color_p2, "Player 2 In Editor (Selected)");
+					ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
+					ImGui::TextUnformatted("Player 2 In Editor (Selected)");
+					ImGui::PopID();
+				}
+
+				if (filter.PassFilter("Toggle Background (Unchecked)")) {
+					ImGui::PushID(995);
+					MyColorPicker(toggle_unchecked_bg, "Toggle Background (Unchecked)");
+					ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
+					ImGui::TextUnformatted("Toggle Background (Unchecked)");
+					ImGui::PopID();
+				}
+
+				if (filter.PassFilter("Toggle Background Hovered (Unchecked)")) {
+					ImGui::PushID(994);
+					MyColorPicker(toggle_unchecked_bg_hover, "Toggle Background Hovered (Unchecked)");
+					ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
+					ImGui::TextUnformatted("Toggle Background Hovered (Unchecked)");
+					ImGui::PopID();
+				}
+
+				if (filter.PassFilter("Toggle Background (Checked)")) {
+					ImGui::PushID(993);
+					MyColorPicker(toggle_checked_bg, "Toggle Background (Checked)");
+					ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
+					ImGui::TextUnformatted("Toggle Background (Checked)");
+					ImGui::PopID();
+				}
+
+				if (filter.PassFilter("Toggle Background Hovered (Checked)")) {
+					ImGui::PushID(992);
+					MyColorPicker(toggle_checked_bg_hover, "Toggle Background Hovered (Checked)");
+					ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
+					ImGui::TextUnformatted("Toggle Background Hovered (Checked)");
+					ImGui::PopID();
+				}
+
+				if (filter.PassFilter("Toggle Circle")) {
+					ImGui::PushID(991);
+					MyColorPicker(toggle_circle, "Toggle Circle");
+					ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
+					ImGui::TextUnformatted("Toggle Circle");
+					ImGui::PopID();
+				}
+
+				if (filter.PassFilter("Toggle Circle Hovered")) {
+					ImGui::PushID(990);
+					MyColorPicker(toggle_circle_hover, "Toggle Circle Hovered");
+					ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
+					ImGui::TextUnformatted("Toggle Circle Hovered");
+					ImGui::PopID();
+				}
 
 				//style.Colors[ImGuiCol_ModalWindowDimBg] = popup_bg_color;
 
@@ -777,15 +954,15 @@ void GUI::ui_editor() {
 
 			if (ImGui::BeginTabItem("Rendering"))
 			{
-				ImGui::Checkbox("Anti-aliased lines", &style.AntiAliasedLines);
+				GUI::get().ToggleButton("Anti-aliased lines", &style.AntiAliasedLines);
 				ImGui::SameLine();
 				HelpMarker("When disabling anti-aliasing lines, you'll probably want to disable borders in your style as well.");
 
-				ImGui::Checkbox("Anti-aliased lines use texture", &style.AntiAliasedLinesUseTex);
+				GUI::get().ToggleButton("Anti-aliased lines use texture", &style.AntiAliasedLinesUseTex);
 				ImGui::SameLine();
 				HelpMarker("Faster lines using texture data. Require backend to render with bilinear filtering (not point/nearest filtering).");
 
-				ImGui::Checkbox("Anti-aliased fill", &style.AntiAliasedFill);
+				GUI::get().ToggleButton("Anti-aliased fill", &style.AntiAliasedFill);
 				ImGui::PushItemWidth(ImGui::GetFontSize() * 8);
 				ImGui::DragFloat("Curve Tessellation Tolerance", &style.CurveTessellationTol, 0.02f, 0.10f, 10.0f, "%.2f");
 				if (style.CurveTessellationTol < 0.10f) style.CurveTessellationTol = 0.10f;
@@ -985,9 +1162,10 @@ void GUI::editor() {
 
 				if (i == closestInputIndex) {
 					// Make the closest input's button brighter
-					color.x = max(color.x - 0.5f, 0);
-					color.y = max(color.y - 0.5f, 0);
-					color.z = max(color.z - 0.5f, 0);
+					if (inputs[i].isPlayer2)
+						color = input_selected_color_p2;
+					else
+						color = input_selected_color_p1;
 				}
 
 				ImGui::PushStyleColor(ImGuiCol_Button, color);
@@ -1061,9 +1239,9 @@ void GUI::editor() {
 			ImGui::PushItemWidth(150);
 			ImGui::InputInt("Frame", (int*)&newInput.number);
 			ImGui::PopItemWidth();
-			ImGui::Checkbox("Down", &newInput.pressingDown);
+			GUI::get().ToggleButton("Down", &newInput.pressingDown);
 			ImGui::SameLine();
-			ImGui::Checkbox("Player 2", &newInput.isPlayer2);
+			GUI::get().ToggleButton("Player 2", &newInput.isPlayer2);
 			if (ImGui::Button("Move Up", ImVec2(ImGui::GetContentRegionAvail().x * 0.5, 0)) && selectedInput > 0) {
 				std::swap(inputs[selectedInput], inputs[selectedInput - 1]);
 				selectedInput--;
@@ -1078,8 +1256,8 @@ void GUI::editor() {
 			if (ImGui::Button("Set to Current Frame")) {
 				newInput.number = logic.get_frame();
 			}
-			ImGui::Checkbox("Auto Scroll To Frame", &editor_auto_scroll);
-			ImGui::Checkbox("Edit Plain Text", &plaintext_editing);
+			GUI::get().ToggleButton("Auto Scroll To Frame", &editor_auto_scroll);
+			GUI::get().ToggleButton("Edit Plain Text", &plaintext_editing);
 			inputs[selectedInput] = newInput;
 		}
 		else {
@@ -1091,9 +1269,9 @@ void GUI::editor() {
 			bool fake_player_edit_value = false;
 			ImGui::InputInt("Frame", &fake_frame_edit_value);
 			ImGui::PopItemWidth();
-			ImGui::Checkbox("Down", &fake_down_edit_value);
+			GUI::get().ToggleButton("Down", &fake_down_edit_value);
 			ImGui::SameLine();
-			ImGui::Checkbox("Player 2", &fake_player_edit_value);
+			GUI::get().ToggleButton("Player 2", &fake_player_edit_value);
 			if (ImGui::Button("Move Up", ImVec2(ImGui::GetContentRegionAvail().x * 0.5, 0)) && selectedInput > 0) {
 				std::swap(inputs[selectedInput], inputs[selectedInput - 1]);
 				selectedInput--;
@@ -1107,8 +1285,8 @@ void GUI::editor() {
 			ImGui::EndDisabled();
 			ImGui::Text("Current Frame: %i", logic.get_frame());
 			ImGui::Button("Set to Current Frame");
-			ImGui::Checkbox("Auto Scroll To Frame", &editor_auto_scroll);
-			ImGui::Checkbox("Edit Plain Text", &plaintext_editing);
+			GUI::get().ToggleButton("Auto Scroll To Frame", &editor_auto_scroll);
+			GUI::get().ToggleButton("Edit Plain Text", &plaintext_editing);
 		}
 
 		ImGui::EndChild();
@@ -1201,30 +1379,6 @@ void GUI::editor() {
 				input.isPlayer2 = !input.isPlayer2;
 			}
 		}
-
-		ImGui::Separator();
-
-		double total_seconds = logic.total_recording_time.count();
-
-		int hours = static_cast<int>(total_seconds / 3600);
-		int minutes = static_cast<int>((total_seconds - hours * 3600) / 60);
-		int seconds = static_cast<int>(total_seconds - hours * 3600 - minutes * 60);
-
-		// Format the time as HH:MM:SS
-		std::ostringstream oss;
-		oss << std::setfill('0');
-		oss << std::setw(2) << hours << ":"
-			<< std::setw(2) << minutes << ":"
-			<< std::setw(2) << seconds;
-
-		std::string time_str = oss.str();
-
-		int clicks_amt = 0;
-		for (auto& input : inputs)  if (input.pressingDown) clicks_amt++;
-
-		ImGui::Text("Recording Time: %s", time_str.c_str());
-		ImGui::Text("Total Attempts: %i", logic.total_attempt_count);
-		ImGui::Text("Clicks Count: %i", clicks_amt);
 
 		if (docked)
 			ImGui::EndTabItem();
@@ -1321,17 +1475,17 @@ void GUI::renderer() {
 
 			ImGui::Separator();
 
-			ImGui::Checkbox("Color Fix", &logic.recorder.color_fix); ImGui::SameLine();
+			GUI::get().ToggleButton("Color Fix", &logic.recorder.color_fix); ImGui::SameLine();
 
 			HelpMarker("The color fix vf args are: colorspace=all=bt709:iall=bt470bg:fast=1");
 
 			ImGui::SameLine();
 
-			ImGui::Checkbox("Scroll Speed Bugfix", &logic.recorder.ssb_fix); ImGui::SameLine();
+			GUI::get().ToggleButton("Scroll Speed Bugfix", &logic.recorder.ssb_fix); ImGui::SameLine();
 
 			HelpMarker("Syncs the video with the song when scroll speed desyncs them."); ImGui::SameLine();
 
-			ImGui::Checkbox("Real Time Rendering", &logic.recorder.real_time_rendering); ImGui::SameLine();
+			GUI::get().ToggleButton("Real Time Rendering", &logic.recorder.real_time_rendering); ImGui::SameLine();
 
 			HelpMarker("Real Time Rendering is a technique used to render videos in real-time or close to real-time.\nThis means that, while rendering, the game does not slow down as much.\nNote: This may add visual bugs to the final video.");
 
@@ -1433,7 +1587,7 @@ void GUI::sequential_replay() {
 			sequence_pos = ImGui::GetWindowPos();
 		}
 
-		ImGui::Checkbox("Enable Sequence", &logic.sequence_enabled);
+		GUI::get().ToggleButton("Enable Sequence", &logic.sequence_enabled);
 
 		if (ImGui::Button("Remove All")) {
 			logic.replays.clear();
@@ -1619,7 +1773,7 @@ void GUI::tools() {
 			}
 		}
 
-		ImGui::Checkbox("Auto-Export to Location", &logic.export_to_bot_location); ImGui::SameLine();
+		GUI::get().ToggleButton("Auto-Export to Location", &logic.export_to_bot_location); ImGui::SameLine();
 
 		if (ImGui::Button("Batch Import", ImVec2(ImGui::GetContentRegionAvail().x * (docked ? 0.9 : 0.7), 0.f))) {
 			auto& old_inputs = logic.inputs;
@@ -1677,6 +1831,8 @@ void GUI::tools() {
 				std::string filePath = ImGuiFileDialog::Instance()->GetCurrentPath();
 				std::vector<Frame> before_inputs = logic.get_inputs();
 				logic.inputs.clear();
+				auto recording_time = logic.total_recording_time;
+				int attempts = logic.total_attempt_count;
 
 				std::string suffix = ".echo";
 				if (filePathName.size() >= suffix.size() && filePathName.rfind(suffix) == (filePathName.size() - suffix.size()))
@@ -1687,6 +1843,8 @@ void GUI::tools() {
 				logic.inputs.insert(logic.inputs.end(), before_inputs.begin(), before_inputs.end());
 
 				logic.sort_inputs();
+				logic.total_recording_time += recording_time;
+				logic.total_attempt_count += attempts;
 			}
 			ImGuiFileDialog::Instance()->Close();
 		}
@@ -1734,14 +1892,14 @@ void GUI::tools() {
 
 		ImGui::SameLine();
 
-		ImGui::Checkbox("Real Time", &logic.real_time_mode);
+		GUI::get().ToggleButton("Real Time", &logic.real_time_mode);
 
-		ImGui::Checkbox("Click For Both Players", &logic.click_both_players);
+		GUI::get().ToggleButton("Click For Both Players", &logic.click_both_players);
 
 		CHECK_KEYBIND("clickBoth");
 		
 		ImGui::SameLine();
-		ImGui::Checkbox("Swap Player Input Type", &logic.swap_player_input);
+		GUI::get().ToggleButton("Swap Player Input Type", &logic.swap_player_input);
 		CHECK_KEYBIND("swapInput");
 
 		const char* inverse_options[] = { "Off", "Player 1", "Player 2", "Both" };
@@ -1784,19 +1942,19 @@ void GUI::tools() {
 		ImGui::Separator();
 
 		bool antiCheatBypass = anticheatBypass.isActivated();
-		if (ImGui::Checkbox("Disable Anti-Cheat", &antiCheatBypass)) {
+		if (GUI::get().ToggleButton("Disable Anti-Cheat", &antiCheatBypass)) {
 			antiCheatBypass ? anticheatBypass.activate() : anticheatBypass.deactivate();
 		}
 		CHECK_KEYBIND("anticheat");
 
 		ImGui::SameLine();
 
-		ImGui::Checkbox("Disable Shake Effects", &logic.disable_shakes);
+		GUI::get().ToggleButton("Disable Shake Effects", &logic.disable_shakes);
 
 		CHECK_KEYBIND("disableShakes");
 		
 		bool practiceActivated = practiceMusic.isActivated();
-		if (ImGui::Checkbox("Overwrite Practice Music", &practiceActivated)) {
+		if (GUI::get().ToggleButton("Overwrite Practice Music", &practiceActivated)) {
 			if (practiceActivated) {
 				practiceMusic.activate();
 			}
@@ -1809,7 +1967,7 @@ void GUI::tools() {
 		ImGui::SameLine();
 
 		bool noEscActivated = noEscape.isActivated();
-		if (ImGui::Checkbox("Ignore Escape", &noEscActivated)) {
+		if (GUI::get().ToggleButton("Ignore Escape", &noEscActivated)) {
 			if (noEscActivated) {
 				noEscape.activate();
 			}
@@ -1819,7 +1977,8 @@ void GUI::tools() {
 		}
 		CHECK_KEYBIND("noEsc");
 
-		ImGui::Checkbox("###layout_checkbox", &logic.hacks.layoutMode);
+		GUI::get().ToggleButton("", &logic.hacks.layoutMode, "layout_toggle");
+		CHECK_KEYBIND("layout");
 
 		ImGui::SameLine();
 
@@ -1831,7 +1990,7 @@ void GUI::tools() {
 
 		if (ImGui::BeginPopupModal("Layout Settings###layoutsettings2", &open_layout_modal, ImGuiWindowFlags_AlwaysAutoResize)) {
 
-			ImGui::Checkbox("Layout Mode", &logic.hacks.layoutMode);
+			GUI::get().ToggleButton("Layout Mode", &logic.hacks.layoutMode);
 			ImGui::ColorEdit3("Background Color", logic.hacks.backgroundColor, ImGuiColorEditFlags_NoInputs);
 			ImGui::ColorEdit3("Block Color", logic.hacks.blocksColor, ImGuiColorEditFlags_NoInputs);
 			ImGui::EndPopup();
@@ -1839,7 +1998,8 @@ void GUI::tools() {
 
 		ImGui::SameLine();
 
-		ImGui::Checkbox("###hitbox_checkbox", &logic.hacks.showHitboxes);
+		GUI::get().ToggleButton("", &logic.hacks.showHitboxes, "hitbox_toggle");
+		CHECK_KEYBIND("hitbox");
 
 		ImGui::SameLine();
 		bool open_hitbox_modal = true;
@@ -1849,10 +2009,10 @@ void GUI::tools() {
 
 		if (ImGui::BeginPopupModal("Hitbox Settings###boxsettings", &open_hitbox_modal, ImGuiWindowFlags_AlwaysAutoResize)) {
 
-			ImGui::Checkbox("Show Hitboxes", &logic.hacks.showHitboxes); ImGui::SameLine();
-			ImGui::Checkbox("Show Modifiers", &logic.hacks.showDecorations);
-			ImGui::Checkbox("Hitbox Trail", &logic.hacks.hitboxTrail); ImGui::SameLine();
-			ImGui::Checkbox("Fill Hitboxes", &logic.hacks.fillHitboxes);
+			GUI::get().ToggleButton("Show Hitboxes", &logic.hacks.showHitboxes); ImGui::SameLine();
+			GUI::get().ToggleButton("Show Modifiers", &logic.hacks.showDecorations);
+			GUI::get().ToggleButton("Hitbox Trail", &logic.hacks.hitboxTrail); ImGui::SameLine();
+			GUI::get().ToggleButton("Fill Hitboxes", &logic.hacks.fillHitboxes);
 			ImGui::PushItemWidth(200);
 			ImGui::InputFloat("Hitbox Thickness", &logic.hacks.hitboxThickness);
 			ImGui::InputFloat("Trail Length", &logic.hacks.hitboxTrailLength);
@@ -1897,7 +2057,7 @@ void GUI::tools() {
 
 		ImGui::Separator();
 
-		ImGui::Checkbox("Enable Autoclicker", &logic.autoclicker);
+		GUI::get().ToggleButton("Enable Autoclicker", &logic.autoclicker);
 		CHECK_KEYBIND("autoClicker");
 
 		ImGui::SameLine();
@@ -1948,7 +2108,7 @@ void GUI::tools() {
 
 		ImGui::PopItemWidth();
 
-		ImGui::Checkbox("Auto Disable", &logic.autoclicker_auto_disable);
+		GUI::get().ToggleButton("Auto Disable", &logic.autoclicker_auto_disable);
 		CHECK_KEYBIND("autoDisableClicker");
 
 		ImGui::SameLine();
@@ -1970,7 +2130,7 @@ void GUI::tools() {
 
 		ImGui::Separator();
 
-		ImGui::Checkbox("Frame Advance", &logic.frame_advance); ImGui::SameLine(0, docked ? 50 : -1);
+		GUI::get().ToggleButton("Frame Advance", &logic.frame_advance); ImGui::SameLine(0, docked ? 50 : -1);
 
 		CHECK_KEYBIND("frameAdvance");
 
@@ -2004,7 +2164,7 @@ void GUI::tools() {
 
 		ImGui::SetNextItemWidth(get_width(50.f));
 
-		if (ImGui::Checkbox("Replay Debug Info", &logic.save_debug_info)) {
+		if (GUI::get().ToggleButton("Replay Debug Info", &logic.save_debug_info)) {
 			if (logic.save_debug_info) {
 				logic.format = logic.META_DBG;
 			}
@@ -2015,11 +2175,45 @@ void GUI::tools() {
 		HelpMarker("Saving debug information allows for bugfixing and checking accuracy in the replay.");
 
 		ImGui::SameLine();
-		if (ImGui::Button("Open Debug Console")) {
+		if (ImGui::Button("Open Console")) {
 			// Allows for debugging, can be removed later
 			AllocConsole();
 			freopen("CONOUT$", "w", stdout);  // Redirects stdout to the new console
 			std::printf("Opened Debugging Console");
+		}
+		bool open_label_modal = true;
+
+		ImGui::SameLine();
+
+		if (ImGui::Button("View Metadata", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
+			ImGui::OpenPopup("Replay Metadata");
+		}
+
+		if (ImGui::BeginPopupModal("Replay Metadata", &open_label_modal, ImGuiWindowFlags_AlwaysAutoResize)) {
+
+			double total_seconds = logic.total_recording_time.count();
+
+			int hours = static_cast<int>(total_seconds / 3600);
+			int minutes = static_cast<int>((total_seconds - hours * 3600) / 60);
+			int seconds = static_cast<int>(total_seconds - hours * 3600 - minutes * 60);
+
+			// Format the time as HH:MM:SS
+			std::ostringstream oss;
+			oss << std::setfill('0');
+			oss << std::setw(2) << hours << ":"
+				<< std::setw(2) << minutes << ":"
+				<< std::setw(2) << seconds;
+
+			std::string time_str = oss.str();
+
+			int clicks_amt = 0;
+			for (auto& input : logic.inputs)  if (input.pressingDown) clicks_amt++;
+
+			ImGui::Text("Recording Time: %s", time_str.c_str());
+			ImGui::Text("Total Attempts: %i", logic.total_attempt_count);
+			ImGui::Text("Clicks Count: %i", clicks_amt);
+
+			ImGui::EndPopup();
 		}
 
 		if (docked)
@@ -2085,7 +2279,7 @@ void GUI::clickbot() {
 
 		}
 
-		ImGui::Checkbox("Enabled###enable_clickbot", &logic.clickbot_enabled);
+		GUI::get().ToggleButton("Enabled###enable_clickbot", &logic.clickbot_enabled);
 
 		const char* player_options[] = { "Settings For Player 1", "Settings For Player 2" };
 
@@ -2131,6 +2325,8 @@ void GUI::clickbot() {
 
 					if (logic.player_1_path.empty() && !folderNames.empty()) logic.player_1_path = folderNames[0];
 
+					//ImGui::Text("Cycle Time: %f", logic.cycleTime);
+
 					// Create the ImGui dropdown list
 					if (ImGui::BeginCombo("##folder_dropdown", logic.player_1_path.c_str()))
 					{
@@ -2146,11 +2342,11 @@ void GUI::clickbot() {
 						ImGui::EndCombo();
 					}
 
-					ImGui::Checkbox("Soft Clicks###soft_clicks_p1", &logic.player_1_softs); ImGui::SameLine();
-					ImGui::Checkbox("Hard Clicks###hard_clicks_p1", &logic.player_1_hards);
+					GUI::get().ToggleButton("Soft Clicks", &logic.player_1_softs, "soft_clicks_p1"); ImGui::SameLine();
+					GUI::get().ToggleButton("Hard Clicks", &logic.player_1_hards, "hard_clicks_p1");
 					ImGui::SameLine();
 
-					ImGui::Checkbox("Micro Clicks###micro_clicks_p1", &logic.player_1_micros);
+					GUI::get().ToggleButton("Micro Clicks", &logic.player_1_micros, "micro_clicks_p1");
 				}
 				else {
 					// Specify the directory path
@@ -2193,11 +2389,11 @@ void GUI::clickbot() {
 					ImGui::SameLine();
 					ImGui::Text("Click Pack");
 
-					ImGui::Checkbox("Soft Clicks###soft_clicks_p2", &logic.player_2_softs); ImGui::SameLine();
-					ImGui::Checkbox("Hard Clicks###hard_clicks_p2", &logic.player_2_hards);
+					GUI::get().ToggleButton("Soft Clicks", &logic.player_2_softs, "soft_clicks_p2"); ImGui::SameLine();
+					GUI::get().ToggleButton("Hard Clicks", &logic.player_2_hards, "hard_clicks_p2");
 					ImGui::SameLine();
 
-					ImGui::Checkbox("Micro Clicks###micro_clicks_p2", &logic.player_2_micros);
+					GUI::get().ToggleButton("Micro Clicks", &logic.player_2_micros, "micro_clicks_p2");
 				}
 				ImGui::EndTabItem();
 			}
@@ -2697,7 +2893,7 @@ void GUI::main() {
 		auto& audiospeedhack = AudiopitchHack::getInstance();
 		bool isEnabled = audiospeedhack.isEnabled();
 
-		if (ImGui::Checkbox("Audio Speed", &isEnabled)) {
+		if (GUI::get().ToggleButton("Audio Speed", &isEnabled)) {
 			if (isEnabled) {
 				audiospeedhack.setEnabled(true);
 			}
@@ -2718,20 +2914,20 @@ void GUI::main() {
 		//	logic.real_time_mode = false;
 		//}
 
-		////ImGui::Checkbox("Real Time Mode", &logic.real_time_mode); cant be fucked
+		////GUI::get().ToggleButton("Real Time Mode", &logic.real_time_mode); cant be fucked
 
 		//if (logic.recorder.m_recording && !logic.recorder.real_time_rendering) ImGui::EndDisabled();
 
 		//CHECK_KEYBIND("realTimeMode");
 
-		ImGui::Checkbox("No Overwrite", &logic.no_overwrite);
+		GUI::get().ToggleButton("No Overwrite", &logic.no_overwrite);
 		CHECK_KEYBIND("noOverwrite");
 		
 		ImGui::SameLine();
 		HelpMarker("Allows you to replay from the beginning of the level without losing your progress.");
 		ImGui::SameLine();
 
-		ImGui::Checkbox("Ignore Actions", &logic.ignore_actions_at_playback);
+		GUI::get().ToggleButton("Ignore Actions", &logic.ignore_actions_at_playback);
 		CHECK_KEYBIND("ignoreActions");
 
 		ImGui::SameLine();
@@ -2748,6 +2944,7 @@ void GUI::main() {
 			ImGui::OpenPopup("CPS Breaks###cps_breaks");
 		}
 
+		ImGui::SetNextWindowSizeConstraints(ImVec2(350, 0), ImVec2(350, 500));
 		if (ImGui::BeginPopupModal("CPS Breaks###cps_breaks", &open_cps_breaks, ImGuiWindowFlags_AlwaysAutoResize)) {
 
 			ImGui::Text("Highest CPS: %s", logic.highest_cps_cached().c_str());
@@ -2768,9 +2965,9 @@ void GUI::main() {
 
 					printf("%s\n", rule.c_str());
 
-					ImGui::Text("%s%%", percent.c_str());
+					ImGui::Text("%i", val); // decided to use frames instead, percents weren't working..
 					ImGui::SameLine();
-					ImGui::Text("#%s", rule.c_str());
+					ImGui::Text("%s", rule.c_str());
 				}
 			}
 			else {
@@ -2791,7 +2988,7 @@ void GUI::main() {
 		if (ImGui::BeginPopupModal("Label Settings", &open_label_modal, ImGuiWindowFlags_AlwaysAutoResize)) {
 
 			ImGui::BeginChild("RecordingLabel", ImVec2(250, 150), false, ImGuiWindowFlags_AlwaysUseWindowPadding);
-			ImGui::Checkbox("Show Recording Label", &logic.show_recording);
+			GUI::get().ToggleButton("Show Recording Label", &logic.show_recording);
 
 			CHECK_KEYBIND("showRecording");
 
@@ -2814,7 +3011,7 @@ void GUI::main() {
 			ImGui::SameLine();
 			ImGui::BeginChild("CpsLabel", ImVec2(250, 150), false, ImGuiWindowFlags_AlwaysUseWindowPadding);
 
-			ImGui::Checkbox("Show CPS", &logic.show_cps);
+			GUI::get().ToggleButton("Show CPS", &logic.show_cps);
 
 			CHECK_KEYBIND("showCPS");
 
@@ -2837,7 +3034,7 @@ void GUI::main() {
 			ImGui::Separator();
 			ImGui::BeginChild("FrameLabel", ImVec2(250, 150), false, ImGuiWindowFlags_AlwaysUseWindowPadding);
 
-			ImGui::Checkbox("Show Frame", &logic.show_frame);
+			GUI::get().ToggleButton("Show Frame", &logic.show_frame);
 
 			CHECK_KEYBIND("showFrame");
 
@@ -2861,7 +3058,7 @@ void GUI::main() {
 			ImGui::SameLine();
 			ImGui::BeginChild("TimeLabel", ImVec2(250, 150), false, ImGuiWindowFlags_AlwaysUseWindowPadding);
 
-			ImGui::Checkbox("Show Time", &logic.show_time);
+			GUI::get().ToggleButton("Show Time", &logic.show_time);
 
 			CHECK_KEYBIND("showTime");
 
@@ -2885,7 +3082,7 @@ void GUI::main() {
 			ImGui::Separator();
 
 			ImGui::BeginChild("PercentLabel", ImVec2(0, 125), false, ImGuiWindowFlags_AlwaysUseWindowPadding);
-			ImGui::Checkbox("Show Percent", &logic.show_percent);
+			GUI::get().ToggleButton("Show Percent", &logic.show_percent);
 
 			CHECK_KEYBIND("showPercent");
 
@@ -2919,7 +3116,7 @@ void GUI::main() {
 
 		ImGui::Separator();
 
-		ImGui::Checkbox("File Browser", &logic.file_dialog);
+		GUI::get().ToggleButton("File Browser", &logic.file_dialog);
 
 		CHECK_KEYBIND("useDialog");
 		ImGui::SameLine();
@@ -3276,6 +3473,9 @@ void GUI::init() {
 	Logic::get().keybinds.SetAction("loadFile", std::move(loadFileAction));
 
 	SET_BIND(realTimeMode, Logic::get().real_time_mode);
+
+	SET_BIND(layout, Logic::get().hacks.layoutMode);
+	SET_BIND(hitbox, Logic::get().hacks.showHitboxes);
 	
 	SET_BIND(showFrame, Logic::get().show_frame);
 
