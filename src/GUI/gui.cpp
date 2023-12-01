@@ -2279,7 +2279,7 @@ void GUI::clickbot() {
 
 		}
 
-		GUI::get().ToggleButton("Enabled", &logic.clickbot_enabled, "enable_clickbot");
+		GUI::get().ToggleButton("Enabled###enable_clickbot", &logic.clickbot_enabled);
 
 		const char* player_options[] = { "Settings For Player 1", "Settings For Player 2" };
 
