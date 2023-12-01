@@ -822,10 +822,10 @@ void Logic::handle_checkpoint_data() {
             Checkpoint& data = checkpoints.back();
 
 
-            PLAYLAYER->stopAllActions();
-            for (auto& action : data.actions) {
-                //PLAYLAYER->runAction(action);
-            }
+            //PLAYLAYER->stopAllActions();
+            //for (auto& action : data.actions) {
+            //    //PLAYLAYER->runAction(action);
+            //}
 
             // PLAYLAYER->m_cameraPos = data.camera;
 

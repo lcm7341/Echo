@@ -113,11 +113,11 @@ bool __fastcall Hooks::PlayLayer::death_h(void* self, void*, void* go, void* thi
         }
     }
 
-    if (Logic::get().hacks.trajectory && TrajectorySimulation::getInstance()->shouldInterrumpHooksWithPlayer((gd::PlayerObject*)go))
+    /*if (Logic::get().hacks.trajectory && TrajectorySimulation::getInstance()->shouldInterrumpHooksWithPlayer((gd::PlayerObject*)go))
     {
         TrajectorySimulation::getInstance()->m_pDieInSimulation = true;
         return 0;
-    }
+    }*/
 
     return Hooks::PlayLayer::death(self, go, thingy);
 

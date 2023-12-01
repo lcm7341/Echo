@@ -1977,8 +1977,9 @@ void GUI::tools() {
 		}
 		CHECK_KEYBIND("noEsc");
 
-		GUI::get().ToggleButton("", &logic.hacks.layoutMode, "layout_toggle");
-		CHECK_KEYBIND("layout");
+		ImGui::Checkbox("###layout_toggle", &logic.hacks.layoutMode);
+		//GUI::get().ToggleButton("", &logic.hacks.layoutMode, "layout_toggle");
+		//CHECK_KEYBIND("layout");
 
 		ImGui::SameLine();
 
@@ -1998,8 +1999,9 @@ void GUI::tools() {
 
 		ImGui::SameLine();
 
-		GUI::get().ToggleButton("", &logic.hacks.showHitboxes, "hitbox_toggle");
-		CHECK_KEYBIND("hitbox");
+		ImGui::Checkbox("###hitbox_toggle", &logic.hacks.showHitboxes);
+		//GUI::get().ToggleButton("", &logic.hacks.showHitboxes, "hitbox_toggle");
+		//CHECK_KEYBIND("hitbox");
 
 		ImGui::SameLine();
 		bool open_hitbox_modal = true;
@@ -2279,7 +2281,7 @@ void GUI::clickbot() {
 
 		}
 
-		GUI::get().ToggleButton("Enabled###enable_clickbot", &logic.clickbot_enabled);
+		GUI::get().ToggleButton("Enabled", &logic.clickbot_enabled, "enable_clickbot");
 
 		const char* player_options[] = { "Settings For Player 1", "Settings For Player 2" };
 
