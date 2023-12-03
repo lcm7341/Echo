@@ -71,6 +71,8 @@ public:
 
 	ImVec4 player_1_button_color = { 0.18, 0.89, 0.7, 0.54 };
 	ImVec4 player_2_button_color = { 0.18, 0.89, 0.46, 0.54 };
+	ImVec4 input_selected_color_p1 = { 0.2, 0.9, 0.8, 0.54 };
+	ImVec4 input_selected_color_p2 = { 0.2, 0.9, 0.8, 0.54 };
 
 	ImVec2 main_pos;
 	ImVec2 tools_pos;

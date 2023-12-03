@@ -184,16 +184,16 @@ std::string Logic::highest_cps() {
 
             float current_percent = 0.f;
 
-                current_percent = std::round(((static_cast<float>(inputFramesWithinASecond[j].number) / inputs.back().number) * 100.f) * 100) / 100;
+            current_percent = std::round(((static_cast<float>(inputFramesWithinASecond[j].number) / inputs.back().number) * 100.f) * 100) / 100;
 
-                if (cps != 0 && numClicks + 1 > 3) {
+            if (cps != 0 && numClicks + 1 > 3) {
 
-                    // Rule 2: CPS must not exceed 18 clicks per second rate in any 1/3rd of a second to 1 second.
-                    if (cps > 20 && timeBetweenClicks >= 1.0f / 3.0f) {
-                        // cps_percents.push_back({ current_percent, "Rule 2 violation: " + std::to_string(cps) + " cps rate for the " + std::to_string(numClicks + 1) + " click stint from frame " + std::to_string(firstClickFrame) + " to " + std::to_string(inputFramesWithinASecond[j].number) + " (" + std::to_string(timeBetweenClicks) + "s)" });
-                        cps_percents.push_back({ current_percent, "Rule 2 (P1)" });
-                    }
+                // Rule 2: CPS must not exceed 18 clicks per second rate in any 1/3rd of a second to 1 second.
+                if (cps > 20 && timeBetweenClicks >= 1.0f / 3.0f) {
+                    // cps_percents.push_back({ current_percent, "Rule 2 violation: " + std::to_string(cps) + " cps rate for the " + std::to_string(numClicks + 1) + " click stint from frame " + std::to_string(firstClickFrame) + " to " + std::to_string(inputFramesWithinASecond[j].number) + " (" + std::to_string(timeBetweenClicks) + "s)" });
+                    cps_percents.push_back({ inputFramesWithinASecond[j].number, "Rule 2 (P1)" });
                 }
+            }
             //else {
             //    if (cps != 0 && numClicks + 1 > 3) {
 
@@ -240,16 +240,16 @@ std::string Logic::highest_cps() {
 
             float current_percent = 0.f;
 
-                current_percent = std::round(((static_cast<float>(inputFramesWithinASecond[j].number) / inputs.back().number) * 100.f) * 100) / 100;
+            current_percent = std::round(((static_cast<float>(inputFramesWithinASecond[j].number) / inputs.back().number) * 100.f) * 100) / 100;
 
-                if (cps != 0 && numClicks + 1 > 3) {
+            if (cps != 0 && numClicks + 1 > 3) {
 
-                    // Rule 2: CPS must not exceed 18 clicks per second rate in any 1/3rd of a second to 1 second.
-                    if (cps > 20 && timeBetweenClicks >= 1.0f / 3.0f) {
-                        // cps_percents.push_back({ current_percent, "Rule 2 violation: " + std::to_string(cps) + " cps rate for the " + std::to_string(numClicks + 1) + " click stint from frame " + std::to_string(firstClickFrame) + " to " + std::to_string(inputFramesWithinASecond[j].number) + " (" + std::to_string(timeBetweenClicks) + "s)" });
-                        cps_percents_p2.push_back({ current_percent, "Rule 2 (P2)" });
-                    }
+                // Rule 2: CPS must not exceed 18 clicks per second rate in any 1/3rd of a second to 1 second.
+                if (cps > 20 && timeBetweenClicks >= 1.0f / 3.0f) {
+                    // cps_percents.push_back({ current_percent, "Rule 2 violation: " + std::to_string(cps) + " cps rate for the " + std::to_string(numClicks + 1) + " click stint from frame " + std::to_string(firstClickFrame) + " to " + std::to_string(inputFramesWithinASecond[j].number) + " (" + std::to_string(timeBetweenClicks) + "s)" });
+                    cps_percents_p2.push_back({ inputFramesWithinASecond[j].number, "Rule 2 (P2)" });
                 }
+            }
             //else {
             //    if (cps != 0 && numClicks + 1 > 3) {
 
@@ -830,10 +830,14 @@ void Logic::handle_checkpoint_data() {
             // PLAYLAYER->m_cameraPos = data.camera;
 
             if (is_playing()) {
-                PLAYLAYER->m_pPlayer1->m_isHolding = data.player_1_data.isHolding;
-                PLAYLAYER->m_pPlayer1->m_isHolding2 = data.player_1_data.isHolding2;
-                PLAYLAYER->m_pPlayer2->m_isHolding = data.player_2_data.isHolding;
-                PLAYLAYER->m_pPlayer2->m_isHolding2 = data.player_2_data.isHolding2;
+                if (play_player_1) {
+                    PLAYLAYER->m_pPlayer1->m_isHolding = data.player_1_data.isHolding;
+                    PLAYLAYER->m_pPlayer1->m_isHolding2 = data.player_1_data.isHolding2;
+                }
+                if (play_player_2) {
+                    PLAYLAYER->m_pPlayer2->m_isHolding = data.player_2_data.isHolding;
+                    PLAYLAYER->m_pPlayer2->m_isHolding2 = data.player_2_data.isHolding2;
+                }
             }
 
             if (click_inverse_p1) {
@@ -845,6 +849,7 @@ void Logic::handle_checkpoint_data() {
                 PLAYLAYER->m_pPlayer2->m_isHolding2 = data.player_2_data.isHolding2;
             }
 
+
             data.player_1_data.apply(PLAYLAYER->m_pPlayer1);
             data.player_2_data.apply(PLAYLAYER->m_pPlayer2);
             return;
@@ -854,7 +859,7 @@ void Logic::handle_checkpoint_data() {
                 float xp = -layer->getPositionX() / layer->getScale();
                 cast_function caster = make_cast<gd::GameObject, CCObject>();
 
-                for (int s = PLAYLAYER->sectionForPos(xp) - 5 ; s < PLAYLAYER->sectionForPos(xp) + 6; ++s) {
+                for (int s = PLAYLAYER->sectionForPos(xp) - 5; s < PLAYLAYER->sectionForPos(xp) + 6; ++s) {
                     if (s < 0)
                         continue;
                     if (s >= PLAYLAYER->m_sectionObjects->count())
@@ -864,7 +869,7 @@ void Logic::handle_checkpoint_data() {
                     {
                         auto obj = static_cast<gd::GameObject*>(section->objectAtIndex(i));
                         if (obj) {
-                            //if (obj->m_nObjectType == gd::kGameObjectTypeDecoration) continue;
+                            if (obj->m_nObjectType == gd::kGameObjectTypeDecoration) continue;
                             for (const auto& pair : data.objects) {
                                 const ObjectData& nodeData = pair.second;
                                 obj->setPositionX(nodeData.posX);
@@ -872,117 +877,114 @@ void Logic::handle_checkpoint_data() {
                                 //obj->setRotation(nodeData.rotation);
                                 /*obj->setRotationX(nodeData.rotX);
                                 obj->setRotationY(nodeData.rotY);*/
-                               /* obj->setSkewX(nodeData.velX);
-                                obj->setSkewY(nodeData.velY);*/
+                                /* obj->setSkewX(nodeData.velX);
+                                 obj->setSkewY(nodeData.velY);*/
 
-                                /*obj->m_unk2F4 = nodeData.speed1;
-                                obj->m_unk2F8 = nodeData.speed2;
-                                obj->m_unk33C = nodeData.speed3;
-                                obj->m_unk340 = nodeData.speed4;
-                                obj->m_unk390 = nodeData.speed5;*/
+                                 /*obj->m_unk2F4 = nodeData.speed1;
+                                 obj->m_unk2F8 = nodeData.speed2;
+                                 obj->m_unk33C = nodeData.speed3;
+                                 obj->m_unk340 = nodeData.speed4;
+                                 obj->m_unk390 = nodeData.speed5;*/
 
-                                // I HATE GEOMETRY DASH
-                                //obj->m_bUnk3 = nodeData.m_bUnk3;
-                                //obj->m_bIsBlueMaybe = nodeData.m_bIsBlueMaybe;
-                                //obj->m_fUnk2 = nodeData.m_fUnk2;
-                                //obj->m_fUnk = nodeData.m_fUnk;
-                                //obj->m_fUnk3 = nodeData.m_fUnk3;
-                                //obj->m_fUnk4 = nodeData.m_fUnk4;
-                                //obj->m_bUnk = nodeData.m_bUnk;
-                                //obj->m_fAnimSpeed2 = nodeData.m_fAnimSpeed2;
-                                //obj->m_bIsEffectObject = nodeData.m_bIsEffectObject;
-                                //obj->m_bRandomisedAnimStart = nodeData.m_bRandomisedAnimStart;
-                                //obj->m_fAnimSpeed = nodeData.m_fAnimSpeed;
+                                 // I HATE GEOMETRY DASH
+                                obj->m_bUnk3 = nodeData.m_bUnk3;
+                                obj->m_bIsBlueMaybe = nodeData.m_bIsBlueMaybe;
+                                obj->m_fUnk2 = nodeData.m_fUnk2;
+                                obj->m_fUnk = nodeData.m_fUnk;
+                                obj->m_fUnk3 = nodeData.m_fUnk3;
+                                obj->m_fUnk4 = nodeData.m_fUnk4;
+                                obj->m_bUnk = nodeData.m_bUnk;
+                                obj->m_fAnimSpeed2 = nodeData.m_fAnimSpeed2;
+                                obj->m_bIsEffectObject = nodeData.m_bIsEffectObject;
+                                obj->m_bRandomisedAnimStart = nodeData.m_bRandomisedAnimStart;
+                                obj->m_fAnimSpeed = nodeData.m_fAnimSpeed;
                                 //obj->m_bBlackChild = nodeData.m_bBlackChild;
-                                ////obj->m_bUnkOutlineMaybe = nodeData.m_bUnkOutlineMaybe;
-                                ////obj->m_fBlackChildOpacity = nodeData.m_fBlackChildOpacity;
-                                //obj->field_21C = nodeData.field_21C;
-                                //obj->m_bEditor = nodeData.m_bEditor;
-                                //obj->m_bGroupDisabled = nodeData.m_bGroupDisabled;
-                                //obj->m_bColourOnTop = nodeData.m_bColourOnTop;
-                                //obj->m_pMainColourMode = nodeData.m_pMainColourMode;
-                                //obj->m_pSecondaryColourMode = nodeData.m_pSecondaryColourMode;
-                                //obj->m_bCol1 = nodeData.m_bCol1;
-                                //obj->m_bCol2 = nodeData.m_bCol2;
-                                //obj->m_obStartPosOffset = nodeData.m_obStartPosOffset;
-                                ////obj->m_fUnkRotationField = nodeData.m_fUnkRotationField;
-                                //obj->m_bTintTrigger = nodeData.m_bTintTrigger;
-                                ////obj->m_bIsFlippedX = nodeData.m_bIsFlippedX;
-                                ////obj->m_bIsFlippedY = nodeData.m_bIsFlippedY;
-                                ////obj->m_obBoxOffset = nodeData.m_obBoxOffset;
-                                //obj->m_bIsOriented = nodeData.m_bIsOriented;
-                                ////obj->m_obBoxOffset2 = nodeData.m_obBoxOffset2;
-                                //obj->m_pObjectOBB2D = nodeData.m_pObjectOBB2D;
-                                //obj->m_bOriented = nodeData.m_bOriented;
-                                ////obj->m_pGlowSprite = nodeData.m_pGlowSprite;
-                                //obj->m_bNotEditor = nodeData.m_bNotEditor;
-                                //obj->m_pMyAction = nodeData.m_pMyAction;
-                                //obj->setMyAction(nodeData.m_pMyAction);
-                                //obj->m_bRunActionWithTag = nodeData.m_bRunActionWithTag;
-                                //obj->m_bActive = nodeData.m_bActive;
-                                //obj->m_bAnimationFinished = nodeData.m_bAnimationFinished;
-                                ////obj->m_bUnk1 = nodeData.m_bUnk1;
-                                ///*obj->m_bRunActionWithTag = nodeData.m_bRunActionWithTag;
-                                //obj->m_bObjectPoweredOn = nodeData.m_bObjectPoweredOn;
-                                //obj->m_obObjectSize = nodeData.m_obObjectSize;
-                                //obj->m_bTrigger = nodeData.m_bTrigger;
-                                //obj->m_bActive = nodeData.m_bActive;
-                                //obj->m_bAnimationFinished = nodeData.m_bAnimationFinished;*/
+                                //obj->m_bUnkOutlineMaybe = nodeData.m_bUnkOutlineMaybe;
+                                //obj->m_fBlackChildOpacity = nodeData.m_fBlackChildOpacity;
+                                /*obj->field_21C = nodeData.field_21C;
+                                obj->m_bEditor = nodeData.m_bEditor;
+                                obj->m_bGroupDisabled = nodeData.m_bGroupDisabled;
+                                obj->m_bColourOnTop = nodeData.m_bColourOnTop;
+                                obj->m_pMainColourMode = nodeData.m_pMainColourMode;
+                                obj->m_pSecondaryColourMode = nodeData.m_pSecondaryColourMode;
+                                obj->m_bCol1 = nodeData.m_bCol1;
+                                obj->m_bCol2 = nodeData.m_bCol2;
+                                obj->m_obStartPosOffset = nodeData.m_obStartPosOffset;*/
+                                //obj->m_fUnkRotationField = nodeData.m_fUnkRotationField;
+                                obj->m_bTintTrigger = nodeData.m_bTintTrigger;
+                                //obj->m_bIsFlippedX = nodeData.m_bIsFlippedX;
+                                //obj->m_bIsFlippedY = nodeData.m_bIsFlippedY;
+                                //obj->m_obBoxOffset = nodeData.m_obBoxOffset;
+                                obj->m_bIsOriented = nodeData.m_bIsOriented;
+                                //obj->m_obBoxOffset2 = nodeData.m_obBoxOffset2;
+                                obj->m_pObjectOBB2D = nodeData.m_pObjectOBB2D;
+                                obj->m_bOriented = nodeData.m_bOriented;
+                                //obj->m_pGlowSprite = nodeData.m_pGlowSprite;
+                                obj->m_bNotEditor = nodeData.m_bNotEditor;
+                                obj->m_pMyAction = nodeData.m_pMyAction;
+                                obj->setMyAction(nodeData.m_pMyAction);
+                                obj->m_bRunActionWithTag = nodeData.m_bRunActionWithTag;
+                                //obj->m_bUnk1 = nodeData.m_bUnk1;
+                                /*obj->m_bRunActionWithTag = nodeData.m_bRunActionWithTag;
+                                obj->m_bObjectPoweredOn = nodeData.m_bObjectPoweredOn;
+                                obj->m_obObjectSize = nodeData.m_obObjectSize;
+                                obj->m_bTrigger = nodeData.m_bTrigger;
+                                obj->m_bAnimationFinished = nodeData.m_bAnimationFinished;*/
 
-                                //obj->m_pParticleSystem = nodeData.m_pParticleSystem;
-                                //obj->m_sEffectPlistName = nodeData.m_sEffectPlistName;
-                                //obj->m_bParticleAdded = nodeData.m_bParticleAdded;
-                                //obj->m_bHasParticles = nodeData.m_bHasParticles;
-                                //obj->m_bUnkCustomRing = nodeData.m_bUnkCustomRing;
-                                //obj->m_obPortalPosition = nodeData.m_obPortalPosition;
-                                ///*obj->m_bUnkParticleSystem = nodeData.m_bUnkParticleSystem;
-                                //obj->m_obObjectTextureRect = nodeData.m_obObjectTextureRect;
-                                //obj->m_bTextureRectDirty = nodeData.m_bTextureRectDirty;
-                                //obj->m_fRectXCenterMaybe = nodeData.m_fRectXCenterMaybe;
-                                //obj->m_obObjectRect2 = nodeData.m_obObjectRect2;
-                                //obj->m_bIsObjectRectDirty = nodeData.m_bIsObjectRectDirty;*/
+                                obj->m_pParticleSystem = nodeData.m_pParticleSystem;
+                                obj->m_sEffectPlistName = nodeData.m_sEffectPlistName;
+                                obj->m_bParticleAdded = nodeData.m_bParticleAdded;
+                                obj->m_bHasParticles = nodeData.m_bHasParticles;
+                                obj->m_bUnkCustomRing = nodeData.m_bUnkCustomRing;
+                                obj->m_obPortalPosition = nodeData.m_obPortalPosition;
+                                /*obj->m_bUnkParticleSystem = nodeData.m_bUnkParticleSystem;
+                                obj->m_obObjectTextureRect = nodeData.m_obObjectTextureRect;
+                                obj->m_bTextureRectDirty = nodeData.m_bTextureRectDirty;
+                                obj->m_fRectXCenterMaybe = nodeData.m_fRectXCenterMaybe;
+                                obj->m_obObjectRect2 = nodeData.m_obObjectRect2;
+                                obj->m_bIsObjectRectDirty = nodeData.m_bIsObjectRectDirty;*/
 
-                                ///*obj->m_bIsOrientedRectDirty = nodeData.m_bIsOrientedRectDirty;
-                                //obj->m_objectRadius = nodeData.m_objectRadius;
-                                //obj->m_bIsRotatedSide = nodeData.m_bIsRotatedSide;
+                                /*obj->m_bIsOrientedRectDirty = nodeData.m_bIsOrientedRectDirty;
+                                obj->m_objectRadius = nodeData.m_objectRadius;
+                                obj->m_bIsRotatedSide = nodeData.m_bIsRotatedSide;
 
-                                //obj->m_bTouchTriggered = nodeData.m_bTouchTriggered;
-                                //obj->m_bSpawnTriggered = nodeData.m_bSpawnTriggered;
-                                //obj->m_sTextureName = nodeData.m_sTextureName;
-                                //obj->m_unk32C = nodeData.m_unk32C;*/
+                                obj->m_bTouchTriggered = nodeData.m_bTouchTriggered;
+                                obj->m_bSpawnTriggered = nodeData.m_bSpawnTriggered;
+                                obj->m_sTextureName = nodeData.m_sTextureName;
+                                obj->m_unk32C = nodeData.m_unk32C;*/
 
-                                ///*obj->m_unk32D = nodeData.m_unk32D;
-                                //obj->m_unk33C = nodeData.m_unk33C;
-                                //obj->m_unk340 = nodeData.m_unk340;
-                                //obj->m_bIsGlowDisabled = nodeData.m_bIsGlowDisabled;
-                                //obj->m_nTargetColorID = nodeData.m_nTargetColorID;
-                                //obj->m_fScale = nodeData.m_fScale;
-                                //obj->m_nObjectID = nodeData.m_nObjectID;
-                                //obj->m_unk368 = nodeData.m_unk368;*/
-                                //obj->m_unk369 = nodeData.m_unk369;
-                                //obj->m_unk36A = nodeData.m_unk36A;
-                                //obj->m_bIsDontEnter = nodeData.m_bIsDontEnter;
-                                //obj->m_bIsDontFade = nodeData.m_bIsDontFade;
-                                //obj->m_nDefaultZOrder = nodeData.m_nDefaultZOrder;
-                                //obj->m_unk38C = nodeData.m_unk38C;
-                                //obj->m_unk38D = nodeData.m_unk38D;
-                                //obj->m_unk38E = nodeData.m_unk38E;
-                                //obj->m_unk390 = nodeData.m_unk390;
-                                //obj->m_bShowGamemodeBorders = nodeData.m_bShowGamemodeBorders;
-                                //obj->m_unk3D9 = nodeData.m_unk3D9;
-                                //obj->m_bIsSelected = nodeData.m_bIsSelected;
+                                /*obj->m_unk32D = nodeData.m_unk32D;
+                                obj->m_unk33C = nodeData.m_unk33C;
+                                obj->m_unk340 = nodeData.m_unk340;
+                                obj->m_bIsGlowDisabled = nodeData.m_bIsGlowDisabled;
+                                obj->m_nTargetColorID = nodeData.m_nTargetColorID;
+                                obj->m_fScale = nodeData.m_fScale;
+                                obj->m_nObjectID = nodeData.m_nObjectID;
+                                obj->m_unk368 = nodeData.m_unk368;
+                                obj->m_unk369 = nodeData.m_unk369;
+                                obj->m_unk36A = nodeData.m_unk36A;*/
+                                obj->m_bIsDontEnter = nodeData.m_bIsDontEnter;
+                                obj->m_bIsDontFade = nodeData.m_bIsDontFade;
+                                obj->m_nDefaultZOrder = nodeData.m_nDefaultZOrder;
+                                obj->m_unk38C = nodeData.m_unk38C;
+                                obj->m_unk38D = nodeData.m_unk38D;
+                                obj->m_unk38E = nodeData.m_unk38E;
+                                obj->m_unk390 = nodeData.m_unk390;
+                                obj->m_bShowGamemodeBorders = nodeData.m_bShowGamemodeBorders;
+                                obj->m_unk3D9 = nodeData.m_unk3D9;
+                                obj->m_bIsSelected = nodeData.m_bIsSelected;
 
-                                //obj->m_nGlobalClickCounter = nodeData.m_nGlobalClickCounter;
-                                //obj->m_bUnknownLayerRelated = nodeData.m_bUnknownLayerRelated;
-                                //obj->m_fMultiScaleMultiplier = nodeData.m_fMultiScaleMultiplier;
-                                //obj->m_bIsGroupParent = nodeData.m_bIsGroupParent;
-                                //obj->m_pGroups = nodeData.m_pGroups;
-                                //obj->m_nGroupCount = nodeData.m_nGroupCount;
-                                //obj->m_nEditorLayer = nodeData.m_nEditorLayer;
-                                //obj->m_nEditorLayer2 = nodeData.m_nEditorLayer2;
-                                //obj->m_unk414 = nodeData.m_unk414;
-                                //obj->m_obFirstPosition = nodeData.m_obFirstPosition;
-                                //section->replaceObjectAtIndex(i, obj);
+                                /*obj->m_nGlobalClickCounter = nodeData.m_nGlobalClickCounter;
+                                obj->m_bUnknownLayerRelated = nodeData.m_bUnknownLayerRelated;
+                                obj->m_fMultiScaleMultiplier = nodeData.m_fMultiScaleMultiplier;
+                                obj->m_bIsGroupParent = nodeData.m_bIsGroupParent;
+                                obj->m_pGroups = nodeData.m_pGroups;
+                                obj->m_nGroupCount = nodeData.m_nGroupCount;
+                                obj->m_nEditorLayer = nodeData.m_nEditorLayer;
+                                obj->m_nEditorLayer2 = nodeData.m_nEditorLayer2;
+                                obj->m_unk414 = nodeData.m_unk414;
+                                obj->m_obFirstPosition = nodeData.m_obFirstPosition;*/
+                                section->replaceObjectAtIndex(i, obj);
                             }
                         }
                     }

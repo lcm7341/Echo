@@ -248,6 +248,7 @@ void GUI::draw() {
 	Logic::get().processKeybinds();
 	if (!g_has_imported)
 		import_theme(".echo\\settings\\theme.ui");
+	strcpy(theme_name, "My Theme");
 	g_has_imported = true;
 
 	if (g_font) ImGui::PushFont(g_font);
@@ -408,6 +409,9 @@ void GUI::import_theme(std::string path) {
 
 	ImGuiStyle& style = ImGui::GetStyle();
 
+	auto file_name = fs::path(path).stem().string();
+	strcpy(theme_name, file_name.c_str());
+
 	if (!file.is_open())
 	{
 		printf("Failed to open theme.ui for reading");
@@ -486,6 +490,16 @@ void GUI::import_theme(std::string path) {
 		auto colorArray = json["player_2_button_color"];
 		ImVec4 color(colorArray[0], colorArray[1], colorArray[2], colorArray[3]);
 		player_2_button_color = color;
+	}
+	if (json.contains("input_selected_color_p1")) {
+		auto colorArray = json["input_selected_color_p1"];
+		ImVec4 color(colorArray[0], colorArray[1], colorArray[2], colorArray[3]);
+		input_selected_color_p1 = color;
+	}
+	if (json.contains("input_selected_color_p2")) {
+		auto colorArray = json["input_selected_color_p2"];
+		ImVec4 color(colorArray[0], colorArray[1], colorArray[2], colorArray[3]);
+		input_selected_color_p2 = color;
 	}
 	if (json.contains("popup_bg_color")) {
 		auto colorArray = json["popup_bg_color"];
@@ -570,6 +584,8 @@ void GUI::export_theme(std::string path, bool custom_path) {
 	json["player_1_button_color"] = { player_1_button_color.x, player_1_button_color.y, player_1_button_color.z, player_1_button_color.w };
 	json["player_2_button_color"] = { player_2_button_color.x, player_2_button_color.y, player_2_button_color.z, player_2_button_color.w };
 	json["popup_bg_color"] = { popup_bg_color.x, popup_bg_color.y, popup_bg_color.z, popup_bg_color.w };
+	json["input_selected_color_p1"] = { input_selected_color_p1.x, input_selected_color_p1.y, input_selected_color_p1.z, input_selected_color_p1.w };
+	json["input_selected_color_p2"] = { input_selected_color_p2.x, input_selected_color_p2.y, input_selected_color_p2.z, input_selected_color_p2.w };
 
 	// Save the json object to a file
 	std::string name = "";
@@ -626,7 +642,7 @@ void GUI::ui_editor() {
 		}
 
 		ImGui::PushItemWidth(150);
-		ImGui::InputText("", theme_name, MAX_PATH);
+		ImGui::InputText("Name", theme_name, MAX_PATH);
 		ImGui::PopItemWidth();
 
 		ImGui::SameLine();
@@ -745,6 +761,20 @@ void GUI::ui_editor() {
 					MyColorPicker(player_2_button_color, "Player 2 In Editor");
 					ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
 					ImGui::TextUnformatted("Player 2 In Editor");
+					ImGui::PopID();
+				}
+				if (filter.PassFilter("Player 1 In Editor (Selected)")) {
+					ImGui::PushID(997);
+					MyColorPicker(input_selected_color_p1, "Player 1 In Editor (Selected)");
+					ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
+					ImGui::TextUnformatted("Player 1 In Editor (Selected)");
+					ImGui::PopID();
+				}
+				if (filter.PassFilter("Player 2 In Editor (Selected)")) {
+					ImGui::PushID(996);
+					MyColorPicker(input_selected_color_p2, "Player 2 In Editor (Selected)");
+					ImGui::SameLine(0.0f, style.ItemInnerSpacing.x);
+					ImGui::TextUnformatted("Player 2 In Editor (Selected)");
 					ImGui::PopID();
 				}
 
@@ -985,9 +1015,10 @@ void GUI::editor() {
 
 				if (i == closestInputIndex) {
 					// Make the closest input's button brighter
-					color.x = max(color.x - 0.5f, 0);
-					color.y = max(color.y - 0.5f, 0);
-					color.z = max(color.z - 0.5f, 0);
+					if (inputs[i].isPlayer2)
+						color = input_selected_color_p2;
+					else
+						color = input_selected_color_p1;
 				}
 
 				ImGui::PushStyleColor(ImGuiCol_Button, color);
@@ -1203,28 +1234,6 @@ void GUI::editor() {
 		}
 
 		ImGui::Separator();
-
-		double total_seconds = logic.total_recording_time.count();
-
-		int hours = static_cast<int>(total_seconds / 3600);
-		int minutes = static_cast<int>((total_seconds - hours * 3600) / 60);
-		int seconds = static_cast<int>(total_seconds - hours * 3600 - minutes * 60);
-
-		// Format the time as HH:MM:SS
-		std::ostringstream oss;
-		oss << std::setfill('0');
-		oss << std::setw(2) << hours << ":"
-			<< std::setw(2) << minutes << ":"
-			<< std::setw(2) << seconds;
-
-		std::string time_str = oss.str();
-
-		int clicks_amt = 0;
-		for (auto& input : inputs)  if (input.pressingDown) clicks_amt++;
-
-		ImGui::Text("Recording Time: %s", time_str.c_str());
-		ImGui::Text("Total Attempts: %i", logic.total_attempt_count);
-		ImGui::Text("Clicks Count: %i", clicks_amt);
 
 		if (docked)
 			ImGui::EndTabItem();
@@ -1677,6 +1686,8 @@ void GUI::tools() {
 				std::string filePath = ImGuiFileDialog::Instance()->GetCurrentPath();
 				std::vector<Frame> before_inputs = logic.get_inputs();
 				logic.inputs.clear();
+				auto recording_time = logic.total_recording_time;
+				int attempts = logic.total_attempt_count;
 
 				std::string suffix = ".echo";
 				if (filePathName.size() >= suffix.size() && filePathName.rfind(suffix) == (filePathName.size() - suffix.size()))
@@ -1687,6 +1698,8 @@ void GUI::tools() {
 				logic.inputs.insert(logic.inputs.end(), before_inputs.begin(), before_inputs.end());
 
 				logic.sort_inputs();
+				logic.total_recording_time += recording_time;
+				logic.total_attempt_count += attempts;
 			}
 			ImGuiFileDialog::Instance()->Close();
 		}
@@ -1820,6 +1833,7 @@ void GUI::tools() {
 		CHECK_KEYBIND("noEsc");
 
 		ImGui::Checkbox("###layout_checkbox", &logic.hacks.layoutMode);
+		CHECK_KEYBIND("layout");
 
 		ImGui::SameLine();
 
@@ -1840,6 +1854,7 @@ void GUI::tools() {
 		ImGui::SameLine();
 
 		ImGui::Checkbox("###hitbox_checkbox", &logic.hacks.showHitboxes);
+		CHECK_KEYBIND("hitbox");
 
 		ImGui::SameLine();
 		bool open_hitbox_modal = true;
@@ -2015,11 +2030,36 @@ void GUI::tools() {
 		HelpMarker("Saving debug information allows for bugfixing and checking accuracy in the replay.");
 
 		ImGui::SameLine();
-		if (ImGui::Button("Open Debug Console")) {
+		if (ImGui::Button("Open Console")) {
 			// Allows for debugging, can be removed later
 			AllocConsole();
 			freopen("CONOUT$", "w", stdout);  // Redirects stdout to the new console
 			std::printf("Opened Debugging Console");
+		}
+
+		bool open_label_modal = true;
+		ImGui::SameLine();
+		if (ImGui::Button("View Metadata", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
+			ImGui::OpenPopup("Replay Metadata");
+		}
+		if (ImGui::BeginPopupModal("Replay Metadata", &open_label_modal, ImGuiWindowFlags_AlwaysAutoResize)) {
+			double total_seconds = logic.total_recording_time.count();
+			int hours = static_cast<int>(total_seconds / 3600);
+			int minutes = static_cast<int>((total_seconds - hours * 3600) / 60);
+			int seconds = static_cast<int>(total_seconds - hours * 3600 - minutes * 60);
+			// Format the time as HH:MM:SS
+			std::ostringstream oss;
+			oss << std::setfill('0');
+			oss << std::setw(2) << hours << ":"
+				<< std::setw(2) << minutes << ":"
+				<< std::setw(2) << seconds;
+			std::string time_str = oss.str();
+			int clicks_amt = 0;
+			for (auto& input : logic.inputs)  if (input.pressingDown) clicks_amt++;
+			ImGui::Text("Recording Time: %s", time_str.c_str());
+			ImGui::Text("Total Attempts: %i", logic.total_attempt_count);
+			ImGui::Text("Clicks Count: %i", clicks_amt);
+			ImGui::EndPopup();
 		}
 
 		if (docked)
@@ -3276,6 +3316,9 @@ void GUI::init() {
 	Logic::get().keybinds.SetAction("loadFile", std::move(loadFileAction));
 
 	SET_BIND(realTimeMode, Logic::get().real_time_mode);
+	
+	SET_BIND(layout, Logic::get().hacks.layoutMode);
+	SET_BIND(hitbox, Logic::get().hacks.showHitboxes);
 	
 	SET_BIND(showFrame, Logic::get().show_frame);
 
