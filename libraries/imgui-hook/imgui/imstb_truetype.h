@@ -118,7 +118,7 @@
 //           stbtt_GetFontVMetricsOS2()
 //           stbtt_GetCodepointKernAdvance()
 //
-//   Starting with version 1.06, the rasterizer was replaced with a new,
+//   Starting with version 1.1, the rasterizer was replaced with a new,
 //   faster and generally-more-precise rasterizer. The new rasterizer more
 //   accurately measures pixel coverage for anti-aliasing, except in the case
 //   where multiple shapes overlap, in which case it overestimates the AA pixel
@@ -261,7 +261,7 @@
 //   C runtime library abstraction       60 LOC  ----  60
 //
 //
-// PERFORMANCE MEASUREMENTS FOR 1.06:
+// PERFORMANCE MEASUREMENTS FOR 1.1:
 //
 //                      32-bit     64-bit
 //   Previous release:  8.83 s     7.68 s
@@ -4824,7 +4824,7 @@ STBTT_DEF int stbtt_CompareUTF8toUTF16_bigendian(const char *s1, int len1, const
 //                     fix stbtt_GetFontOFfsetForIndex (never worked for non-0 input?);
 //                     fixed an assert() bug in the new rasterizer
 //                     replace assert() with STBTT_assert() in new rasterizer
-//   1.06 (2015-07-14) performance improvements (~35% faster on x86 and x64 on test machine)
+//   1.1 (2015-07-14) performance improvements (~35% faster on x86 and x64 on test machine)
 //                     also more precise AA rasterizer, except if shapes overlap
 //                     remove need for STBTT_sort
 //   1.05 (2015-04-15) fix misplaced definitions for STBTT_STATIC

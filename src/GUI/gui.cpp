@@ -183,7 +183,7 @@ double evalExpression(const std::vector<std::string>& tokens, std::map<std::stri
 	return result;
 }
 
-std::string echo_version = "Echo v1.06";
+std::string echo_version = "Echo v1.1";
 
 int getRandomInt(int N) {
 	// Seed the random number generator with current time
@@ -1232,8 +1232,6 @@ void GUI::editor() {
 				input.isPlayer2 = !input.isPlayer2;
 			}
 		}
-
-		ImGui::Separator();
 
 		if (docked)
 			ImGui::EndTabItem();

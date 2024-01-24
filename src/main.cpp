@@ -642,11 +642,11 @@ DWORD WINAPI my_thread(void* hModule) {
 
 	MH_Initialize();
 	readConfig();
-	Speedhack::Setup();
+	//Speedhack::Setup();
 	// UnfullscreenGame();
-	Hooks::init_hooks();
+	//Hooks::init_hooks();
 	auto& instance = GUI::get();
-	AudiopitchHack::getInstance().initialize();
+	//AudiopitchHack::getInstance().initialize();
 
 	ImGuiHook::setRenderFunction(renderFuncWrapper);
 	//ImGuiHook::setToggleCallback(callback);
