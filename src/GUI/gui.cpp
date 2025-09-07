@@ -183,7 +183,7 @@ double evalExpression(const std::vector<std::string>& tokens, std::map<std::stri
 	return result;
 }
 
-std::string echo_version = "Echo v1.1";
+std::string echo_version = "Echo v1.2";
 
 int getRandomInt(int N) {
 	// Seed the random number generator with current time
@@ -262,16 +262,19 @@ void GUI::draw() {
 	auto end = std::chrono::steady_clock::now();
 	auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - Logic::get().start);
 
+	printf("holding_frame_advance = %i\n", Logic::get().holding_frame_advance);
+
 	if (PLAYLAYER) {
-		if (duration.count() >= Logic::get().frame_advance_hold_duration * Logic::get().speedhack && Logic::get().start != std::chrono::steady_clock::time_point()) {
+		if (Logic::get().holding_frame_advance && duration.count() >= Logic::get().frame_advance_hold_duration * Logic::get().speedhack && Logic::get().start != end) {
 			Logic::get().frame_advance = false;
-			bool old_real_time = Logic::get().real_time_mode;
-			Logic::get().real_time_mode = false;
+			/*bool old_real_time = Logic::get().real_time_mode;
+			Logic::get().real_time_mode = false;*/
 			Hooks::CCScheduler_update_h(gd::GameManager::sharedState()->getScheduler(), 0, 1.f / Logic::get().fps);
 			Logic::get().frame_advance = true;
-			Logic::get().real_time_mode = old_real_time;
+			//Logic::get().real_time_mode = old_real_time;
 			delay(Logic::get().frame_advance_delay);
 			Logic::get().holding_frame_advance = true;
+			Logic::get().start = std::chrono::steady_clock::now();
 		}
 		else {
 			Logic::get().holding_frame_advance = false;
@@ -2794,19 +2797,19 @@ void GUI::main() {
 
 			if (!logic.cps_over_percents.empty()) {
 				for (unsigned i = 0; i < logic.cps_over_percents.size(); i++) {
-					float val = logic.cps_over_percents[i].first;
+					int val = logic.cps_over_percents[i].first;
 					std::string rule = logic.cps_over_percents[i].second;
 					std::string percent = std::to_string(val);
 
 					// Truncate the string to have only 2 decimal places
 					size_t dot_pos = percent.find(".");
 					if (dot_pos != std::string::npos && dot_pos + 3 < percent.length()) {
-						percent = percent.substr(0, dot_pos + 3);
+						//percent = percent.substr(0, dot_pos + 3);
 					}
 
 					printf("%s\n", rule.c_str());
 
-					ImGui::Text("%s%%", percent.c_str());
+					ImGui::Text("%i", val);
 					ImGui::SameLine();
 					ImGui::Text("#%s", rule.c_str());
 				}

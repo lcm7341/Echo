@@ -1,4 +1,4 @@
-#include "logic.hpp"
+﻿#include "logic.hpp"
 #include "../Hooks/hooks.hpp"
 #include <stdio.h>
 #include <nlohmann/json.hpp>
@@ -98,205 +98,181 @@ void Logic::play_input(Frame& input) {
     }
 }
 
+static constexpr int   kMaxPerSecond = 16;  // Rule 1
+static constexpr int   kMaxPerFrame = 3;   // Rule 2
+static constexpr float kMaxBurstRate = 48.f;// Rule 3
+static constexpr int   kMinBurstClicks = 5;   // "stint of 5 or more clicks"
+// -----------------------------
+// 1) Count inputs in the last second (per player)
+// -----------------------------
+// NOTE: “regardless of type” ⇒ count every input event for that player.
+// We do NOT filter on pressingDown anymore.
 unsigned Logic::count_presses_in_last_second(bool player2) {
-    unsigned frame_limit = round((((PLAYLAYER->m_time) * get_fps()) - get_removed()) - get_fps());
-    if (frame_limit > ((((PLAYLAYER->m_time) * get_fps()) - get_removed()) + 2))
-        frame_limit = 0;
+    const int fps = get_fps();
+    const int nowFrame = get_frame();
+    const int frame_limit = max(0, nowFrame - fps); // exactly last 1 second window [now-fps, now]
 
+    // Gather relevant inputs (recorded vs live) for this player only.
     std::vector<Frame> inputs_for_player;
-
     if (is_recording()) {
-        for (auto& input : inputs) {
-            if (input.isPlayer2 == player2) {
-                inputs_for_player.push_back(input);
-            }
-        }
+        for (const auto& f : inputs)
+            if (f.isPlayer2 == player2) inputs_for_player.push_back(f);
     }
     else {
-        for (auto& input : live_inputs) {
-            if (input.isPlayer2 == player2) {
-                inputs_for_player.push_back(input);
-            }
-        }
+        for (const auto& f : live_inputs)
+            if (f.isPlayer2 == player2) inputs_for_player.push_back(f);
     }
 
-    unsigned press_count = 0;
+    // Count inputs in the last second window (inclusive of 'now').
+    unsigned count = 0;
     for (auto it = inputs_for_player.rbegin(); it != inputs_for_player.rend(); ++it) {
-        if (it->number > frame_limit && it->pressingDown) {
-            press_count++;
-        }
+        if (it->number < frame_limit) break; // past the window
+        if (it->number <= nowFrame) ++count;
     }
 
-    if (press_count > max_cps) {
-        over_max_cps = true;
-    }
+    // Track state for UI/flags.
+    current_cps = count;
+    over_max_cps = (count > static_cast<unsigned>(kMaxPerSecond));
 
-    current_cps = press_count;
-
-    return press_count;
+    return count;
 }
 
+// -----------------------------
+// 2) Highest CPS (per player) + collect violations for all rules
+// -----------------------------
+// Returns a string like "P1: 14 (1200 to 1260)" OR "P2: 15 (…)"
+// Also populates:
+//   - cps_over_percents      : vector<{frame, "Rule … (P1)"}>
+//   - cps_over_percents_p2   : vector<{frame, "Rule … (P2)"}>
+// Where 'frame' is the frame number of the end of the offending window.
 std::string Logic::highest_cps() {
-    std::vector<std::pair<float, std::string>> cps_percents;
-    std::vector<std::pair<float, std::string>> cps_percents_p2;
-    std::string highest_cps = "P1: 0";
-    int highest_cps_real = 0;
-    int highest_cps_real_p2 = 0;
+    std::string best_str_p1 = "P1: 0";
+    std::string best_str_p2 = "P2: 0";
+    int best_cps_p1 = 0, best_cps_p2 = 0;
 
-    std::vector<Frame> inputs_p1;
-    std::vector<Frame> inputs_p2;
+    cps_over_percents.clear();
+    cps_over_percents_p2.clear();
 
-    for (auto& frame : inputs) {
-        if (frame.isPlayer2) inputs_p2.push_back(frame);
-        else inputs_p1.push_back(frame);
+    // Split recorded inputs by player (rule 2: handled independently).
+    std::vector<Frame> p1, p2;
+    p1.reserve(inputs.size());
+    p2.reserve(inputs.size());
+    for (const auto& f : inputs) {
+        if (f.pressingDown)
+        (f.isPlayer2 ? p2 : p1).push_back(f);
     }
 
-    for (Frame& frame : inputs_p1) {
-        if (!frame.pressingDown) {
-            continue;
-        }
+    const float fpsf = static_cast<float>(get_fps());
+    const int   fps = get_fps();
 
-        std::vector<Frame> inputFramesWithinASecond;
-        int firstClickFrame = frame.number;
-        int frameOneSecondLater = firstClickFrame + get_fps();
+    auto eval_player = [&](const std::vector<Frame>& vec, bool isP2) {
+        if (vec.empty()) return;
 
-        int second_cps = 0;
-        for (Frame& checkFrame : inputs) {
-            if (checkFrame.number >= firstClickFrame && checkFrame.number <= frameOneSecondLater && checkFrame.pressingDown) {
-                second_cps++;
-                inputFramesWithinASecond.push_back(checkFrame);
+        // ---------- Rule 2: no more than 3 in the same frame ----------
+        {
+            int i = 0;
+            while (i < static_cast<int>(vec.size())) {
+                const int frameNum = vec[i].number;
+                int j = i;
+                while (j < static_cast<int>(vec.size()) && vec[j].number == frameNum && vec[j].pressingDown) ++j;
+                const int countThisFrame = j - i;
+                if (countThisFrame > kMaxPerFrame) {
+                    (isP2 ? cps_over_percents_p2 : cps_over_percents)
+                        .push_back({ static_cast<float>(frameNum), isP2 ? "Rule 2 (P2)" : "Rule 2 (P1)" });
+                }
+                i = j;
             }
         }
-        if (second_cps > highest_cps_real) {
-            highest_cps_real = second_cps;
-            highest_cps = "P1: " + std::to_string(highest_cps_real) + " (" + std::to_string(firstClickFrame) + " to " + std::to_string(frameOneSecondLater) + ")";
-        }
 
-        if (inputFramesWithinASecond.size() < 4) {
-            continue;
-        }
+        // ---------- Highest CPS within any 1-second window + Rule 1 ----------
+        {
+            int left = 0;
+            for (int right = 0; right < static_cast<int>(vec.size()); ++right) {
+                const int startFrame = vec[right].number - fps; // window: (right - 1s, right]
+                while (left <= right && vec[left].number < startFrame) ++left;
+                const int windowCount = right - left + 1;
 
-        for (size_t j = 0; j < inputFramesWithinASecond.size(); ++j) {
-            int numClicks = j;
-            int framesBetweenClicks = inputFramesWithinASecond[j].number - firstClickFrame;
-            float timeBetweenClicks = static_cast<float>(framesBetweenClicks) / get_fps();
-            float cps = numClicks / timeBetweenClicks;
+                // Track per-player best CPS (as "count in 1s window")
+                if (!isP2 && windowCount > best_cps_p1) {
+                    best_cps_p1 = windowCount;
+                    best_str_p1 = "P1: " + std::to_string(windowCount) + " (" +
+                        std::to_string(vec[left].number) + " to " +
+                        std::to_string(vec[right].number) + ")";
+                }
+                else if (isP2 && windowCount > best_cps_p2) {
+                    best_cps_p2 = windowCount;
+                    best_str_p2 = "P2: " + std::to_string(windowCount) + " (" +
+                        std::to_string(vec[left].number) + " to " +
+                        std::to_string(vec[right].number) + ")";
+                }
 
-            float current_percent = 0.f;
-
-            current_percent = std::round(((static_cast<float>(inputFramesWithinASecond[j].number) / inputs.back().number) * 100.f) * 100) / 100;
-
-            if (cps != 0 && numClicks + 1 > 3) {
-
-                // Rule 2: CPS must not exceed 18 clicks per second rate in any 1/3rd of a second to 1 second.
-                if (cps > 20 && timeBetweenClicks >= 1.0f / 3.0f) {
-                    // cps_percents.push_back({ current_percent, "Rule 2 violation: " + std::to_string(cps) + " cps rate for the " + std::to_string(numClicks + 1) + " click stint from frame " + std::to_string(firstClickFrame) + " to " + std::to_string(inputFramesWithinASecond[j].number) + " (" + std::to_string(timeBetweenClicks) + "s)" });
-                    cps_percents.push_back({ inputFramesWithinASecond[j].number, "Rule 2 (P1)" });
+                // Rule 1 violation: >16 inputs within any 1-second window
+                if (windowCount > kMaxPerSecond) {
+                    (isP2 ? cps_over_percents_p2 : cps_over_percents)
+                        .push_back({ static_cast<float>(vec[right].number),
+                                     isP2 ? "Rule 1 (P2)" : "Rule 1 (P1)" });
                 }
             }
-            //else {
-            //    if (cps != 0 && numClicks + 1 > 3) {
-
-            //        // Rule 2: CPS must not exceed 18 clicks per second rate in any 1/3rd of a second to 1 second.
-            //        if (cps > 20 && timeBetweenClicks >= 1.0f / 3.0f) {
-            //            // cps_percents.push_back({ current_percent, "Rule 2 violation: " + std::to_string(cps) + " cps rate for the " + std::to_string(numClicks + 1) + " click stint from frame " + std::to_string(firstClickFrame) + " to " + std::to_string(inputFramesWithinASecond[j].number) + " (" + std::to_string(timeBetweenClicks) + "s)" });
-            //            cps_percents.push_back({ inputFramesWithinASecond[j].number, "Rule 2" });
-            //        }
-            //    }
-            //}
-        }
-    }
-
-    for (Frame& frame : inputs_p2) {
-        if (!frame.pressingDown) {
-            continue;
         }
 
-        std::vector<Frame> inputFramesWithinASecond;
-        int firstClickFrame = frame.number;
-        int frameOneSecondLater = firstClickFrame + get_fps();
-
-        int second_cps = 0;
-        for (Frame& checkFrame : inputs) {
-            if (checkFrame.number >= firstClickFrame && checkFrame.number <= frameOneSecondLater && checkFrame.pressingDown) {
-                second_cps++;
-                inputFramesWithinASecond.push_back(checkFrame);
-            }
-        }
-        if (second_cps > highest_cps_real) {
-            highest_cps_real = second_cps;
-            highest_cps = "P2: " + std::to_string(highest_cps_real) + " (" + std::to_string(firstClickFrame) + " to " + std::to_string(frameOneSecondLater) + ")";
-        }
-
-        if (inputFramesWithinASecond.size() < 4) {
-            continue;
-        }
-
-        for (size_t j = 0; j < inputFramesWithinASecond.size(); ++j) {
-            int numClicks = j;
-            int framesBetweenClicks = inputFramesWithinASecond[j].number - firstClickFrame;
-            float timeBetweenClicks = static_cast<float>(framesBetweenClicks) / get_fps();
-            float cps = numClicks / timeBetweenClicks;
-
-            float current_percent = 0.f;
-
-            current_percent = std::round(((static_cast<float>(inputFramesWithinASecond[j].number) / inputs.back().number) * 100.f) * 100) / 100;
-
-            if (cps != 0 && numClicks + 1 > 3) {
-
-                // Rule 2: CPS must not exceed 18 clicks per second rate in any 1/3rd of a second to 1 second.
-                if (cps > 20 && timeBetweenClicks >= 1.0f / 3.0f) {
-                    // cps_percents.push_back({ current_percent, "Rule 2 violation: " + std::to_string(cps) + " cps rate for the " + std::to_string(numClicks + 1) + " click stint from frame " + std::to_string(firstClickFrame) + " to " + std::to_string(inputFramesWithinASecond[j].number) + " (" + std::to_string(timeBetweenClicks) + "s)" });
-                    cps_percents_p2.push_back({ inputFramesWithinASecond[j].number, "Rule 2 (P2)" });
+        // ---------- Rule 3: >48/sec over any stint of 5+ clicks ----------
+        // Sliding “start” index; expand “end” and check any window with >=5 clicks.
+        {
+            int n = static_cast<int>(vec.size());
+            for (int i = 0; i < n; ++i) {
+                // We only need to check windows that end at or after i+4 (5 clicks).
+                for (int j = i + (kMinBurstClicks - 1); j < n; ++j) {
+                    const int frames = vec[j].number - vec[i].number;
+                    if (frames <= 0) {
+                        // All 5+ in same/earlier frame -> already a 2 violation,
+                        // but it also implies infinite rate; count as 3 too to be strict.
+                        (isP2 ? cps_over_percents_p2 : cps_over_percents)
+                            .push_back({ static_cast<float>(vec[j].number),
+                                         isP2 ? "Rule 3 (P2)" : "Rule 3 (P1)" });
+                        continue;
+                    }
+                    const float seconds = static_cast<float>(frames) / fpsf;
+                    const int clicks = j - i + 1;
+                    const float rate = static_cast<float>(clicks) / seconds; // clicks per second
+                    if (rate > kMaxBurstRate) {
+                        (isP2 ? cps_over_percents_p2 : cps_over_percents)
+                            .push_back({ static_cast<float>(vec[j].number),
+                                         isP2 ? "Rule 3 (P2)" : "Rule 3 (P1)" });
+                    }
+                    else {
+                        // Because seconds increases and rate drops as j grows,
+                        // once it's under the limit for this i, extending j will stay under.
+                        break;
+                    }
                 }
             }
-            //else {
-            //    if (cps != 0 && numClicks + 1 > 3) {
-
-            //        // Rule 2: CPS must not exceed 18 clicks per second rate in any 1/3rd of a second to 1 second.
-            //        if (cps > 20 && timeBetweenClicks >= 1.0f / 3.0f) {
-            //            // cps_percents.push_back({ current_percent, "Rule 2 violation: " + std::to_string(cps) + " cps rate for the " + std::to_string(numClicks + 1) + " click stint from frame " + std::to_string(firstClickFrame) + " to " + std::to_string(inputFramesWithinASecond[j].number) + " (" + std::to_string(timeBetweenClicks) + "s)" });
-            //            cps_percents_p2.push_back({ inputFramesWithinASecond[j].number, "Rule 2" });
-            //        }
-            //    }
-            //}
         }
-    }
+    };
 
-    // Remove cps_percents within 1 of each other.
-    std::vector<std::pair<float, std::string>> unique_cps_percents;
-    std::vector<std::pair<float, std::string>> unique_cps_percents_p2;
+    eval_player(p1, /*isP2=*/false);
+    eval_player(p2, /*isP2=*/true);
 
-    for (auto& percent : cps_percents) {
-        bool should_push = true;
-        for (auto& unique_percent : unique_cps_percents) {
-            if (std::abs(percent.first - unique_percent.first) <= 0.4) {
-                should_push = false;
+    // De-duplicate nearby violations (within ~0.4 frames) like your original code
+    auto dedupe = [](std::vector<std::pair<float, std::string>>& v) {
+        std::vector<std::pair<float, std::string>> out;
+        for (auto& e : v) {
+            bool keep = true;
+            for (auto& u : out) {
+                if (std::fabs(e.first - u.first) <= 0.4f && e.second == u.second) {
+                    keep = false; break;
+                }
             }
+            if (keep) out.push_back(e);
         }
-        if (should_push) {
-            unique_cps_percents.push_back(percent);
-        }
-    }
+        v.swap(out);
+    };
+    dedupe(cps_over_percents);
+    dedupe(cps_over_percents_p2);
 
-    for (auto& percent : cps_percents_p2) {
-        bool should_push = true;
-        for (auto& unique_percent : unique_cps_percents_p2) {
-            if (std::abs(percent.first - unique_percent.first) <= 0.4) {
-                should_push = false;
-            }
-        }
-        if (should_push) {
-            unique_cps_percents_p2.push_back(percent);
-        }
-    }
-
-    cps_over_percents = unique_cps_percents;
-    cps_over_percents_p2 = unique_cps_percents_p2;
-
-    // The maximum CPS as a string
-    return highest_cps;
-
+    // Return the single highest across both players, formatted like before.
+    // (They’re enforced independently; this string is just a display convenience.)
+    if (best_cps_p2 > best_cps_p1) return best_str_p2;
+    return best_str_p1;
 }
 
 int Logic::find_closest_input() {
@@ -901,7 +877,7 @@ void Logic::handle_checkpoint_data() {
                                 //obj->m_bBlackChild = nodeData.m_bBlackChild;
                                 //obj->m_bUnkOutlineMaybe = nodeData.m_bUnkOutlineMaybe;
                                 //obj->m_fBlackChildOpacity = nodeData.m_fBlackChildOpacity;
-                                /*obj->field_21C = nodeData.field_21C;
+                                /*obj->field_23 = nodeData.field_23;
                                 obj->m_bEditor = nodeData.m_bEditor;
                                 obj->m_bGroupDisabled = nodeData.m_bGroupDisabled;
                                 obj->m_bColourOnTop = nodeData.m_bColourOnTop;

@@ -775,6 +775,8 @@ public:
 	bool click_inverse_p1 = false;
 	bool click_inverse_p2 = false;
 
+	bool forceFrameAdvance = false;
+	
 	void remove_inputs(unsigned frame, bool player_1);
 
 	void convert_file(const std::string& filename, bool is_path);

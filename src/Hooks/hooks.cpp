@@ -22,7 +22,7 @@
 HitboxNode* drawer;
 
 void Hooks::init_hooks() {
-    /*MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x1fb780), PlayLayer::init_h, reinterpret_cast<void**>(&PlayLayer::init));
+    MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x1fb780), PlayLayer::init_h, reinterpret_cast<void**>(&PlayLayer::init));
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x2029C0), PlayLayer::update_h, reinterpret_cast<void**>(&PlayLayer::update));
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x111500), PlayLayer::pushButton_h, reinterpret_cast<void**>(&PlayLayer::pushButton));
     MH_CreateHook(reinterpret_cast<void*>(gd::base + 0x111660), PlayLayer::releaseButton_h, reinterpret_cast<void**>(&PlayLayer::releaseButton));
@@ -63,9 +63,9 @@ void Hooks::init_hooks() {
 
     HOOK(0x205460, PlayLayer::updateVisibility)
 
-        MH_CreateHook(GetProcAddress(GetModuleHandleA("libcocos2d.dll"), "?update@CCScheduler@cocos2d@@UAEXM@Z"), CCScheduler_update_h, reinterpret_cast<void**>(&CCScheduler_update));
+    MH_CreateHook(GetProcAddress(GetModuleHandleA("libcocos2d.dll"), "?update@CCScheduler@cocos2d@@UAEXM@Z"), CCScheduler_update_h, reinterpret_cast<void**>(&CCScheduler_update));
 
-    MH_EnableHook(MH_ALL_HOOKS);*/
+    MH_EnableHook(MH_ALL_HOOKS);
 }
 
 void patch(void* loc, std::vector<std::uint8_t> bytes) { // skidded from replaybot
@@ -155,7 +155,9 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
     if (logic.recorder.m_recording && play_layer && !play_layer->m_bIsPaused)
         logic.recorder.handle_recording(play_layer, dt);
 
-    if (logic.frame_advance) return;
+    if (logic.frame_advance) {
+        return;
+    }
 
     if (GUI::get().change_display_fps) {
         CCDirector::sharedDirector()->setAnimationInterval(1.f / GUI::get().input_fps);
@@ -260,14 +262,14 @@ void __fastcall Hooks::CCKeyboardDispatcher_dispatchKeyboardMSG_h(CCKeyboardDisp
     if (down && gd::GameManager::sharedState()->getPlayLayer()) {
         auto advancing_key = Logic::get().keybinds.GetKeybind("advancing").key;
         if (advancing_key.has_value()) {
-            if (ImGui::IsKeyPressed(advancing_key.value())) {
-                Logic::get().start = std::chrono::steady_clock::now();
-                Logic::get().frame_advance = false;
-                bool old_real_time = Logic::get().real_time_mode;
-                Logic::get().real_time_mode = false;
+            if (key == advancing_key.value() && down) {
+                Logic::get().holding_frame_advance = true;
+                /*Logic::get().frame_advance = false;
                 Hooks::CCScheduler_update_h(gd::GameManager::sharedState()->getScheduler(), 0, 1.f / logic.fps);
-                Logic::get().frame_advance = true;
-                Logic::get().real_time_mode = old_real_time;
+                Logic::get().frame_advance = true;*/
+            }
+            else {
+                Logic::get().holding_frame_advance = false;
             }
         }
     }
