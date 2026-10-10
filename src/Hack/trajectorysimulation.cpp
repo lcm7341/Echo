@@ -2,12 +2,15 @@
 #include "hacks.h"
 #include "../Hooks/hooks.hpp"
 
-static HacksStr hacks = Logic::get().hacks;
+static HacksStr& hacks = Logic::get().hacks;
 
 void TrajectorySimulation::createPlayersForSimulation()
 {
+	m_pPlayer1ForSimulation = nullptr;
+	m_pPlayer2ForSimulation = nullptr;
+
 	auto playLayer = gd::GameManager::sharedState()->getPlayLayer();
-	if (!playLayer)
+	if (!playLayer || !hacks.trajectory)
 		return;
 
 	m_pPlayer1ForSimulation = gd::PlayerObject::create(1, 1, 0);

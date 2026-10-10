@@ -183,7 +183,7 @@ double evalExpression(const std::vector<std::string>& tokens, std::map<std::stri
 	return result;
 }
 
-std::string echo_version = "Echo v1.2";
+std::string echo_version = "Echo v1.3";
 
 int getRandomInt(int N) {
 	// Seed the random number generator with current time
@@ -227,6 +227,8 @@ do { \
 int g_has_imported = false; // ffs
 int g_has_placed_positions = false; // ffs
 
+static bool g_advance_button_held = false;
+
 void delay(int milliseconds) {
 	auto start = std::chrono::steady_clock::now();
 	auto end = start + std::chrono::milliseconds(milliseconds);
@@ -259,18 +261,32 @@ void GUI::draw() {
 		Logic::get().total_recording_time += std::chrono::duration<double>(frame_time);
 	}
 
+	if (!show_window)
+		g_advance_button_held = false;
+
+	if (Logic::get().start != std::chrono::steady_clock::time_point() && !g_advance_button_held) {
+		auto advancing_key = Logic::get().keybinds.GetKeybind("advancing").key;
+		if (!advancing_key.has_value() || !ImGui::IsKeyDown(advancing_key.value())) {
+			Logic::get().start = std::chrono::steady_clock::time_point();
+			Logic::get().holding_frame_advance = false;
+		}
+	}
+
 	auto end = std::chrono::steady_clock::now();
 	auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - Logic::get().start);
 
 	if (PLAYLAYER) {
+		static std::chrono::steady_clock::time_point last_held_step;
 		if (Logic::get().start != std::chrono::steady_clock::time_point() && duration.count() >= Logic::get().frame_advance_hold_duration * Logic::get().speedhack) {
-			Logic::get().frame_advance = false;
-			bool old_real_time = Logic::get().real_time_mode;
-			Logic::get().real_time_mode = false;
-			Hooks::CCScheduler_update_h(gd::GameManager::sharedState()->getScheduler(), 0, 1.f / Logic::get().fps);
-			Logic::get().frame_advance = true;
-			Logic::get().real_time_mode = old_real_time;
-			delay(Logic::get().frame_advance_delay);
+			if (end - last_held_step >= std::chrono::milliseconds(Logic::get().frame_advance_delay)) {
+				last_held_step = end;
+				Logic::get().frame_advance = false;
+				bool old_real_time = Logic::get().real_time_mode;
+				Logic::get().real_time_mode = false;
+				Hooks::CCScheduler_update_h(gd::GameManager::sharedState()->getScheduler(), 0, 1.f / Logic::get().fps);
+				Logic::get().frame_advance = true;
+				Logic::get().real_time_mode = old_real_time;
+			}
 			Logic::get().holding_frame_advance = true;
 		}
 		else {
@@ -330,7 +346,7 @@ void GUI::draw() {
 				try {
 					import_theme(ImGuiFileDialog::Instance()->GetFilePathName());
 				}
-				catch (std::runtime_error& e) {
+				catch (std::exception& e) {
 					printf("%s", e.what());
 				}
 			}
@@ -1062,23 +1078,29 @@ void GUI::editor() {
 		}
 		else if (plaintext_editing) {
 			selectedInput = -1;
-			snprintf(inputTextBuffer, sizeof(inputTextBuffer), "%s", ss.str().c_str());
-			if (ImGui::InputTextMultiline("##InputConfig", inputTextBuffer, sizeof(inputTextBuffer), ImVec2(-1.f, -1.f), ImGuiInputTextFlags_AllowTabInput)) {
-				std::stringstream ss(inputTextBuffer);
+			static std::string plaintext_buffer;
+			static bool plaintext_active = false;
+			if (!plaintext_active)
+				plaintext_buffer = ss.str();
+			bool plaintext_changed = ImGui::InputTextMultiline("##InputConfig", &plaintext_buffer, ImVec2(-1.f, -1.f), ImGuiInputTextFlags_AllowTabInput);
+			plaintext_active = ImGui::IsItemActive();
+			if (plaintext_changed) {
+				std::stringstream ss(plaintext_buffer);
 				std::string line;
 				std::vector<Frame> newInputs;
 
 				if (std::getline(ss, line)) {
-					logic.fps = std::stoi(line);
+					float typed_fps = std::strtof(line.c_str(), nullptr);
+					if (typed_fps > 0.f)
+						logic.fps = typed_fps;
 				}
 
 				while (std::getline(ss, line)) {
 					std::stringstream lineSS(line);
-					Frame input;
+					Frame input{};
 
-					lineSS >> input.number >> input.pressingDown >> input.isPlayer2;
-
-					newInputs.push_back(input);
+					if (lineSS >> input.number >> input.pressingDown >> input.isPlayer2)
+						newInputs.push_back(input);
 				}
 
 				inputs = std::move(newInputs);
@@ -1159,6 +1181,8 @@ void GUI::editor() {
 				selectedInput = inputs.size() - 1;
 			}
 			else {
+				if (selectedInput < 0 || selectedInput > static_cast<int>(inputs.size()))
+					selectedInput = inputs.size();
 				inputs.insert(inputs.begin() + selectedInput, Frame());
 			}
 			newInput = Frame();
@@ -1170,8 +1194,8 @@ void GUI::editor() {
 
 		if (ImGui::Button("Delete Input", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
 			inputs.erase(inputs.begin() + selectedInput);
-			if (selectedInput >= inputs.size()) selectedInput = inputs.size() - 1;
-			newInput = inputs[selectedInput];
+			if (selectedInput >= inputs.size()) selectedInput = static_cast<int>(inputs.size()) - 1;
+			newInput = selectedInput >= 0 ? inputs[selectedInput] : Frame();
 		}
 
 		if (!(selectedInput >= 0 && selectedInput < inputs.size())) ImGui::EndDisabled();
@@ -1456,7 +1480,10 @@ void GUI::sequential_replay() {
 		static int all_offset = 0;
 
 		ImGui::PushItemWidth(175);
-		if (ImGui::InputInt("Offset All", &all_offset)) {
+		ImGui::InputInt("Offset All", &all_offset);
+		if (all_offset < 0) all_offset = 0;
+		ImGui::SameLine();
+		if (ImGui::Button("Apply###apply_offset_all") && all_offset > 0) {
 			for (auto& replay : logic.replays) {
 				replay.max_frame_offset = all_offset;
 				for (auto& input : replay.actions) {
@@ -1516,6 +1543,12 @@ void GUI::sequential_replay() {
 				//HACK: idk if i'm allowed to  reformat half of the stuff in logic so i'll just do this.
 				//		if i am lmk bc it's kinda messy rn
 				std::vector<Frame> old_actions = logic.get_inputs();
+				const State old_state = logic.get_state();
+				const float old_fps = logic.fps;
+				const auto old_format = logic.format;
+				const float old_end_portal_position = logic.end_portal_position;
+				const auto old_recording_time = logic.total_recording_time;
+				const int old_attempt_count = logic.total_attempt_count;
 
 				logic.get_inputs().clear();
 
@@ -1534,6 +1567,12 @@ void GUI::sequential_replay() {
 				}
 
 				logic.get_inputs() = old_actions;
+				logic.set_state(old_state);
+				logic.fps = old_fps;
+				logic.format = old_format;
+				logic.end_portal_position = old_end_portal_position;
+				logic.total_recording_time = old_recording_time;
+				logic.total_attempt_count = old_attempt_count;
 				//HACK END
 
 				replay_name = {};
@@ -1628,7 +1667,7 @@ void GUI::tools() {
 				options[current_option]->export_to(filename);
 				logic.conversion_message = "Success! Exported " + filename + " as a " + options[current_option]->get_type_filter() + " file";
 			}
-			catch (std::runtime_error& e) {
+			catch (std::exception& e) {
 				logic.conversion_message = "Error! Could not export as " + options[current_option]->get_type_filter();
 			}
 		}
@@ -1636,8 +1675,9 @@ void GUI::tools() {
 		ImGui::Checkbox("Auto-Export to Location", &logic.export_to_bot_location); ImGui::SameLine();
 
 		if (ImGui::Button("Batch Import", ImVec2(ImGui::GetContentRegionAvail().x * (docked ? 0.9 : 0.7), 0.f))) {
-			auto& old_inputs = logic.inputs;
-			for (const auto& entry : fs::directory_iterator(options[current_option]->get_directory())) {
+			auto old_inputs = logic.inputs;
+			std::error_code dir_error;
+			for (const auto& entry : fs::directory_iterator(options[current_option]->get_directory(), dir_error)) {
 				try {
 					if (entry.is_regular_file() && options[current_option]->get_type_filter().find(entry.path().extension().string()) != std::string::npos) {
 						options[current_option]->import(entry.path().string());
@@ -1650,7 +1690,9 @@ void GUI::tools() {
 					logic.conversion_message = e.what();
 				}
 			}
-			logic.inputs = old_inputs;
+			if (dir_error)
+				logic.conversion_message = "Error! Could not open " + options[current_option]->get_directory();
+			logic.inputs = std::move(old_inputs);
 		} ImGui::SameLine();
 
 		HelpMarker("Batch Import automatically converts every macro of a certain type (e.g. TASBot, MHR) to Echo.\nThis feature prevents overwriting old macros.\nDepending on the amount and size of the macros, it may take a while.");
@@ -1668,7 +1710,7 @@ void GUI::tools() {
 					if (logic.conversion_message == "")
 						logic.conversion_message = "Success! Imported replay as a " + current_option + " file";
 				}
-				catch (std::runtime_error& e) {
+				catch (std::exception& e) {
 					logic.conversion_message = "Error! Could not import " + ImGuiFileDialog::Instance()->GetFilePathName();
 				}
 				CCDirector::sharedDirector()->setAnimationInterval(1.f / GUI::get().input_fps);
@@ -1693,6 +1735,7 @@ void GUI::tools() {
 				logic.inputs.clear();
 				auto recording_time = logic.total_recording_time;
 				int attempts = logic.total_attempt_count;
+				const State state_before_merge = logic.get_state();
 
 				std::string suffix = ".echo";
 				if (filePathName.size() >= suffix.size() && filePathName.rfind(suffix) == (filePathName.size() - suffix.size()))
@@ -1703,6 +1746,7 @@ void GUI::tools() {
 				logic.inputs.insert(logic.inputs.end(), before_inputs.begin(), before_inputs.end());
 
 				logic.sort_inputs();
+				logic.set_state(state_before_merge);
 				logic.total_recording_time += recording_time;
 				logic.total_attempt_count += attempts;
 			}
@@ -1994,14 +2038,19 @@ void GUI::tools() {
 
 		CHECK_KEYBIND("frameAdvance");
 
-		if (ImGui::Button("Advance", ImVec2(150, 0))) {
+		ImGui::Button("Advance", ImVec2(150, 0));
+		if (ImGui::IsItemActivated()) {
+			g_advance_button_held = true;
 			if (logic.start == std::chrono::steady_clock::time_point())
 				logic.start = std::chrono::steady_clock::now();
 			logic.frame_advance = false;
 			Hooks::CCScheduler_update_h(gd::GameManager::sharedState()->getScheduler(), 0, 1.f / logic.fps);
 			logic.frame_advance = true;
 		}
-		else logic.start = std::chrono::steady_clock::time_point();
+		else if (g_advance_button_held && !ImGui::IsItemActive()) {
+			g_advance_button_held = false;
+			logic.start = std::chrono::steady_clock::time_point();
+		}
 
 		CHECK_KEYBIND("advancing");
 
@@ -2804,8 +2853,6 @@ void GUI::main() {
 					int val = logic.cps_over_percents[i].first;
 					std::string rule = logic.cps_over_percents[i].second;
 
-					printf("%s\n", rule.c_str());
-
 					ImGui::Text("%i", val);
 					ImGui::SameLine();
 					ImGui::Text("#%s", rule.c_str());
@@ -2999,7 +3046,7 @@ void GUI::main() {
 			if (ImGui::Button("Yes", buttonSize)) {
 				logic.get_inputs().clear();
 				logic.total_recording_time = std::chrono::duration<double>::zero();
-				logic.total_attempt_count = 0;
+				logic.total_attempt_count = 1;
 				ImGui::CloseCurrentPopup();
 			}
 
@@ -3068,7 +3115,6 @@ void GUI::main() {
 
 
 				std::string suffix = ".json";
-				logic.inputs.clear();
 				if (filePathName.size() >= suffix.size() && filePathName.rfind(suffix) == (filePathName.size() - suffix.size()))
 					logic.read_file_json(filePathName, true);
 				else
@@ -3121,7 +3167,12 @@ void readBinds() {
 		return;
 	}
 	json j;
-	file >> j;
+	try {
+		file >> j;
+	}
+	catch (const std::exception&) {
+		return;
+	}
 
 	if (j.contains("keybinds")) {
 		const nlohmann::json& jsonKeybinds = j["keybinds"];
@@ -3130,14 +3181,16 @@ void readBinds() {
 			const std::string& action = it.key();
 			const nlohmann::json& jsonKeybind = it.value();
 
-			Keybind& keybind = logic.keybinds.bindings[action].first;
+			auto binding = logic.keybinds.bindings.find(action);
+			if (binding == logic.keybinds.bindings.end() || !binding->second.second)
+				continue;
 
-			if (jsonKeybind.contains("key")) {
-				keybind.SetKey(jsonKeybind["key"].get<int>());
-				keybind.ctrl = jsonKeybind["ctrl"].get<bool>();
-				keybind.shift = jsonKeybind["shift"].get<bool>();
-				keybind.alt = jsonKeybind["alt"].get<bool>();
-				Logic::get().keybinds.GetKeybind(action).SetKey(keybind.key.value(), keybind.ctrl, keybind.shift, keybind.alt);
+			if (jsonKeybind.contains("key") && jsonKeybind["key"].is_number_integer()) {
+				binding->second.first.SetKey(
+					jsonKeybind["key"].get<int>(),
+					jsonKeybind.value("ctrl", false),
+					jsonKeybind.value("shift", false),
+					jsonKeybind.value("alt", false));
 			}
 		}
 	}

@@ -105,4 +105,9 @@ namespace Clickbot
         if (listing.files.empty()) return "";
         return listing.files[std::uniform_int_distribution<size_t>(0, listing.files.size() - 1)(rng)];
     }
+
+    bool hasSounds(const std::string& path, const std::string& folder)
+    {
+        return !pickRandomFile(path, folder).empty();
+    }
 }

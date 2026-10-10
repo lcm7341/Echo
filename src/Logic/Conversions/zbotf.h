@@ -35,6 +35,9 @@ public:
             file.read(reinterpret_cast<char*>(&hold), sizeof(hold));
             file.read(reinterpret_cast<char*>(&player1), sizeof(player1));
 
+
+            if (!file)
+                break;
             actions.push_back({ x, hold == 0x31, player1 == 0x31 });
         }
 

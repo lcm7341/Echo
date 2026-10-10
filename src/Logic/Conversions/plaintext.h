@@ -7,19 +7,19 @@ public:
     void import(const std::string& filename) override {
         auto& logic = Logic::get();
         std::ifstream file(filename);
-        logic.inputs.clear();
 
         // Read fps from the first line
-        file >> logic.fps;
+        float fps = 0.f;
+        if (!file.is_open() || !(file >> fps) || !(fps > 0.f))
+            throw std::runtime_error("Invalid plain text macro");
 
-        while (!file.eof()) {
-            Frame input;
-            int pressingDown, isPlayer2;
+        logic.inputs.clear();
+        logic.fps = fps;
 
-            file >> input.number
-                >> pressingDown
-                >> isPlayer2;
+        Frame input{};
+        int pressingDown = 0, isPlayer2 = 0;
 
+        while (file >> input.number >> pressingDown >> isPlayer2) {
             input.pressingDown = pressingDown != 0;
             input.isPlayer2 = isPlayer2 != 0;
 

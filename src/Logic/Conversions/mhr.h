@@ -18,22 +18,26 @@ public:
         auto& logic = Logic::get();
 
         std::ifstream file(filename, std::ios::binary);
+        if (!file.is_open())
+            throw std::runtime_error("Could not open MHR file");
 
         // Read the header
-        std::string header;
-        file.read(reinterpret_cast<char*>(&header), 8);
+        char header[8] = {};
+        file.read(header, 8);
 
         // Read the meta size
         int meta_size = 0;
         file.read(reinterpret_cast<char*>(&meta_size), 4);
+        if (!file || meta_size < 4 || meta_size > 1024 * 1024)
+            throw std::runtime_error("Invalid MHR file");
 
         // Read the meta
         std::vector<char> meta(meta_size);
         file.read(meta.data(), meta_size);
 
         // Read the reserved
-        std::string reserved;
-        file.read(reinterpret_cast<char*>(&reserved), 8);
+        char reserved[8] = {};
+        file.read(reserved, 8);
 
         // Read the event size
         int event_size = 0;
@@ -43,18 +47,13 @@ public:
         int event_count = 0;
         file.read(reinterpret_cast<char*>(&event_count), 4);
 
+        if (!file || event_size != sizeof(Event) || event_count < 0 || event_count > 50000000)
+            throw std::runtime_error("Invalid MHR file");
+
         // Read the events
         std::vector<Event> events(event_count);
-        file.read(reinterpret_cast<char*>(events.data()), event_size * event_count);
-
-        // Seek to the footer position
-        file.seekg(0, std::ios::end);
-        std::ifstream::pos_type fileSize = file.tellg();
-        file.seekg(fileSize - static_cast<std::ifstream::pos_type>(sizeof(uint64_t)));
-
-        // Read the footer
-        uint64_t footer = 0;
-        file.read(reinterpret_cast<char*>(&footer), sizeof(footer));
+        file.read(reinterpret_cast<char*>(events.data()), static_cast<std::streamsize>(event_size) * event_count);
+        events.resize(static_cast<size_t>(file.gcount()) / sizeof(Event));
 
         // Close the file
         file.close();
@@ -64,6 +63,9 @@ public:
         for (int i = 3; i >= 0; i--) {
             fps = (fps << 8) | static_cast<unsigned char>(meta[i]);
         }
+
+        if (fps <= 0)
+            throw std::runtime_error("Invalid MHR file");
 
         logic.inputs.clear();
         logic.fps = fps;
@@ -96,8 +98,8 @@ public:
         int fps = (int)logic.fps;
         file.write(reinterpret_cast<const char*>(&fps), 4);
 
-        std::string reserved = "ABSOLUTE";
-        file.write(reinterpret_cast<const char*>(&reserved), 8);
+        const char reserved[8] = { 'A', 'B', 'S', 'O', 'L', 'U', 'T', 'E' };
+        file.write(reserved, 8);
 
         int event_size = 32;
         file.write(reinterpret_cast<const char*>(&event_size), 4);
@@ -105,9 +107,7 @@ public:
         int event_count = logic.inputs.size();
         file.write(reinterpret_cast<const char*>(&event_count), 4);
 
-        std::vector<Event> events(event_count);
         for (const auto& input : logic.inputs) {
-            events.push_back({ 2, input.pressingDown, input.isPlayer2, input.number, input.xPosition, input.yPosition, input.yVelocity, input.rotation });
             wchar_t type = 2;
             file.write(reinterpret_cast<const char*>(&type), 2);
             file.write(reinterpret_cast<const char*>(&input.pressingDown), 1);
@@ -116,7 +116,8 @@ public:
             file.write(reinterpret_cast<const char*>(&input.xPosition), 4);
             file.write(reinterpret_cast<const char*>(&input.yPosition), 4);
             file.write(reinterpret_cast<const char*>(&input.yVelocity), 8);
-            file.write(reinterpret_cast<const char*>(&input.rotation), 8);
+            double rotation = input.rotation;
+            file.write(reinterpret_cast<const char*>(&rotation), 8);
         }
 
         logic.conversion_message = ""; // Clearing

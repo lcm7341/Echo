@@ -16,9 +16,16 @@ using json = nlohmann::json;
 
 int Logic::get_frame() {
     if (PLAYLAYER) {
-        return round((PLAYLAYER->m_time * get_fps()) - get_removed());
+        if (in_update && PLAYLAYER->m_time != update_start_time)
+            return frame_counter + 1;
+        return frame_counter;
     }
     return 0;
+}
+
+void Logic::sync_frame_to_time() {
+    if (PLAYLAYER)
+        frame_counter = round(PLAYLAYER->m_time * get_fps());
 }
 
 double Logic::get_time() {
@@ -43,6 +50,149 @@ void Logic::record_input(bool down, bool player1) {
             add_input({ get_frame(), down, !player1, PLAYLAYER->m_pPlayer2->getPositionY(), PLAYLAYER->m_pPlayer2->getPositionX(), PLAYLAYER->m_pPlayer2->getRotation(), PLAYLAYER->m_pPlayer2->m_yAccel, PLAYLAYER->m_pPlayer2->m_xAccel });
         }
     }
+}
+
+namespace {
+    struct RotateByAccess : cocos2d::CCRotateBy {
+        static void read(cocos2d::CCRotateBy* action, SavedRotation& saved) {
+            auto self = static_cast<RotateByAccess*>(action);
+            saved.duration = self->m_fDuration;
+            saved.angleX = self->m_fAngleX;
+            saved.angleY = self->m_fAngleY;
+            saved.startX = self->m_fStartAngleX;
+            saved.startY = self->m_fStartAngleY;
+            saved.elapsed = self->m_elapsed;
+            saved.firstTick = self->m_bFirstTick;
+        }
+        static void write(cocos2d::CCRotateBy* action, const SavedRotation& saved) {
+            auto self = static_cast<RotateByAccess*>(action);
+            self->m_fAngleY = saved.angleY;
+            self->m_fStartAngleX = saved.startX;
+            self->m_fStartAngleY = saved.startY;
+            self->m_elapsed = saved.elapsed;
+            self->m_bFirstTick = saved.firstTick;
+        }
+    };
+
+    struct EaseOutAccess : cocos2d::CCEaseOut {
+        static void read(cocos2d::CCEaseOut* action, SavedRotation& saved) {
+            auto self = static_cast<EaseOutAccess*>(action);
+            saved.rate = self->m_fRate;
+            saved.outerElapsed = self->m_elapsed;
+            saved.outerFirstTick = self->m_bFirstTick;
+        }
+        static void write(cocos2d::CCEaseOut* action, const SavedRotation& saved) {
+            auto self = static_cast<EaseOutAccess*>(action);
+            self->m_elapsed = saved.outerElapsed;
+            self->m_bFirstTick = saved.outerFirstTick;
+        }
+    };
+}
+
+SavedRotation capture_rotation(cocos2d::CCNode* node, int tag) {
+    SavedRotation saved;
+    if (!node) return saved;
+
+    cocos2d::CCAction* action = node->getActionByTag(tag);
+    if (!action) return saved;
+
+    if (auto rotate = dynamic_cast<cocos2d::CCRotateBy*>(action)) {
+        saved.kind = 1;
+        RotateByAccess::read(rotate, saved);
+    }
+    else if (auto forever = dynamic_cast<cocos2d::CCRepeatForever*>(action)) {
+        if (auto rotate = dynamic_cast<cocos2d::CCRotateBy*>(forever->getInnerAction())) {
+            saved.kind = 2;
+            RotateByAccess::read(rotate, saved);
+        }
+    }
+    else if (auto ease = dynamic_cast<cocos2d::CCEaseOut*>(action)) {
+        if (auto rotate = dynamic_cast<cocos2d::CCRotateBy*>(ease->getInnerAction())) {
+            saved.kind = 3;
+            RotateByAccess::read(rotate, saved);
+            EaseOutAccess::read(ease, saved);
+        }
+    }
+
+    return saved;
+}
+
+void restore_rotation(cocos2d::CCNode* node, int tag, const SavedRotation& saved) {
+    if (!node) return;
+
+    node->stopActionByTag(tag);
+    if (saved.kind == 0) return;
+
+    cocos2d::CCRotateBy* rotate = cocos2d::CCRotateBy::create(saved.duration, saved.angleX);
+    if (!rotate) return;
+
+    cocos2d::CCAction* action = rotate;
+    cocos2d::CCEaseOut* ease = nullptr;
+    if (saved.kind == 2)
+        action = cocos2d::CCRepeatForever::create(rotate);
+    else if (saved.kind == 3)
+        action = ease = cocos2d::CCEaseOut::create(rotate, saved.rate);
+    if (!action) return;
+
+    action->setTag(tag);
+    node->runAction(action);
+
+    RotateByAccess::write(rotate, saved);
+    if (ease)
+        EaseOutAccess::write(ease, saved);
+}
+
+void Logic::record_player_input(bool down, bool isPlayer2) {
+    if (!is_recording() || !PLAYLAYER) return;
+
+    auto player = isPlayer2 ? PLAYLAYER->m_pPlayer2 : PLAYLAYER->m_pPlayer1;
+    if (!player) return;
+
+    add_input({ get_frame(), down, isPlayer2, player->getPositionY(), player->getPositionX(), player->getRotation(), player->m_yAccel, player->m_xAccel });
+}
+
+void Logic::trim_recorded_inputs(int frame, bool isPlayer2, int keep_at_frame) {
+    std::vector<Frame> kept;
+    kept.reserve(inputs.size());
+
+    int seen_at_frame = 0;
+    for (const Frame& input : inputs) {
+        if (input.isPlayer2 == isPlayer2) {
+            if (input.number > frame)
+                continue;
+            if (input.number == frame && ++seen_at_frame > keep_at_frame)
+                continue;
+        }
+        kept.push_back(input);
+    }
+
+    inputs = std::move(kept);
+}
+
+int Logic::count_inputs_at(int frame, bool isPlayer2, size_t limit) {
+    int count = 0;
+    for (size_t i = 0; i < inputs.size() && i < limit; i++) {
+        if (inputs[i].number == frame && inputs[i].isPlayer2 == isPlayer2)
+            count++;
+    }
+    return count;
+}
+
+int Logic::find_replay_pos_after_checkpoint(int frame, int played_p1, int played_p2) {
+    int seen_p1 = 0;
+    int seen_p2 = 0;
+
+    for (size_t i = 0; i < inputs.size(); i++) {
+        if (inputs[i].number > frame)
+            return static_cast<int>(i);
+        if (inputs[i].number == frame) {
+            int& seen = inputs[i].isPlayer2 ? seen_p2 : seen_p1;
+            if (++seen > (inputs[i].isPlayer2 ? played_p2 : played_p1))
+                return static_cast<int>(i);
+        }
+    }
+
+    return static_cast<int>(inputs.size());
 }
 
 void Logic::play_input(Frame& input) {
@@ -255,32 +405,15 @@ std::string Logic::highest_cps() {
     return best_str_p1;
 }
 
-int Logic::find_closest_input() {
-    if (inputs.empty()) {
-        return 0;
+int Logic::find_closest_input(bool include_current_frame) {
+    const int current_frame = get_frame();
+
+    for (size_t i = 0; i < inputs.size(); i++) {
+        if (inputs[i].number > current_frame || (include_current_frame && inputs[i].number == current_frame))
+            return static_cast<int>(i);
     }
 
-    unsigned current_frame = get_frame();
-    auto closest_it = inputs.end();
-    for (auto it = inputs.begin(); it != inputs.end(); ++it) {
-        if (it->number > current_frame) {
-            closest_it = it;
-            break;
-        }
-    }
-
-    if (closest_it == inputs.end()) {
-        // No input frame found above the current frame
-        // Select the last input frame
-        closest_it = std::prev(inputs.end());
-    }
-    else if (closest_it != inputs.begin()) {
-        // If the closest input is not the first frame,
-        // move the iterator back to select the frame right before it
-        --closest_it;
-    }
-
-    return std::distance(inputs.begin(), closest_it);
+    return static_cast<int>(inputs.size());
 }
 
 
@@ -311,21 +444,13 @@ std::string getRandomWavFile(const std::vector<std::string>& wavFiles) {
 bool Logic::play_macro() {
     if (is_playing()) {
         auto& inputs = get_inputs();
-        unsigned current_frame = get_frame()/* - offset*/;
+        const int current_frame = get_frame()/* - offset*/;
         bool ret = false;
 
         while (replay_pos < inputs.size() && inputs[replay_pos].number <= current_frame) {
             auto& input = inputs[replay_pos];
 
-            auto player = input.isPlayer2 ? PLAYLAYER->m_pPlayer2 : PLAYLAYER->m_pPlayer1;
-            auto gamemode = CheckpointData::GetGamemode(player);
-            bool passes = gamemode != gd::kGamemodeBall && gamemode != gd::kGamemodeSpider && gamemode != gd::kGamemodeUfo && gamemode != gd::kGamemodeCube;
-
-            if (input.number == current_frame) {
-                if (input.number == current_frame) {
-                    play_input(input);
-                }
-            }
+            play_input(input);
             ++replay_pos;
             ret = true;
         }
@@ -361,34 +486,16 @@ void Logic::set_replay_pos(unsigned idx) {
 #define w_b(var) file.write(reinterpret_cast<char*>(&var), sizeof(var));
 #define r_b(var) file.read(reinterpret_cast<char*>(&var), sizeof(var));
 
-int extractLastNumber(const std::string& str) {
-    std::regex regex("\\d+");
-    std::sregex_iterator iter(str.begin(), str.end(), regex);
-    std::sregex_iterator end;
+static const size_t kFormatHeaderSize = 24;
 
-    int lastNumber = 0;
-    for (; iter != end; ++iter) {
-        lastNumber = std::stoi(iter->str());
-    }
-
-    return lastNumber;
-}
-
-std::string generateNewString(const std::string& input, int newNumber) {
-    std::string newString = input;
-    int lastNumber = extractLastNumber(newString);
-
-    if (lastNumber > 0) {
-        size_t pos = newString.find_last_of(std::to_string(lastNumber));
-        newString.replace(pos, std::to_string(lastNumber).length(), std::to_string(newNumber));
-    }
-
-    size_t hashPos = newString.find('#');
-    if (hashPos != std::string::npos) {
-        newString.replace(hashPos, 1, std::to_string(newNumber));
-    }
-
-    return newString;
+static void write_format_header(std::ofstream& file, const std::string& name) {
+    char header[kFormatHeaderSize] = {};
+    const uint32_t length = static_cast<uint32_t>(min(name.size(), size_t(15)));
+    const uint32_t capacity = 15;
+    memcpy(header, name.data(), length);
+    memcpy(header + 16, &length, sizeof(length));
+    memcpy(header + 20, &capacity, sizeof(capacity));
+    file.write(header, sizeof(header));
 }
 
 std::pair<std::string, std::string> generateNewFileName(const std::string& fileName, std::string ext, bool json = false) {
@@ -398,38 +505,48 @@ std::pair<std::string, std::string> generateNewFileName(const std::string& fileN
     std::string dir = json ? ".echo\\converted\\" : ".echo\\replays\\";
     std::string baseName = fs::path(fileName).stem().string();
     if (json) baseName = fs::path(fileName).stem().stem().string();
-    std::string extension = fs::path(fileName).extension().string();
 
-    if (rename_format.empty()) {
-        std::string place = dir;
-        place += baseName;
-        place += ext;
-        return { place, fs::path(place).stem().string() };;
-    }
+    auto result = [&](const std::string& name) -> std::pair<std::string, std::string> {
+        if (json)
+            return { name, fs::path(name).stem().stem().string() };
+        return { name, fs::path(name).stem().string() };
+    };
+
+    if (rename_format.empty())
+        return result(dir + baseName + ext);
 
     if (rename_format.find("#") == std::string::npos) {
         rename_format += "#";
     }
 
-    std::string newFileName = dir + baseName + ext;
-    int count = 1;
+    const size_t hashPos = rename_format.find('#');
+    const std::string prefix = rename_format.substr(0, hashPos);
+    const std::string suffix = rename_format.substr(hashPos + 1);
 
-    while (fs::exists(newFileName)) {
-        int lastNumber = extractLastNumber(newFileName);
-        if (lastNumber >= 1) {
-            int newNumber = lastNumber + 1;
-            newFileName = generateNewString(newFileName, newNumber);
-        }
-        else {
-            newFileName = dir + baseName + rename_format + ext;
-            newFileName = generateNewString(newFileName, 1);
+    std::string stem = baseName;
+    int number = 1;
+
+    if (baseName.size() > suffix.size() && baseName.compare(baseName.size() - suffix.size(), suffix.size(), suffix) == 0) {
+        const size_t digitsEnd = baseName.size() - suffix.size();
+        size_t digitsStart = digitsEnd;
+        while (digitsStart > 0 && std::isdigit(static_cast<unsigned char>(baseName[digitsStart - 1])))
+            --digitsStart;
+
+        const size_t digitCount = digitsEnd - digitsStart;
+        if (digitCount > 0 && digitCount <= 9 && digitsStart >= prefix.size() &&
+            baseName.compare(digitsStart - prefix.size(), prefix.size(), prefix) == 0) {
+            stem = baseName.substr(0, digitsStart - prefix.size());
+            number = std::stoi(baseName.substr(digitsStart, digitCount)) + 1;
         }
     }
 
-    if (json)
-        return { newFileName, fs::path(newFileName).stem().stem().string() };
+    std::string newFileName = dir + baseName + ext;
+    while (fs::exists(newFileName)) {
+        newFileName = dir + stem + prefix + std::to_string(number) + suffix + ext;
+        ++number;
+    }
 
-    return { newFileName, fs::path(newFileName).stem().string() };
+    return result(newFileName);
 }
 
 void Logic::write_file(const std::string& filename) {
@@ -458,7 +575,7 @@ void Logic::write_file(const std::string& filename) {
     else if (format == META_DBG)
         file_format = "METADBG";
 
-    w_b(file_format);
+    write_format_header(file, file_format);
 
     w_b(fps);
     w_b(end_portal_position);
@@ -494,95 +611,89 @@ void Logic::read_file(const std::string& filename, bool is_path = false) {
 
     std::string full_filename = is_path ? filename : dir + filename + ext;
 
-    std::ifstream temp_file(full_filename, std::ios::binary);
-    if (!temp_file.is_open()) {
-        error = "Error reading file '" + filename + "'!";
-        return;
-    }
-
-    std::string file_format;
-    char ch;
-    while (temp_file.get(ch)) {
-        if (!std::isalpha(ch)) {
-            break;
-        }
-        file_format += ch;
-    }
-
     std::ifstream file(full_filename, std::ios::binary);
     if (!file.is_open()) {
         error = "Error reading file '" + filename + "'!";
         return;
     }
-    error = "";
 
-    if (is_recording()) toggle_recording();
-    if (!is_playing()) toggle_playing();
+    char header[kFormatHeaderSize] = {};
+    file.read(header, sizeof(header));
 
-    inputs.clear();
+    std::string file_format;
+    for (size_t i = 0; i < 16 && std::isalpha(static_cast<unsigned char>(header[i])); i++)
+        file_format += header[i];
 
-
-    if (file_format == "DEBUG") {
-        r_b(file_format);
-        format = DEBUG;
-    }
-    else if (file_format == "SIMPLE") {
-        r_b(file_format);
-        format = SIMPLE;
-    }
-    else if (file_format == "META") {
-        r_b(file_format);
-        format = META;
-    }
-    else if (file_format == "METADBG") {
-        r_b(file_format);
-        format = META_DBG;
+    FORMATS new_format = format;
+    if (file_format == "DEBUG")
+        new_format = DEBUG;
+    else if (file_format == "SIMPLE")
+        new_format = SIMPLE;
+    else if (file_format == "META")
+        new_format = META;
+    else if (file_format == "METADBG")
+        new_format = META_DBG;
+    else {
+        file.clear();
+        file.seekg(0);
     }
 
-    r_b(fps);
-    r_b(end_portal_position);
+    float new_fps = 0.f;
+    float new_end_portal_position = 0.f;
+    r_b(new_fps);
+    r_b(new_end_portal_position);
 
-    if (format == META || format == META_DBG) {
-        double total_seconds = 0.f;
+    double total_seconds = total_recording_time.count();
+    int new_attempt_count = total_attempt_count;
+
+    if (new_format == META || new_format == META_DBG) {
         r_b(total_seconds);
-
-        // Assign the read value to total_time
-        total_recording_time = std::chrono::duration<double>(total_seconds);
 
         int total_clicks = 0;
         r_b(total_clicks);
-        r_b(total_attempt_count);
+        r_b(new_attempt_count);
     }
 
+    if (!file || !(new_fps > 0.f)) {
+        error = "Error reading file '" + filename + "'!";
+        return;
+    }
+    error = "";
+
+    std::vector<Frame> new_inputs;
+
     while (true) {
-        Frame input;
+        Frame input{};
         r_b(input.number);
         r_b(input.pressingDown);
         r_b(input.isPlayer2);
 
-        if (format == DEBUG || format == META_DBG) {
+        if (new_format == DEBUG || new_format == META_DBG) {
             r_b(input.xPosition);
             r_b(input.yVelocity);
             r_b(input.xVelocity);
             r_b(input.yPosition);
             r_b(input.rotation);
         }
-        else {
-            input.xPosition = 0;
-            input.yVelocity = 0;
-            input.xVelocity = 0;
-            input.yPosition = 0;
-            input.rotation = 0;
-        }
 
-        if (file.eof()) {
+        if (!file) {
             break;
         }
 
-        inputs.push_back(input);
+        new_inputs.push_back(input);
     }
 
     file.close();
+
+    if (is_recording()) toggle_recording();
+    if (!is_playing()) toggle_playing();
+
+    format = new_format;
+    fps = new_fps;
+    end_portal_position = new_end_portal_position;
+    total_recording_time = std::chrono::duration<double>(total_seconds);
+    total_attempt_count = new_attempt_count;
+    inputs = std::move(new_inputs);
 }
 
 void Logic::remove_inputs(unsigned frame, bool player_1) {
@@ -694,57 +805,72 @@ void Logic::read_file_json(const std::string& filename, bool is_path = false) {
     }
     error = "";
 
-    // Parse the JSON object from the file
-    json state;
-    file >> state;
+    FORMATS new_format = SIMPLE;
+    float new_fps = 0.f;
+    float new_end_portal_position = 0.f;
+    double total_seconds = total_recording_time.count();
+    int new_attempt_count = total_attempt_count;
+    std::vector<Frame> new_inputs;
 
-    if (state.contains("version") && !state["version"].is_null()) {
-        std::string version = state["version"];
-        if (version == "SIMPLE") format = SIMPLE;
-        if (version == "DEBUG") format = DEBUG;
-        if (version == "META") format = META;
-        if (version == "METADBG") format = META_DBG;
+    try {
+        // Parse the JSON object from the file
+        json state;
+        file >> state;
+
+        if (state.contains("version") && !state["version"].is_null()) {
+            std::string version = state["version"];
+            if (version == "SIMPLE") new_format = SIMPLE;
+            if (version == "DEBUG") new_format = DEBUG;
+            if (version == "META") new_format = META;
+            if (version == "METADBG") new_format = META_DBG;
+        }
+
+        // Extract the state data from the JSON object
+        new_fps = state.at("fps").get<double>();
+        new_end_portal_position = state.at("end_xpos").get<double>();
+
+        if (new_format == META || new_format == META_DBG) {
+            total_seconds = state.at("metadata").at("recording_time").get<double>();
+            new_attempt_count = state.at("metadata").at("total_attempts").get<int>();
+        }
+
+        // Extract the input data from the JSON object
+        for (auto& json_input : state.at("inputs")) {
+            Frame input{};
+            input.number = json_input.at("frame").get<int>();
+            input.pressingDown = json_input.at("holding").get<bool>();
+
+            if (json_input.contains("player_2"))
+                input.isPlayer2 = json_input["player_2"].get<bool>();
+
+            if (new_format == DEBUG || new_format == META_DBG) {
+                input.xPosition = json_input.at("x_position").get<float>();
+                input.yVelocity = json_input.at("y_vel").get<double>();
+                input.xVelocity = json_input.at("x_vel").get<double>();
+                input.rotation = json_input.at("rotation").get<float>();
+            }
+            new_inputs.push_back(input);
+        }
     }
-    else {
-        format = SIMPLE;
+    catch (const std::exception&) {
+        error = "Error reading file '" + filename + "'!";
+        return;
     }
+
+    if (!(new_fps > 0.f)) {
+        error = "Error reading file '" + filename + "'!";
+        return;
+    }
+    error = "";
 
     if (is_recording()) toggle_recording();
     if (!is_playing()) toggle_playing();
 
-    // Extract the state data from the JSON object
-    fps = state["fps"].get<double>();
-
-    end_portal_position = state["end_xpos"].get<double>();
-
-    if (format == META || format == META_DBG) {
-        double total_seconds = 0.f;
-        total_seconds = state["metadata"]["recording_time"];
-        total_attempt_count = state["metadata"]["total_attempts"];
-
-        total_recording_time = std::chrono::duration<double>(total_seconds);
-    }
-
-    inputs.clear();
-    // Extract the input data from the JSON object
-    for (auto& json_input : state["inputs"]) {
-        Frame input;
-        input.number = json_input["frame"].get<unsigned>();
-        input.pressingDown = json_input["holding"].get<bool>();
-
-        if (json_input.contains("player_2"))
-            input.isPlayer2 = json_input["player_2"].get<bool>();
-        else
-            input.isPlayer2 = false;
-
-        if (format == DEBUG || format == META_DBG) {
-            input.xPosition = json_input["x_position"].get<float>();
-            input.yVelocity = json_input["y_vel"].get<double>();
-            input.xVelocity = json_input["x_vel"].get<double>();
-            input.rotation = json_input["rotation"].get<float>();
-        }
-        inputs.push_back(input);
-    }
+    fps = new_fps;
+    end_portal_position = new_end_portal_position;
+    total_recording_time = std::chrono::duration<double>(total_seconds);
+    total_attempt_count = new_attempt_count;
+    inputs = std::move(new_inputs);
 
     format = META;
     file.close();

@@ -7,6 +7,7 @@ namespace Clickbot
 {
     std::string pickRandomFile(std::string path, std::string folder);
     FMOD::Sound* cachedSound(FMOD::System* system, const std::string& path);
+    bool hasSounds(const std::string& path, const std::string& folder);
 
     static bool inited = false;
 

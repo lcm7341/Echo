@@ -242,8 +242,54 @@ struct ObjectData {
 	FIELD(float, m_unk69C) \
 	FIELD(double, m_lastJumpTime) \
 	FIELD(double, m_unknown20) \
+	FIELD(double, m_gravity) \
+	FIELD(bool, m_unk610) \
+	FIELD(bool, m_hasJustHeld) \
+	FIELD(bool, m_hasJustHeld2) \
+	FIELD(int, m_unk618) \
+	FIELD(int, m_unk620) \
+	FIELD(cocos2d::CCPoint, m_unk64C) \
+	FIELD(cocos2d::CCPoint, m_lastPortalPos) \
+	FIELD(cocos2d::CCPoint, m_lastGroundedPos) \
+	FIELD(bool, m_unk674) \
+	FIELD(bool, m_unk675) \
+	FIELD(bool, m_unk684) \
+	FIELD(bool, m_unk685) \
+	FIELD(double, m_unk688) \
+	FIELD(gd::GameObject*, m_objectSnappedTo) \
+
+struct SavedRotation {
+	int kind = 0;
+	float duration = 0.f;
+	float angleX = 0.f;
+	float angleY = 0.f;
+	float startX = 0.f;
+	float startY = 0.f;
+	float elapsed = 0.f;
+	bool firstTick = true;
+	float rate = 1.f;
+	float outerElapsed = 0.f;
+	bool outerFirstTick = true;
+};
+
+SavedRotation capture_rotation(cocos2d::CCNode* node, int tag);
+void restore_rotation(cocos2d::CCNode* node, int tag, const SavedRotation& saved);
+
+struct RawPlayerRange {
+	size_t offset;
+	size_t size;
+};
+
+inline const RawPlayerRange kRawPlayerRanges[] = {
+	{ 0x424, 0x8 },
+	{ 0x588, 0x14 },
+	{ 0x5A0, 0x8 },
+	{ 0x6A4, 0x9E0 - 0x6A4 },
+};
 
 struct CheckpointData {
+	std::vector<unsigned char> raw;
+	SavedRotation rotations[2];
 #define PLFIELD(type, name) type name;
 #define FIELD(type, name) type name;
 	PLAYER_FIELDS
@@ -269,6 +315,13 @@ struct CheckpointData {
 		data.isHolding = player->m_isHolding;
 		data.isHolding2 = player->m_isHolding2;
 
+		data.rotations[0] = capture_rotation(player, 0);
+		data.rotations[1] = capture_rotation(player, 1);
+
+		const unsigned char* bytes = reinterpret_cast<const unsigned char*>(player);
+		for (const RawPlayerRange& range : kRawPlayerRanges)
+			data.raw.insert(data.raw.end(), bytes + range.offset, bytes + range.offset + range.size);
+
 		return data;
 	}
 
@@ -279,6 +332,20 @@ struct CheckpointData {
 #undef FIELD
 #undef PLFIELD
 			player->setRotation(m_rotation);
+		restore_rotation(player, 0, rotations[0]);
+		restore_rotation(player, 1, rotations[1]);
+
+		size_t expected = 0;
+		for (const RawPlayerRange& range : kRawPlayerRanges)
+			expected += range.size;
+		if (raw.size() == expected) {
+			unsigned char* bytes = reinterpret_cast<unsigned char*>(player);
+			size_t at = 0;
+			for (const RawPlayerRange& range : kRawPlayerRanges) {
+				memcpy(bytes + range.offset, raw.data() + at, range.size);
+				at += range.size;
+			}
+		}
 	}
 
 	static gd::Gamemode GetGamemode(gd::PlayerObject* p)
@@ -323,6 +390,8 @@ struct Checkpoint {
 	std::map<int, ObjectData> objects;
 	double calculated_xpos;
 	std::vector<CCAction*> actions;
+	int inputs_at_frame_p1 = 0;
+	int inputs_at_frame_p2 = 0;
 };
 
 struct Replay {
@@ -335,7 +404,9 @@ class Logic {
 	State state = IDLE;
 
 	unsigned replay_pos = 0;
-	unsigned removed_time = 0;
+	int frame_counter = 0;
+	bool in_update = false;
+	double update_start_time = 0.0;
 
 	std::vector<double> offsets;
 
@@ -456,7 +527,7 @@ public:
 			Keybind& keybind = pair.second.first;
 			std::unique_ptr<KeybindableBase>& keybindable = pair.second.second;
 
-			if (keybind.GetKey().has_value() &&
+			if (keybindable && keybind.GetKey().has_value() &&
 				ImGui::IsKeyPressed(keybind.GetKey().value(), false) &&
 				io.KeyCtrl == keybind.GetCtrl() &&
 				io.KeyShift == keybind.GetShift() &&
@@ -559,61 +630,19 @@ public:
 
 	void write_osu_file(const std::string& filename);
 
+	State get_state() const {
+		return state;
+	}
+
+	void set_state(State new_state) {
+		state = new_state;
+	}
+
 	void toggle_playing() {
 		state = (state == IDLE) ? PLAYING :
 			(state == PLAYING) ? IDLE :
 			(state == RECORDING) ? RECORDING_AND_PLAYING :
 			RECORDING; // if state was RECORDING_AND_PLAYING, switch to RECORDING
-	}
-
-	void handlePlayerInputs(gd::PlayerObject* player, bool record_player, bool isDashing, bool isPlayer2) {
-		if (!record_player)
-			return;
-
-		bool wasPressingDown = false;
-		Frame lastInput;
-
-		if (!get_inputs().empty()) {
-			auto& inputs = get_inputs();
-			auto last_input_itr = std::find_if(inputs.rbegin(), inputs.rend(), [=](Frame input) { return input.isPlayer2 == isPlayer2; });
-
-			if (last_input_itr != inputs.rend()) {
-				lastInput = *last_input_itr;
-				wasPressingDown = lastInput.pressingDown;
-				bool playerInverse = isPlayer2 ? click_inverse_p2 : click_inverse_p1;
-
-				// If the player is not currently pressing, but was pressing on the last input
-				if (!player->m_isHolding && wasPressingDown && !isDashing) {
-					if (lastInput.number != get_frame()) {
-						if (playerInverse && !wasPressingDown)
-							add_input({ get_frame(), false, isPlayer2 });
-						else if (!playerInverse)
-							add_input({ get_frame(), false, isPlayer2 });
-					}
-				}
-				// If the player is currently pressing, but was not pressing on the last input
-				else if (player->m_isHolding && !wasPressingDown && !isDashing) {
-					if (lastInput.number != get_frame()) {
-						if (playerInverse && wasPressingDown)
-							add_input({ get_frame(), true, isPlayer2 });
-						else if (!playerInverse)
-							add_input({ get_frame(), true, isPlayer2 });
-
-						// Handle Orb Checking
-						orbChecking(player->getPosition());
-					}
-				}
-			}
-		}
-		else {
-			// If no previous input and the player is currently pressing
-			if (player->m_isHolding) {
-				add_input({ get_frame(), true, isPlayer2 });
-
-				// Handle Orb Checking
-				orbChecking(player->getPosition());
-			}
-		}
 	}
 
 	bool isClose(cocos2d::CCPoint p1, cocos2d::CCPoint p2, float threshold) {
@@ -651,13 +680,21 @@ public:
 
 	void record_input(bool down, bool player1);
 
+	void record_player_input(bool down, bool isPlayer2);
+
+	void trim_recorded_inputs(int frame, bool isPlayer2, int keep_at_frame);
+
+	int count_inputs_at(int frame, bool isPlayer2, size_t limit);
+
+	int find_replay_pos_after_checkpoint(int frame, int played_p1, int played_p2);
+
 	void offset_inputs(int lower, int upper);
 
 	void play_input(Frame& input);
 
 	bool play_macro();
 
-	int find_closest_input();
+	int find_closest_input(bool include_current_frame);
 
 	void set_replay_pos(unsigned idx);
 
@@ -665,18 +702,37 @@ public:
 		return replay_pos;
 	}
 
-	int get_removed() {
-		return removed_time;
+	void set_frame(int frame) {
+		frame_counter = frame;
+	}
+
+	void advance_frame() {
+		frame_counter++;
+	}
+
+	void begin_update(double level_time) {
+		in_update = true;
+		update_start_time = level_time;
+	}
+
+	void end_update() {
+		in_update = false;
+	}
+
+	bool is_in_update() const {
+		return in_update;
+	}
+
+	void sync_frame_to_time();
+
+	float frame_dt() {
+		return 1.f / fps;
 	}
 
 	double xpos_calculation();
 
 	void add_offset(double time) {
 		offsets.push_back(time);
-	}
-
-	void set_removed(double time) {
-		removed_time = time;
 	}
 
 	void remove_last_offset() {

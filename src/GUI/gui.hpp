@@ -74,11 +74,11 @@ public:
 	ImVec4 input_selected_color_p1 = { 0.2, 0.9, 0.8, 0.54 };
 	ImVec4 input_selected_color_p2 = { 0.2, 0.9, 0.8, 0.54 };
 
-	ImVec2 main_pos;
-	ImVec2 tools_pos;
-	ImVec2 editor_pos;
-	ImVec2 render_pos;
-	ImVec2 sequence_pos;
-	ImVec2 style_pos;
-	ImVec2 clickbot_pos;
+	ImVec2 main_pos = ImVec2(10, 35);
+	ImVec2 tools_pos = ImVec2(950, 475);
+	ImVec2 editor_pos = ImVec2(940, 35);
+	ImVec2 render_pos = ImVec2(490, 400);
+	ImVec2 sequence_pos = ImVec2(515, 35);
+	ImVec2 style_pos = ImVec2(1425, 35);
+	ImVec2 clickbot_pos = ImVec2(1225, 35);
 };

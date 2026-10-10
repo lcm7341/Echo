@@ -26,27 +26,103 @@ HitboxNode* HitboxNode::getInstance()
 	return instance;
 }
 
-void HitboxNode::drawPolygonHitbox(std::vector<cocos2d::CCPoint> const& points, cocos2d::ccColor4B col)
+static void drawOutline(HitboxNode* node, const cocos2d::CCPoint* points, unsigned count, cocos2d::ccColor4B col)
 {
 	auto borderColor = ccc4FFromccc4B(col);
 	col.a = max(0, col.a - 150);
 	auto fillColor = (ccc4(col.r, col.g, col.b, Logic::get().hacks.fillHitboxes ? col.a : 0));
 
-	this->drawPolygon(const_cast<cocos2d::CCPoint*>(points.data()), points.size(), ccc4FFromccc4B(fillColor),
+	node->drawPolygon(const_cast<cocos2d::CCPoint*>(points), count, ccc4FFromccc4B(fillColor),
 		hacks.hitboxThickness, borderColor);
+}
+
+static unsigned fillQuad(gd::GameObject* obj, cocos2d::CCPoint* points)
+{
+	if (obj->m_pObjectOBB2D)
+	{
+		auto obb = obj->m_pObjectOBB2D;
+		points[0] = obb->m_p1_1;
+		points[1] = obb->m_p1_2;
+		points[2] = obb->m_p1_3;
+		points[3] = obb->m_p1_4;
+	}
+	else
+	{
+		auto rect = obj->getObjectRect();
+		points[0] = CCPointMake(rect.getMinX(), rect.getMinY());
+		points[1] = CCPointMake(rect.getMinX(), rect.getMaxY());
+		points[2] = CCPointMake(rect.getMaxX(), rect.getMaxY());
+		points[3] = CCPointMake(rect.getMaxX(), rect.getMinY());
+	}
+	return 4;
+}
+
+static unsigned fillTriangle(gd::GameObject* obj, cocos2d::CCPoint* points)
+{
+	unsigned i = 0;
+	obj->updateOrientedBox();
+	if (obj->m_pObjectOBB2D)
+	{
+		auto obb = obj->m_pObjectOBB2D;
+		if (obj->m_bIsFlippedX || !obj->m_bIsFlippedY)
+			points[i++] = obb->m_p1_1;
+		if (!obj->m_bIsFlippedX || !obj->m_bIsFlippedY)
+			points[i++] = obb->m_p1_2;
+		if (!obj->m_bIsFlippedX || obj->m_bIsFlippedY)
+			points[i++] = obb->m_p1_3;
+		if (obj->m_bIsFlippedX || obj->m_bIsFlippedY)
+			points[i++] = obb->m_p1_4;
+	}
+	else
+	{
+		auto rect = obj->getObjectRect();
+		if (obj->m_bIsFlippedX || !obj->m_bIsFlippedY)
+			points[i++] = CCPointMake(rect.getMinX(), rect.getMinY());
+		if (!obj->m_bIsFlippedX || !obj->m_bIsFlippedY)
+			points[i++] = CCPointMake(rect.getMinX(), rect.getMaxY());
+		if (!obj->m_bIsFlippedX || obj->m_bIsFlippedY)
+			points[i++] = CCPointMake(rect.getMaxX(), rect.getMaxY());
+		if (obj->m_bIsFlippedX || obj->m_bIsFlippedY)
+			points[i++] = CCPointMake(rect.getMaxX(), rect.getMinY());
+	}
+	return i;
+}
+
+static void drawCircle(HitboxNode* node, cocos2d::CCPoint const& center, float radius, cocos2d::ccColor4B col)
+{
+	constexpr unsigned N = 32;
+	static cocos2d::CCPoint unit[N];
+	static bool ready = false;
+	if (!ready)
+	{
+		constexpr double PI = 3.1415926535;
+		for (unsigned i = 0; i < N; ++i)
+			unit[i] = CCPointMake(std::cos(2 * PI * i / N), std::sin(2 * PI * i / N));
+		ready = true;
+	}
+
+	cocos2d::CCPoint points[N];
+	for (unsigned i = 0; i < N; ++i)
+		points[i] = CCPointMake(center.x + unit[i].x * radius, center.y + unit[i].y * radius);
+
+	drawOutline(node, points, N, col);
+}
+
+void HitboxNode::drawPolygonHitbox(std::vector<cocos2d::CCPoint> const& points, cocos2d::ccColor4B col)
+{
+	drawOutline(this, points.data(), points.size(), col);
 }
 
 void HitboxNode::drawRectangleHitbox(cocos2d::CCRect const& rect, cocos2d::ccColor4B col)
 {
-	constexpr size_t N = 4;
-	std::vector<cocos2d::CCPoint> points(N);
+	cocos2d::CCPoint points[4];
 
 	points[0] = CCPointMake(rect.getMinX(), rect.getMinY());
 	points[1] = CCPointMake(rect.getMinX(), rect.getMaxY());
 	points[2] = CCPointMake(rect.getMaxX(), rect.getMaxY());
 	points[3] = CCPointMake(rect.getMaxX(), rect.getMinY());
 
-	this->drawPolygonHitbox(points, col);
+	drawOutline(this, points, 4, col);
 }
 
 void HitboxNode::clearQueue()
@@ -81,7 +157,7 @@ void HitboxNode::addToPlayer2Queue(CCRect const& rect)
 			boo2.pop_front();
 		}
 	}
-	else if (boo1.size() > 0)
+	else if (boo2.size() > 0)
 	{
 		boo2.clear();
 	}
@@ -111,7 +187,8 @@ void HitboxNode::drawForPlayer1(gd::PlayerObject* obj)
 				playercenter);
 		}
 	}
-	this->drawPolygonHitbox(this->quadrilateralForObject(obj), playerrotated);
+	cocos2d::CCPoint rotatedQuad[4];
+	drawOutline(this, rotatedQuad, fillQuad(obj, rotatedQuad), playerrotated);
 	this->drawRectangleHitbox(!m_isMini1 ? obj->getObjectRect(0.25, 0.25) : obj->getObjectRect(0.4, 0.4),
 		playercenter);
 }
@@ -139,7 +216,8 @@ void HitboxNode::drawForPlayer2(gd::PlayerObject* obj)
 				playercenter);
 		}
 	}
-	this->drawPolygonHitbox(this->quadrilateralForObject(obj), playerrotated);
+	cocos2d::CCPoint rotatedQuad[4];
+	drawOutline(this, rotatedQuad, fillQuad(obj, rotatedQuad), playerrotated);
 	this->drawRectangleHitbox(!m_isMini1 ? obj->getObjectRect(0.25, 0.25) : obj->getObjectRect(0.4, 0.4),
 		playercenter);
 }
@@ -269,8 +347,11 @@ void HitboxNode::drawForObject(gd::GameObject* obj)
 	case gd::GameObjectType::kGameObjectTypeSlope:
 		color = { (GLubyte)(hacks.slopeHitboxColor[0] * 255.f), (GLubyte)(hacks.slopeHitboxColor[1] * 255.f),
 				 (GLubyte)(hacks.slopeHitboxColor[2] * 255.f), (GLubyte)(hacks.slopeHitboxColor[3] * 255.f) };
-		this->drawPolygonHitbox(this->triangleForObject(obj), color);
+	{
+		cocos2d::CCPoint triangle[4];
+		drawOutline(this, triangle, fillTriangle(obj, triangle), color);
 		return;
+	}
 	case gd::GameObjectType::kGameObjectTypeHazard:
 		color = { (GLubyte)(hacks.hazardHitboxColor[0] * 255.f), (GLubyte)(hacks.hazardHitboxColor[1] * 255.f),
 				 (GLubyte)(hacks.hazardHitboxColor[2] * 255.f), (GLubyte)(hacks.hazardHitboxColor[3] * 255.f) };
@@ -307,13 +388,15 @@ void HitboxNode::drawForObject(gd::GameObject* obj)
 			return;
 	}
 
-	if (obj->getObjectRadius() > 0)
+	const float radius = obj->getObjectRadius();
+	if (radius > 0)
 	{
-		this->drawCircleHitbox(obj->getPosition(), obj->getObjectRadius(), color);
+		drawCircle(this, obj->getPosition(), radius, color);
 	}
 	else
 	{
-		this->drawPolygonHitbox(this->quadrilateralForObject(obj), color);
+		cocos2d::CCPoint quad[4];
+		drawOutline(this, quad, fillQuad(obj, quad), color);
 	}
 }
 
