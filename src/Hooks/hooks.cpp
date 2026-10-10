@@ -1815,7 +1815,7 @@ void __fastcall Hooks::toggleDartMode_h(gd::PlayerObject* self, bool toggle)
     toggleDartMode(self, toggle);
 }
 
-gd::GameObject* __fastcall Hooks::hasBeenActivatedByPlayer_h(gd::GameObject* self, gd::GameObject* other)
+gd::GameObject* __fastcall Hooks::hasBeenActivatedByPlayer_h(gd::GameObject* self, int, gd::GameObject* other)
 {
     /*if (Logic::get().hacks.trajectory && TrajectorySimulation::getInstance()->shouldInterrumpHooks())
     {

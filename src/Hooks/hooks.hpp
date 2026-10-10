@@ -55,7 +55,7 @@ namespace Hooks {
 	inline void (__fastcall* triggerObject)(gd::GameObject* self, gd::GJBaseGameLayer* layer); void __fastcall triggerObject_h(gd::GameObject* self, gd::GJBaseGameLayer* layer);
 
 	// 0xEF110
-	inline gd::GameObject*(__fastcall* hasBeenActivatedByPlayer)(gd::GameObject* self, gd::GameObject* other); gd::GameObject* __fastcall hasBeenActivatedByPlayer_h(gd::GameObject* self, gd::GameObject* other);
+	inline gd::GameObject*(__thiscall* hasBeenActivatedByPlayer)(gd::GameObject* self, gd::GameObject* other); gd::GameObject* __fastcall hasBeenActivatedByPlayer_h(gd::GameObject* self, int, gd::GameObject* other);
 	
 	inline void(__thiscall* CCKeyboardDispatcher_dispatchKeyboardMSG)(CCKeyboardDispatcher* self, int key, bool down); void __fastcall CCKeyboardDispatcher_dispatchKeyboardMSG_h(CCKeyboardDispatcher* self, int, int key, bool down);
 

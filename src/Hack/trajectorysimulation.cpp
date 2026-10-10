@@ -30,10 +30,15 @@ void TrajectorySimulation::createSimulation()
 	this->createPlayersForSimulation();
 }
 
-void playerupdateSpecial(gd::PlayerObject* player, float dt)
+__declspec(noinline) void playerupdateSpecial(gd::PlayerObject* player, float dt)
 {
-	__asm movss xmm1, dt;
-	reinterpret_cast<void(__thiscall*)(gd::PlayerObject*)>(gd::base + 0x1e8ab0)(player);
+	void* addr = reinterpret_cast<void*>(gd::base + 0x1e8ab0);
+	__asm {
+		mov eax, addr
+		mov ecx, player
+		movss xmm1, dt
+		call eax
+	}
 }
 
 void playerupdate(gd::PlayerObject* player, float dt)
@@ -41,22 +46,41 @@ void playerupdate(gd::PlayerObject* player, float dt)
 	reinterpret_cast<void(__thiscall*)(gd::PlayerObject*, float dt)>(gd::base + 0x1e8200)(player, dt);
 }
 
-void playerupdateshiprotation(gd::PlayerObject* player, float dt)
+__declspec(noinline) void playerupdateshiprotation(gd::PlayerObject* player, float dt)
 {
-	__asm movss xmm1, dt;
-	reinterpret_cast<void(__thiscall*)(gd::PlayerObject*)>(gd::base + 0x1eba60)(player);
+	void* addr = reinterpret_cast<void*>(gd::base + 0x1eba60);
+	__asm {
+		mov eax, addr
+		mov ecx, player
+		movss xmm1, dt
+		call eax
+	}
 }
 
-void playerupdateRotation(gd::PlayerObject* player, float dt)
+__declspec(noinline) void playerupdateRotation(gd::PlayerObject* player, float dt)
 {
-	__asm movss xmm1, dt;
-	reinterpret_cast<void(__thiscall*)(gd::PlayerObject*)>(gd::base + 0x1ebc00)(player);
+	void* addr = reinterpret_cast<void*>(gd::base + 0x1ebc00);
+	__asm {
+		mov eax, addr
+		mov ecx, player
+		movss xmm1, dt
+		call eax
+	}
 }
 
-bool playercheckCollisions(gd::PlayLayer* self, gd::PlayerObject* player, float dt)
+__declspec(noinline) bool playercheckCollisions(gd::PlayLayer* self, gd::PlayerObject* player, float dt)
 {
-	__asm movss xmm2, dt;
-	return reinterpret_cast<bool(__thiscall*)(gd::PlayLayer*, gd::PlayerObject*)>(gd::base + 0x203CD0)(self, player);
+	void* addr = reinterpret_cast<void*>(gd::base + 0x203CD0);
+	bool result = false;
+	__asm {
+		mov eax, addr
+		mov ecx, self
+		movss xmm2, dt
+		push player
+		call eax
+		mov result, al
+	}
+	return result;
 }
 
 void TrajectorySimulation::simulationPerPlayer(gd::PlayerObject* player, gd::PlayerObject* playerBase, float dt)
