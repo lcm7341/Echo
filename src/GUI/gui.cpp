@@ -280,12 +280,7 @@ void GUI::draw() {
 		if (Logic::get().start != std::chrono::steady_clock::time_point() && duration.count() >= Logic::get().frame_advance_hold_duration * Logic::get().speedhack) {
 			if (end - last_held_step >= std::chrono::milliseconds(Logic::get().frame_advance_delay)) {
 				last_held_step = end;
-				Logic::get().frame_advance = false;
-				bool old_real_time = Logic::get().real_time_mode;
-				Logic::get().real_time_mode = false;
-				Hooks::CCScheduler_update_h(gd::GameManager::sharedState()->getScheduler(), 0, 1.f / Logic::get().fps);
-				Logic::get().frame_advance = true;
-				Logic::get().real_time_mode = old_real_time;
+				Hooks::advance_one_frame();
 			}
 			Logic::get().holding_frame_advance = true;
 		}
@@ -2043,9 +2038,7 @@ void GUI::tools() {
 			g_advance_button_held = true;
 			if (logic.start == std::chrono::steady_clock::time_point())
 				logic.start = std::chrono::steady_clock::now();
-			logic.frame_advance = false;
-			Hooks::CCScheduler_update_h(gd::GameManager::sharedState()->getScheduler(), 0, 1.f / logic.fps);
-			logic.frame_advance = true;
+			Hooks::advance_one_frame();
 		}
 		else if (g_advance_button_held && !ImGui::IsItemActive()) {
 			g_advance_button_held = false;
@@ -3264,9 +3257,7 @@ void GUI::init() {
 		if (!ImGui::GetIO().WantTextInput && PLAYLAYER) {
 			if (Logic::get().start == std::chrono::steady_clock::time_point())
 				Logic::get().start = std::chrono::steady_clock::now();
-			Logic::get().frame_advance = false;
-			Hooks::CCScheduler_update_h(gd::GameManager::sharedState()->getScheduler(), 0, 1.f / Logic::get().fps / Logic::get().speedhack);
-			Logic::get().frame_advance = true;
+			Hooks::advance_one_frame();
 		}
 		}));
 

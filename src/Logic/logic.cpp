@@ -255,8 +255,8 @@ unsigned Logic::count_presses_in_last_second(bool player2) {
     // Count this player's presses in the last second window (inclusive of 'now').
     unsigned count = 0;
     for (auto it = source.rbegin(); it != source.rend(); ++it) {
-        if (it->isPlayer2 != player2) continue;
         if (it->number <= frame_limit) break; // past the window
+        if (it->isPlayer2 != player2) continue;
         if (it->number <= nowFrame && it->pressingDown) ++count;
     }
 
