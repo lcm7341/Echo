@@ -262,19 +262,16 @@ void GUI::draw() {
 	auto end = std::chrono::steady_clock::now();
 	auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - Logic::get().start);
 
-	printf("holding_frame_advance = %i\n", Logic::get().holding_frame_advance);
-
 	if (PLAYLAYER) {
-		if (Logic::get().holding_frame_advance && duration.count() >= Logic::get().frame_advance_hold_duration * Logic::get().speedhack && Logic::get().start != end) {
+		if (Logic::get().start != std::chrono::steady_clock::time_point() && duration.count() >= Logic::get().frame_advance_hold_duration * Logic::get().speedhack) {
 			Logic::get().frame_advance = false;
-			/*bool old_real_time = Logic::get().real_time_mode;
-			Logic::get().real_time_mode = false;*/
+			bool old_real_time = Logic::get().real_time_mode;
+			Logic::get().real_time_mode = false;
 			Hooks::CCScheduler_update_h(gd::GameManager::sharedState()->getScheduler(), 0, 1.f / Logic::get().fps);
 			Logic::get().frame_advance = true;
-			//Logic::get().real_time_mode = old_real_time;
+			Logic::get().real_time_mode = old_real_time;
 			delay(Logic::get().frame_advance_delay);
 			Logic::get().holding_frame_advance = true;
-			Logic::get().start = std::chrono::steady_clock::now();
 		}
 		else {
 			Logic::get().holding_frame_advance = false;
@@ -315,7 +312,7 @@ void GUI::draw() {
 
 			if (ImGui::BeginPopupModal("Error", &open_modal, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize)) {
 
-				ImGui::Text("%s", Logic::get().error);
+				ImGui::Text("%s", Logic::get().error.c_str());
 
 				if (ImGui::Button("Okay", ImVec2(ImGui::GetWindowContentRegionWidth(), 0))) {
 					Logic::get().error = "";
@@ -413,7 +410,7 @@ void GUI::import_theme(std::string path) {
 	ImGuiStyle& style = ImGui::GetStyle();
 
 	auto file_name = fs::path(path).stem().string();
-	strcpy(theme_name, file_name.c_str());
+	snprintf(theme_name, sizeof(theme_name), "%s", file_name.c_str());
 
 	if (!file.is_open())
 	{
@@ -481,7 +478,7 @@ void GUI::import_theme(std::string path) {
 	style.AntiAliasedFill = json["AntiAliasedFill"];
 	style.CurveTessellationTol = json["CurveTessellationTol"];
 	style.CircleTessellationMaxError = json["CircleTessellationMaxError"];
-	style.Alpha = min(15, json["Alpha"]);
+	style.Alpha = min(15.f, json["Alpha"].get<float>());
 	style.DisabledAlpha = json["DisabledAlpha"];
 
 	if (json.contains("player_1_button_color")) {
@@ -945,10 +942,12 @@ void GUI::editor() {
 
 	if (ImGui::BeginTabItem("Editor") || !docked) {
 		std::stringstream ss;
-		ss << logic.fps << "\n";
-		for (unsigned i = 0; i < inputs.size(); i++) {
-			ss << inputs[i].number << " " << inputs[i].pressingDown << " " << inputs[i].isPlayer2;
-			if (i != inputs.size() - 1) ss << "\n";
+		if (plaintext_editing) {
+			ss << logic.fps << "\n";
+			for (unsigned i = 0; i < inputs.size(); i++) {
+				ss << inputs[i].number << " " << inputs[i].pressingDown << " " << inputs[i].isPlayer2;
+				if (i != inputs.size() - 1) ss << "\n";
+			}
 		}
 
 		if (!docked) {
@@ -1007,58 +1006,63 @@ void GUI::editor() {
 				}
 			}
 
-			for (unsigned i = 0; i < inputs.size(); i++) {
-				ImVec4 color;
-				if (inputs[i].isPlayer2) {
-					color = player_2_button_color;
-				}
-				else {
-					color = player_1_button_color;
-				}
-
-				if (i == closestInputIndex) {
-					// Make the closest input's button brighter
-					if (inputs[i].isPlayer2)
-						color = input_selected_color_p2;
-					else
-						color = input_selected_color_p1;
-				}
-
-				ImGui::PushStyleColor(ImGuiCol_Button, color);
-
-				char buffer[100];
-				std::sprintf(buffer, "%s at %d##Input", inputs[i].pressingDown ? "Click" : "Release", inputs[i].number);
-				std::string text = buffer;
-
-				if (ImGui::Button(text.c_str(), ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
-					selectedInput = i;
-					newInput = inputs[i];
-					editor_auto_scroll = false;
-				}
-
-				// Automatically select the closest input to the current frame
-				if (PLAYLAYER && !PLAYLAYER->m_bIsPaused && (!logic.frame_advance || !logic.holding_frame_advance) && editor_auto_scroll) {
-					if (closestInputIndex != -1) {
-						selectedInput = closestInputIndex;
-						newInput = inputs[closestInputIndex];
-
-						// Calculate the scroll position to center the selected input
-						int selectedIndex = closestInputIndex;
-						int visibleInputs = ImGui::GetWindowHeight() / ImGui::GetItemRectSize().y;
-						int firstVisibleIndex = max(0, selectedIndex - visibleInputs / 2);
-						int scrollY = firstVisibleIndex * ImGui::GetItemRectSize().y + (ImGui::GetStyle().ItemSpacing.y * closestInputIndex); // DO NOT FUCK WITH THIS MATH DAWG IT TOOK ME 2 HOURS
-
-						ImGui::SetScrollY(scrollY);
+			const float rowHeight = ImGui::GetFrameHeight();
+			ImGuiListClipper clipper;
+			clipper.Begin(static_cast<int>(inputs.size()), rowHeight + ImGui::GetStyle().ItemSpacing.y);
+			while (clipper.Step()) {
+				for (unsigned i = clipper.DisplayStart; i < static_cast<unsigned>(clipper.DisplayEnd) && i < inputs.size(); i++) {
+					ImVec4 color;
+					if (inputs[i].isPlayer2) {
+						color = player_2_button_color;
 					}
-				}
+					else {
+						color = player_1_button_color;
+					}
 
-				ImGui::PopStyleColor();
+					if (i == closestInputIndex) {
+						// Make the closest input's button brighter
+						if (inputs[i].isPlayer2)
+							color = input_selected_color_p2;
+						else
+							color = input_selected_color_p1;
+					}
+
+					ImGui::PushStyleColor(ImGuiCol_Button, color);
+
+					char buffer[100];
+					std::snprintf(buffer, sizeof(buffer), "%s at %d##Input%u", inputs[i].pressingDown ? "Click" : "Release", inputs[i].number, i);
+
+					if (ImGui::Button(buffer, ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
+						selectedInput = i;
+						newInput = inputs[i];
+						editor_auto_scroll = false;
+					}
+
+					ImGui::PopStyleColor();
+				}
+			}
+			clipper.End();
+
+			// Automatically select the closest input to the current frame
+			if (PLAYLAYER && !PLAYLAYER->m_bIsPaused && (!logic.frame_advance || !logic.holding_frame_advance) && editor_auto_scroll) {
+				if (closestInputIndex != -1) {
+					selectedInput = closestInputIndex;
+					newInput = inputs[closestInputIndex];
+
+					// Calculate the scroll position to center the selected input
+					int selectedIndex = closestInputIndex;
+					int visibleInputs = ImGui::GetWindowHeight() / rowHeight;
+					int firstVisibleIndex = max(0, selectedIndex - visibleInputs / 2);
+					int scrollY = firstVisibleIndex * rowHeight + (ImGui::GetStyle().ItemSpacing.y * closestInputIndex); // DO NOT FUCK WITH THIS MATH DAWG IT TOOK ME 2 HOURS
+
+					ImGui::SetScrollY(scrollY);
+				}
 			}
 
 		}
 		else if (plaintext_editing) {
 			selectedInput = -1;
-			strcpy(inputTextBuffer, ss.str().c_str());
+			snprintf(inputTextBuffer, sizeof(inputTextBuffer), "%s", ss.str().c_str());
 			if (ImGui::InputTextMultiline("##InputConfig", inputTextBuffer, sizeof(inputTextBuffer), ImVec2(-1.f, -1.f), ImGuiInputTextFlags_AllowTabInput)) {
 				std::stringstream ss(inputTextBuffer);
 				std::string line;
@@ -1490,7 +1494,7 @@ void GUI::sequential_replay() {
 
 			Replay& selected_replay = logic.replays[selected_replay_index.value()];
 
-			ImGui::Text("Name: %s", &selected_replay.name);
+			ImGui::Text("Name: %s", selected_replay.name.c_str());
 			ImGui::SameLine();
 			if (ImGui::Button("Remove")) {
 				logic.replays.erase(logic.replays.begin() + selected_replay_index.value());
@@ -1934,15 +1938,15 @@ void GUI::tools() {
 		ImGui::PopItemWidth();
 
 		const char* selected = autoclicker_options[selected_autoclicker_player];
-		if (selected == "Player 1") {
+		if (strcmp(selected, "Player 1") == 0) {
 			logic.autoclicker_player_1 = true;
 			logic.autoclicker_player_2 = false;
 		}
-		else if (selected == "Player 2") {
+		else if (strcmp(selected, "Player 2") == 0) {
 			logic.autoclicker_player_1 = false;
 			logic.autoclicker_player_2 = true;
 		}
-		else if (selected == "Both") {
+		else if (strcmp(selected, "Both") == 0) {
 			logic.autoclicker_player_1 = true;
 			logic.autoclicker_player_2 = true;
 		}
@@ -2275,7 +2279,7 @@ void GUI::clickbot() {
 				}
 
 				static char inputBuffer[256];
-				strcpy(inputBuffer, logic.algorithm.c_str());
+				snprintf(inputBuffer, sizeof(inputBuffer), "%s", logic.algorithm.c_str());
 				static bool typing_alg = false;
 				ImGui::PushItemWidth(200);
 				if (ImGui::InputText("Algorithm", inputBuffer, sizeof(inputBuffer))) typing_alg = true;
@@ -2429,7 +2433,7 @@ void GUI::show_keybind_prompt(const std::string& buttonName) {
 			ImGui::Text(keyInfo.c_str());
 			ImGui::Separator();
 		}
-		ImGui::Text("Please press a button for keybinding '%s'", &buttonName);
+		ImGui::Text("Please press a button for keybinding '%s'", buttonName.c_str());
 
 		for (int key = 0; key < 512; key++) {
 			if (ImGui::IsKeyPressed(key, false)) {
@@ -2799,13 +2803,6 @@ void GUI::main() {
 				for (unsigned i = 0; i < logic.cps_over_percents.size(); i++) {
 					int val = logic.cps_over_percents[i].first;
 					std::string rule = logic.cps_over_percents[i].second;
-					std::string percent = std::to_string(val);
-
-					// Truncate the string to have only 2 decimal places
-					size_t dot_pos = percent.find(".");
-					if (dot_pos != std::string::npos && dot_pos + 3 < percent.length()) {
-						//percent = percent.substr(0, dot_pos + 3);
-					}
 
 					printf("%s\n", rule.c_str());
 
@@ -3081,7 +3078,7 @@ void GUI::main() {
 				input_fps = logic.fps;
 				CCDirector::sharedDirector()->setAnimationInterval(1.f / GUI::get().input_fps);
 
-				strcpy(logic.macro_name, nameWithoutExtension.c_str());
+				snprintf(logic.macro_name, sizeof(logic.macro_name), "%s", nameWithoutExtension.c_str());
 				logic.format = logic.META;
 			}
 			ImGuiFileDialog::Instance()->Close();
@@ -3233,8 +3230,7 @@ void GUI::init() {
 		}));
 
 	std::unique_ptr<KeybindableBase> renderingAction = std::unique_ptr<KeybindableBase>(new Keybindable([this]() {
-		Logic::get().recorder.m_recording = !Logic::get().recorder.m_recording;
-		if (Logic::get().recorder.m_recording) {
+		if (!Logic::get().recorder.m_recording) {
 				Logic::get().recorder.start(Logic::get().recorder.directory + Logic::get().recorder.video_name + Logic::get().recorder.extension);
 		}
 		else {

@@ -29,7 +29,7 @@ public:
 
         while (!file.eof()) {
             int x = 0;
-            bool hold = false, player1 = true;
+            char hold = 0, player1 = 0;
 
             file.read(reinterpret_cast<char*>(&x), sizeof(x));
             file.read(reinterpret_cast<char*>(&hold), sizeof(hold));

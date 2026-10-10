@@ -259,22 +259,11 @@ void __fastcall Hooks::CCScheduler_update_h(CCScheduler* self, int, float dt) {
 void __fastcall Hooks::CCKeyboardDispatcher_dispatchKeyboardMSG_h(CCKeyboardDispatcher* self, int, int key, bool down) {
     auto& logic = Logic::get();
 
-    if (down && gd::GameManager::sharedState()->getPlayLayer()) {
-        auto advancing_key = Logic::get().keybinds.GetKeybind("advancing").key;
-        if (advancing_key.has_value()) {
-            if (key == advancing_key.value() && down) {
-                Logic::get().holding_frame_advance = true;
-                /*Logic::get().frame_advance = false;
-                Hooks::CCScheduler_update_h(gd::GameManager::sharedState()->getScheduler(), 0, 1.f / logic.fps);
-                Logic::get().frame_advance = true;*/
-            }
-            else {
-                Logic::get().holding_frame_advance = false;
-            }
-        }
-    }
-    else {
-        Logic::get().start = std::chrono::steady_clock::time_point();
+    auto advancing_key = logic.keybinds.GetKeybind("advancing").key;
+    bool released_advancing = !down && advancing_key.has_value() && key == advancing_key.value();
+    if (released_advancing || !gd::GameManager::sharedState()->getPlayLayer()) {
+        logic.start = std::chrono::steady_clock::time_point();
+        logic.holding_frame_advance = false;
     }
 
     CCKeyboardDispatcher_dispatchKeyboardMSG(self, key, down);
@@ -291,8 +280,11 @@ bool __fastcall Hooks::PlayLayer::init_h(gd::PlayLayer* self, void* edx, gd::GJG
 
     TrajectorySimulation::getInstance()->createSimulation();
 
-    if (drawer)
+    if (drawer) {
+        if (drawer->getParent())
+            drawer->removeFromParentAndCleanup(false);
         self->m_pObjectLayer->addChild(drawer, 32);
+    }
 
 
     return ret;
@@ -342,6 +334,11 @@ bool __fastcall Hooks::PauseLayer::init_h(gd::PauseLayer* self) {
     }
 
     return Hooks::PauseLayer::init(self);
+}
+
+static void set_label_text(cocos2d::CCLabelBMFont* label, const char* text) {
+    if (strcmp(label->getString(), text) != 0)
+        label->setString(text);
 }
 
 std::string formatTime(float timeInSeconds) {
@@ -514,14 +511,12 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
     if (frame_counter) {
         if (logic.show_frame) {
             // Update the frame counter label with the current frame number
-            char out[1000];
+            char out[32];
             int frame = logic.get_frame() + 1;
-            std::string text = std::to_string(frame);
-            int length = text.length();
             sprintf_s(out, "Frame: %i", frame);
             frame_counter->setAnchorPoint({ 0, 0.5 });
             frame_counter->setPosition(logic.frame_counter_x, logic.frame_counter_y); // Adjusted the x-position calculation
-            frame_counter->setString(out);
+            set_label_text(frame_counter, out);
             frame_counter->setOpacity(logic.frame_counter_opacity);
             frame_counter->setScale(logic.frame_counter_scale);
 
@@ -529,7 +524,6 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
         else {
             // Remove and release the frame counter label if show_frame is false
             frame_counter->removeFromParent();
-            frame_counter->release();
         }
     }
     else if (logic.show_frame) {
@@ -544,7 +538,7 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
     if (recording_label) {
         if (logic.is_recording() && logic.show_recording) {
             // Update the frame counter label with the current frame number
-            char out[1000];
+            char out[64];
             int holds_count = 0;
             int releases_count = 0;
             for (auto& input : logic.inputs) {
@@ -552,7 +546,7 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
                 else releases_count++;
             }
             sprintf_s(out, "Recording: %i/%i", holds_count, releases_count);
-            recording_label->setString(out);
+            set_label_text(recording_label, out);
             recording_label->setPosition(logic.recording_label_x, logic.recording_label_y);
             recording_label->setOpacity(logic.recording_label_opacity);
             recording_label->setScale(logic.recording_label_scale);
@@ -561,7 +555,6 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
         else {
             // Remove and release the frame counter label if show_frame is false
             recording_label->removeFromParent();
-            recording_label->release();
         }
     }
     else if (logic.is_recording() && logic.show_recording) {
@@ -578,9 +571,11 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
 
     if (cps_counter) {
         if (logic.show_cps) {
-            char out[24];
-            sprintf_s(out, "CPS: %i/%i", logic.count_presses_in_last_second(false), logic.count_presses_in_last_second(true));
-            cps_counter->setString(out);
+            char out[40];
+            unsigned cps_p1 = logic.count_presses_in_last_second(false);
+            unsigned cps_p2 = logic.count_presses_in_last_second(true);
+            sprintf_s(out, "CPS: %u/%u", cps_p1, cps_p2);
+            set_label_text(cps_counter, out);
 
             if (logic.currently_pressing) {
                 cps_counter->setColor({ 0, 255, 77 });
@@ -602,7 +597,6 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
 
         else {
             cps_counter->removeFromParent();
-            cps_counter->release();
         }
     }
     else if (logic.show_cps) {
@@ -618,18 +612,13 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
 
     if (percent_label) {
         if (logic.show_percent) {
-            char out[24];
-            std::stringstream stream;
+            char out[64];
             float percent = min(100.f, (self->m_pPlayer1->getPositionX() / self->m_endPortal->getPositionX()) * 100.f);
-            if (logic.percent_accuracy > 0) {
-                stream << "%." << logic.percent_accuracy << "f%%";
-                sprintf_s(out, stream.str().c_str(), percent);
-            }
-            else {
-                stream << "%i%%";
-                sprintf_s(out, stream.str().c_str(), static_cast<int>(percent));
-            }
-            percent_label->setString(out);
+            if (logic.percent_accuracy > 0)
+                sprintf_s(out, "%.*f%%", min(logic.percent_accuracy, 30), percent);
+            else
+                sprintf_s(out, "%i%%", static_cast<int>(percent));
+            set_label_text(percent_label, out);
             percent_label->setAnchorPoint({ 0, 0.5 });
             percent_label->setPosition(logic.percent_counter_x, logic.percent_counter_y);
             percent_label->setScale(logic.percent_scale);
@@ -638,7 +627,6 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
 
         else {
             percent_label->removeFromParent();
-            percent_label->release();
         }
     }
     else if (logic.show_percent) {
@@ -654,11 +642,10 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
     if (time_label) {
 
         if (logic.show_time) {
-            char out[24];
-            const char* format = "%s";
+            char out[40];
             std::string str = formatTime(self->m_time);
-            sprintf_s(out, str.c_str());
-            time_label->setString(out);
+            sprintf_s(out, "%s", str.c_str());
+            set_label_text(time_label, out);
             time_label->setAnchorPoint({ 0, 0.5 });
             time_label->setPosition(logic.time_counter_x, logic.time_counter_y);
             time_label->setScale(logic.time_scale);
@@ -667,7 +654,6 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
 
         else {
             time_label->removeFromParent();
-            time_label->release();
         }
     }
     else if (logic.show_time) {
@@ -809,7 +795,8 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
             }
         }
 
-        logic.player_x_positions.push_back(self->m_pPlayer1->m_position.x);
+        if (logic.player_x_positions.empty()) logic.player_x_positions.push_back(self->m_pPlayer1->m_position.x);
+        else logic.player_x_positions.back() = self->m_pPlayer1->m_position.x;
     }
     else {
         logic.player_acceleration = self->m_pPlayer1->m_xAccel;
@@ -833,7 +820,8 @@ void __fastcall Hooks::PlayLayer::update_h(gd::PlayLayer* self, int, float dt) {
             }
         }
 
-        logic.player_x_positions.push_back(self->m_pPlayer1->m_position.x);
+        if (logic.player_x_positions.empty()) logic.player_x_positions.push_back(self->m_pPlayer1->m_position.x);
+        else logic.player_x_positions.back() = self->m_pPlayer1->m_position.x;
     }
 
     // this is rotation bug fix for playback vvvvvv we MUST call it after update() or else the click isnt registered in time
@@ -923,27 +911,19 @@ int __fastcall Hooks::PlayLayer::pushButton_h(gd::PlayLayer* self, int, int idk,
         bool softs = button ? logic.player_1_softs : logic.player_2_softs;
         bool hards = button ? logic.player_1_hards : logic.player_2_hards;
 
-        std::string player_path = button ? logic.player_1_path : logic.player_2_path;
-        std::string soft_clicks_path = player_path + "\\soft_clicks";
-        bool soft_clicks_path_exists = std::filesystem::is_directory(soft_clicks_path);
-        std::string micro_clicks_path = player_path + "\\" + "micro_clicks";
-        bool micro_clicks_path_exists = std::filesystem::is_directory(micro_clicks_path);
-        std::string hard_clicks_path = player_path + "\\" + "hard_clicks";
-        bool hard_clicks_path_exists = std::filesystem::is_directory(hard_clicks_path);
-
         if (logic.cycleTime <= (button ? logic.player_1_micros_time / 1000.f : logic.player_2_micros_time / 1000.f) && micros && std::filesystem::is_directory((button ? logic.player_1_path : logic.player_2_path) + "\\micro_releases"))
         {
             std::string path = Clickbot::pickRandomFile(button ? logic.player_1_path : logic.player_2_path, "micro_clicks");
             logic.clickbot_start = self->m_time;
             if (!path.empty()) {
-                Clickbot::system->createSound(path.c_str(), FMOD_DEFAULT, nullptr, button ? &Clickbot::clickSound : &Clickbot::clickSound2);
+                (button ? Clickbot::clickSound : Clickbot::clickSound2) = Clickbot::cachedSound(Clickbot::system, path);
                 if (button) {
                     Clickbot::system->playSound(Clickbot::clickSound, nullptr, true, &Clickbot::releaseChannel);
-                    Clickbot::releaseChannel->setVolume((float)(logic.player_1_micros_volume * 5 * logic.clickbot_volume_multiplier));
+                    if (Clickbot::releaseChannel) Clickbot::releaseChannel->setVolume((float)(logic.player_1_micros_volume * 5 * logic.clickbot_volume_multiplier));
                 }
                 else {
                     Clickbot::system->playSound(Clickbot::clickSound2, nullptr, true, &Clickbot::releaseChannel2);
-                    Clickbot::releaseChannel2->setVolume((float)(logic.player_2_micros_volume * 5 * logic.clickbot_volume_multiplier));
+                    if (Clickbot::releaseChannel2) Clickbot::releaseChannel2->setVolume((float)(logic.player_2_micros_volume * 5 * logic.clickbot_volume_multiplier));
                 }
             }
         }
@@ -952,14 +932,14 @@ int __fastcall Hooks::PlayLayer::pushButton_h(gd::PlayLayer* self, int, int idk,
             std::string path = Clickbot::pickRandomFile(button ? logic.player_1_path : logic.player_2_path, "soft_clicks");
             logic.clickbot_start = self->m_time;
             if (!path.empty()) {
-                Clickbot::system->createSound(path.c_str(), FMOD_DEFAULT, nullptr, button ? &Clickbot::releaseSound : &Clickbot::releaseSound2);
+                (button ? Clickbot::releaseSound : Clickbot::releaseSound2) = Clickbot::cachedSound(Clickbot::system, path);
                 if (button) {
                     Clickbot::system->playSound(Clickbot::releaseSound, nullptr, true, &Clickbot::releaseChannel);
-                    Clickbot::releaseChannel->setVolume((float)(logic.player_1_softs_volume * 5 * logic.clickbot_volume_multiplier));
+                    if (Clickbot::releaseChannel) Clickbot::releaseChannel->setVolume((float)(logic.player_1_softs_volume * 5 * logic.clickbot_volume_multiplier));
                 }
                 else {
                     Clickbot::system->playSound(Clickbot::releaseSound2, nullptr, true, &Clickbot::releaseChannel2);
-                    Clickbot::releaseChannel2->setVolume((float)(logic.player_2_softs_volume * 5 * logic.clickbot_volume_multiplier));
+                    if (Clickbot::releaseChannel2) Clickbot::releaseChannel2->setVolume((float)(logic.player_2_softs_volume * 5 * logic.clickbot_volume_multiplier));
                 }
             }
         }
@@ -967,15 +947,15 @@ int __fastcall Hooks::PlayLayer::pushButton_h(gd::PlayLayer* self, int, int idk,
             std::string path = Clickbot::pickRandomFile(button ? logic.player_1_path : logic.player_2_path, "hard_clicks");
             logic.clickbot_start = self->m_time;
             if (!path.empty()) {
-                Clickbot::system->createSound(path.c_str(), FMOD_DEFAULT, nullptr, button ? &Clickbot::releaseSound : &Clickbot::releaseSound2);
+                (button ? Clickbot::releaseSound : Clickbot::releaseSound2) = Clickbot::cachedSound(Clickbot::system, path);
 
                 if (button) {
                     Clickbot::system->playSound(Clickbot::releaseSound, nullptr, true, &Clickbot::releaseChannel);
-                    Clickbot::releaseChannel->setVolume((float)(logic.player_1_hards_volume * 5 * logic.clickbot_volume_multiplier));
+                    if (Clickbot::releaseChannel) Clickbot::releaseChannel->setVolume((float)(logic.player_1_hards_volume * 5 * logic.clickbot_volume_multiplier));
                 }
                 else {
                     Clickbot::system->playSound(Clickbot::releaseSound2, nullptr, true, &Clickbot::releaseChannel2);
-                    Clickbot::releaseChannel2->setVolume((float)(logic.player_2_hards_volume * 5 * logic.clickbot_volume_multiplier));
+                    if (Clickbot::releaseChannel2) Clickbot::releaseChannel2->setVolume((float)(logic.player_2_hards_volume * 5 * logic.clickbot_volume_multiplier));
                 }
             }
         }
@@ -983,24 +963,23 @@ int __fastcall Hooks::PlayLayer::pushButton_h(gd::PlayLayer* self, int, int idk,
             std::string path = Clickbot::pickRandomFile(button ? logic.player_1_path : logic.player_2_path, "clicks");
             logic.clickbot_start = self->m_time;
             if (!path.empty()) {
-                Clickbot::system->createSound(path.c_str(), FMOD_DEFAULT, nullptr, button ? &Clickbot::releaseSound : &Clickbot::releaseSound2);
+                (button ? Clickbot::releaseSound : Clickbot::releaseSound2) = Clickbot::cachedSound(Clickbot::system, path);
                 if (button) {
                     Clickbot::system->playSound(Clickbot::releaseSound, nullptr, true, &Clickbot::releaseChannel);
-                    Clickbot::releaseChannel->setVolume((float)(logic.player_1_volume * 5 * logic.clickbot_volume_multiplier));
+                    if (Clickbot::releaseChannel) Clickbot::releaseChannel->setVolume((float)(logic.player_1_volume * 5 * logic.clickbot_volume_multiplier));
                 }
                 else {
                     Clickbot::system->playSound(Clickbot::releaseSound2, nullptr, true, &Clickbot::releaseChannel2);
-                    Clickbot::releaseChannel2->setVolume((float)(logic.player_2_volume * 5 * logic.clickbot_volume_multiplier));
+                    if (Clickbot::releaseChannel2) Clickbot::releaseChannel2->setVolume((float)(logic.player_2_volume * 5 * logic.clickbot_volume_multiplier));
                 }
             }
         }
 
         if (button) {
-            Clickbot::releaseChannel->setPaused(false);
+            if (Clickbot::releaseChannel) Clickbot::releaseChannel->setPaused(false);
         }
         else {
-
-            Clickbot::releaseChannel2->setPaused(false);
+            if (Clickbot::releaseChannel2) Clickbot::releaseChannel2->setPaused(false);
         }
         Clickbot::system->update();
         button = oldButton;
@@ -1149,59 +1128,51 @@ int __fastcall Hooks::PlayLayer::releaseButton_h(gd::PlayLayer* self, int, int i
         bool softs = button ? logic.player_1_softs : logic.player_2_softs;
         bool hards = button ? logic.player_1_hards : logic.player_2_hards;
 
-        std::string player_path = button ? logic.player_1_path : logic.player_2_path;
-        std::string soft_clicks_path = player_path + "\\soft_releases";
-        bool soft_clicks_path_exists = std::filesystem::is_directory(soft_clicks_path);
-        std::string micro_clicks_path = player_path + "\\" + "micro_releases";
-        bool micro_clicks_path_exists = std::filesystem::is_directory(micro_clicks_path);
-        std::string hard_clicks_path = player_path + "\\" + "hard_releases";
-        bool hard_clicks_path_exists = std::filesystem::is_directory(hard_clicks_path);
-
         if (logic.cycleTime <= (button ? logic.player_1_micros_time / 1000.f : logic.player_2_micros_time / 1000.f) && micros && std::filesystem::is_directory((button ? logic.player_1_path : logic.player_2_path) + "\\micro_releases"))
         {
             std::string path = Clickbot::pickRandomFile(button ? logic.player_1_path : logic.player_2_path, "micro_releases");
             logic.clickbot_start = self->m_time;
             if (!path.empty()) {
-                Clickbot::system->createSound(path.c_str(), FMOD_DEFAULT, nullptr, button ? &Clickbot::clickSound : &Clickbot::clickSound2);
+                (button ? Clickbot::clickSound : Clickbot::clickSound2) = Clickbot::cachedSound(Clickbot::system, path);
                 if (button) {
                     Clickbot::system->playSound(Clickbot::clickSound, nullptr, true, &Clickbot::releaseChannel);
-                    Clickbot::releaseChannel->setVolume((float)(logic.player_1_micros_volume * 5 * logic.clickbot_volume_multiplier));
+                    if (Clickbot::releaseChannel) Clickbot::releaseChannel->setVolume((float)(logic.player_1_micros_volume * 5 * logic.clickbot_volume_multiplier));
                 }
                 else {
                     Clickbot::system->playSound(Clickbot::clickSound2, nullptr, true, &Clickbot::releaseChannel2);
-                    Clickbot::releaseChannel2->setVolume((float)(logic.player_2_micros_volume * 5 * logic.clickbot_volume_multiplier));
+                    if (Clickbot::releaseChannel2) Clickbot::releaseChannel2->setVolume((float)(logic.player_2_micros_volume * 5 * logic.clickbot_volume_multiplier));
                 }
             }
         }
-        else if (logic.cycleTime < button ? logic.player_1_softs_time / 1000.f : logic.player_2_softs_time / 1000.f && softs && std::filesystem::is_directory((button ? logic.player_1_path : logic.player_2_path) + "\\soft_releases"))
+        else if (logic.cycleTime < (button ? logic.player_1_softs_time / 1000.f : logic.player_2_softs_time / 1000.f) && softs && std::filesystem::is_directory((button ? logic.player_1_path : logic.player_2_path) + "\\soft_releases"))
         {
             std::string path = Clickbot::pickRandomFile(button ? logic.player_1_path : logic.player_2_path, "soft_releases");
             logic.clickbot_start = self->m_time;
             if (!path.empty()) {
-                Clickbot::system->createSound(path.c_str(), FMOD_DEFAULT, nullptr, button ? &Clickbot::releaseSound : &Clickbot::releaseSound2);
+                (button ? Clickbot::releaseSound : Clickbot::releaseSound2) = Clickbot::cachedSound(Clickbot::system, path);
                 if (button) {
                     Clickbot::system->playSound(Clickbot::releaseSound, nullptr, true, &Clickbot::releaseChannel);
-                    Clickbot::releaseChannel->setVolume((float)(logic.player_1_softs_volume * 5 * logic.clickbot_volume_multiplier));
+                    if (Clickbot::releaseChannel) Clickbot::releaseChannel->setVolume((float)(logic.player_1_softs_volume * 5 * logic.clickbot_volume_multiplier));
                 }
                 else {
                     Clickbot::system->playSound(Clickbot::releaseSound2, nullptr, true, &Clickbot::releaseChannel2);
-                    Clickbot::releaseChannel2->setVolume((float)(logic.player_2_softs_volume * 5 * logic.clickbot_volume_multiplier));
+                    if (Clickbot::releaseChannel2) Clickbot::releaseChannel2->setVolume((float)(logic.player_2_softs_volume * 5 * logic.clickbot_volume_multiplier));
                 }
             }
         }
-        else if (logic.cycleTime > button ? logic.player_1_hards_time : logic.player_2_hards_time && hards && std::filesystem::is_directory((button ? logic.player_1_path : logic.player_2_path) + "\\hard_releases")) {
+        else if (logic.cycleTime > (button ? logic.player_1_hards_time : logic.player_2_hards_time) && hards && std::filesystem::is_directory((button ? logic.player_1_path : logic.player_2_path) + "\\hard_releases")) {
             std::string path = Clickbot::pickRandomFile(button ? logic.player_1_path : logic.player_2_path, "hard_releases");
             logic.clickbot_start = self->m_time;
             if (!path.empty()) {
-                Clickbot::system->createSound(path.c_str(), FMOD_DEFAULT, nullptr, button ? &Clickbot::releaseSound : &Clickbot::releaseSound2);
+                (button ? Clickbot::releaseSound : Clickbot::releaseSound2) = Clickbot::cachedSound(Clickbot::system, path);
 
                 if (button) {
                     Clickbot::system->playSound(Clickbot::releaseSound, nullptr, true, &Clickbot::releaseChannel);
-                    Clickbot::releaseChannel->setVolume((float)(logic.player_1_hards_volume * 5 * logic.clickbot_volume_multiplier));
+                    if (Clickbot::releaseChannel) Clickbot::releaseChannel->setVolume((float)(logic.player_1_hards_volume * 5 * logic.clickbot_volume_multiplier));
                 }
                 else {
                     Clickbot::system->playSound(Clickbot::releaseSound2, nullptr, true, &Clickbot::releaseChannel2);
-                    Clickbot::releaseChannel2->setVolume((float)(logic.player_2_hards_volume * 5 * logic.clickbot_volume_multiplier));
+                    if (Clickbot::releaseChannel2) Clickbot::releaseChannel2->setVolume((float)(logic.player_2_hards_volume * 5 * logic.clickbot_volume_multiplier));
                 }
             }
         }
@@ -1209,24 +1180,23 @@ int __fastcall Hooks::PlayLayer::releaseButton_h(gd::PlayLayer* self, int, int i
             std::string path = Clickbot::pickRandomFile(button ? logic.player_1_path : logic.player_2_path, "releases");
             logic.clickbot_start = self->m_time;
             if (!path.empty()) {
-                Clickbot::system->createSound(path.c_str(), FMOD_DEFAULT, nullptr, button ? &Clickbot::releaseSound : &Clickbot::releaseSound2);
+                (button ? Clickbot::releaseSound : Clickbot::releaseSound2) = Clickbot::cachedSound(Clickbot::system, path);
                 if (button) {
                     Clickbot::system->playSound(Clickbot::releaseSound, nullptr, true, &Clickbot::releaseChannel);
-                    Clickbot::releaseChannel->setVolume((float)(logic.player_1_volume * 5 * logic.clickbot_volume_multiplier));
+                    if (Clickbot::releaseChannel) Clickbot::releaseChannel->setVolume((float)(logic.player_1_volume * 5 * logic.clickbot_volume_multiplier));
                 }
                 else {
                     Clickbot::system->playSound(Clickbot::releaseSound2, nullptr, true, &Clickbot::releaseChannel2);
-                    Clickbot::releaseChannel2->setVolume((float)(logic.player_2_volume * 5 * logic.clickbot_volume_multiplier));
+                    if (Clickbot::releaseChannel2) Clickbot::releaseChannel2->setVolume((float)(logic.player_2_volume * 5 * logic.clickbot_volume_multiplier));
                 }
             }
         }
 
         if (button) {
-            Clickbot::releaseChannel->setPaused(false);
+            if (Clickbot::releaseChannel) Clickbot::releaseChannel->setPaused(false);
         }
         else {
-
-            Clickbot::releaseChannel2->setPaused(false);
+            if (Clickbot::releaseChannel2) Clickbot::releaseChannel2->setPaused(false);
         }
         Clickbot::system->update();
         button = oldButton;
@@ -1388,8 +1358,6 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
         logic.framerates_pos = 0;
     }
 
-    printf("\n");
-
     if (logic.is_playing() && !logic.inputs.empty()) {
         if (logic.checkpoints.empty()) {
             Hooks::PlayLayer::releaseButton(self, 0, false);
@@ -1444,7 +1412,7 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
 
     // INITIALIZES MACRO NAME
     if (self->m_currentAttempt == 1) {
-        strcpy(logic.macro_name, self->m_level->levelName.c_str());
+        snprintf(logic.macro_name, sizeof(logic.macro_name), "%s", self->m_level->levelName.c_str());
         logic.recorder.video_name = logic.macro_name;
     }
 
@@ -1456,12 +1424,13 @@ int __fastcall Hooks::PlayLayer::resetLevel_h(gd::PlayLayer* self, int idk) {
     }
 
     // Section 3: Update Time and Activated Objects
-    if (self->m_checkpoints->count() > 0) {
+    if (self->m_checkpoints->count() > 0 && !logic.checkpoints.empty()) {
         logic.calculated_xpos = logic.checkpoints.back().calculated_xpos;
 
         self->m_time = logic.get_latest_offset();
         constexpr auto delete_from = [&](auto& vec, size_t index) {
-            vec.erase(vec.begin() + index, vec.end());
+            if (index < vec.size())
+                vec.erase(vec.begin() + index, vec.end());
         };
 
         delete_from(logic.activated_objects, logic.checkpoints.back().activated_objects_size);
@@ -1584,6 +1553,8 @@ void* __fastcall Hooks::PlayLayer::exitLevel_h(gd::PlayLayer* self, int) {
 
     logic.autoclicker = false;
     logic.checkpoints.clear();
+    logic.activated_objects.clear();
+    logic.activated_objects_p2.clear();
     logic.set_removed(0);
     if (logic.recorder.m_recording)
         logic.recorder.stop();
@@ -1599,9 +1570,10 @@ int __fastcall Hooks::createCheckpoint_h(gd::PlayLayer* self) {
     CheckpointData checkpointData2 = CheckpointData::create(self->m_pPlayer2);
 
     std::map<int, ObjectData> childData;
-    cocos2d::CCArray* children = self->unk4D4;
 
-    if (PLAYLAYER->m_pObjectLayer) {
+    constexpr bool snapshot_objects = false;
+
+    if (snapshot_objects && PLAYLAYER->m_pObjectLayer) {
         auto layer = static_cast<CCLayer*>(PLAYLAYER->getChildren()->objectAtIndex(2));
         float xp = -layer->getPositionX() / layer->getScale();
         cast_function caster = make_cast<gd::GameObject, CCObject>();
@@ -1776,16 +1748,16 @@ int __fastcall Hooks::createCheckpoint_h(gd::PlayLayer* self) {
 
     std::vector<CCAction*> actions;
 
-    unsigned action_amount = PLAYLAYER->numberOfRunningActions();
+    if (snapshot_objects) {
+        unsigned action_amount = PLAYLAYER->numberOfRunningActions();
 
-    for (int i = 0; i < action_amount; i++) {
-        if (PLAYLAYER->getActionByTag(i)) {
-            actions.push_back(PLAYLAYER->getActionByTag(i));
+        for (int i = 0; i < action_amount; i++) {
+            if (auto action = PLAYLAYER->getActionByTag(i))
+                actions.push_back(action);
         }
     }
 
-
-    logic.save_checkpoint({ logic.get_frame(), checkpointData1, checkpointData2, logic.activated_objects.size(), logic.activated_objects_p2.size(), childData, logic.calculated_xpos, actions });
+    logic.save_checkpoint({ logic.get_frame(), checkpointData1, checkpointData2, logic.activated_objects.size(), logic.activated_objects_p2.size(), std::move(childData), logic.calculated_xpos, std::move(actions) });
 
     return createCheckpoint(self);
 }
@@ -1869,9 +1841,9 @@ gd::GameObject* __fastcall Hooks::hasBeenActivatedByPlayer_h(gd::GameObject* sel
 
     auto& logic = Logic::get();
     if ((logic.is_recording() || logic.is_playing()) && *reinterpret_cast<bool*>(reinterpret_cast<uintptr_t>(self) + 0x2ca)) {
-        if (self->m_bHasBeenActivated)
+        if (self->m_bHasBeenActivated && (logic.activated_objects.empty() || logic.activated_objects.back() != self))
             logic.activated_objects.push_back(self);
-        if (self->m_bHasBeenActivatedP2)
+        if (self->m_bHasBeenActivatedP2 && (logic.activated_objects_p2.empty() || logic.activated_objects_p2.back() != self))
             logic.activated_objects_p2.push_back(self);
     }
 

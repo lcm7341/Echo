@@ -17,7 +17,7 @@ inline auto widen(const std::string& str) { return widen(str.c_str()); }
 
 std::string narrow(const wchar_t* str) {
     int size = WideCharToMultiByte(CP_UTF8, 0, str, -1, nullptr, 0, nullptr, nullptr);
-    if (size <= 0) { /* fuck */ }
+    if (size <= 0) return {};
     auto buffer = new char[size];
     WideCharToMultiByte(CP_UTF8, 0, str, -1, buffer, size, nullptr, nullptr);
     std::string result(buffer, size_t(size) - 1);
@@ -27,7 +27,7 @@ std::string narrow(const wchar_t* str) {
 
 std::wstring widen(const char* str) {
     int size = MultiByteToWideChar(CP_UTF8, 0, str, -1, nullptr, 0);
-    if (size <= 0) { /* fuck */ }
+    if (size <= 0) return {};
     auto buffer = new wchar_t[size];
     MultiByteToWideChar(CP_UTF8, 0, str, -1, buffer, size);
     std::wstring result(buffer, size_t(size) - 1);
@@ -42,6 +42,13 @@ void Recorder::start(const std::string& path) {
      static std::ofstream conout("CONOUT$", std::ios::out);
      std::cout.rdbuf(conout.rdbuf());*/
     auto& logic = Logic::get();
+    if (!gd::GameManager::sharedState()->getPlayLayer()) return;
+
+    if (!std::filesystem::exists("ffmpeg\\ffmpeg.exe")) {
+        logic.error = "FFmpeg not found! Download FFmpeg though the Echo installer!";
+        return;
+    }
+
     m_recording = true;
     m_frame_has_data = false;
     m_current_frame.resize(m_width * m_height * 3, 0);
@@ -62,12 +69,6 @@ void Recorder::start(const std::string& path) {
         song_file = CCFileUtils::sharedFileUtils()->fullPathForFilename(song_file.c_str(), false);
     auto is_testmode = play_layer->m_isTestMode;
     auto song_offset = m_song_start_offset;
-
-    if (!std::filesystem::exists("ffmpeg\\ffmpeg.exe")) {
-        logic.error = "FFmpeg not found! Download FFmpeg though the Echo installer!";
-        return;
-    }
-
 
     std::thread([&, path, song_file, fade_in, fade_out, bg_volume, sfx_volume, is_testmode, song_offset]() {
         std::stringstream stream;
@@ -97,15 +98,16 @@ void Recorder::start(const std::string& path) {
         //m_vf_args = "";
 
         auto process = subprocess::Popen(stream.str());
-        while (m_recording || m_frame_has_data) {
-            m_lock.lock();
-            if (m_frame_has_data) {
-                const auto& frame = m_current_frame; // copy it
-                m_frame_has_data = false;
-                m_lock.unlock();
-                process.m_stdin.write(frame.data(), frame.size());
-            }
-            else m_lock.unlock();
+        std::vector<u8> frame(m_current_frame.size());
+        for (;;) {
+            std::unique_lock<std::mutex> guard(m_lock);
+            m_frame_cv.wait(guard, [this] { return m_frame_has_data || !m_recording; });
+            if (!m_frame_has_data) break;
+            frame.swap(m_current_frame);
+            m_frame_has_data = false;
+            guard.unlock();
+            m_frame_cv.notify_all();
+            process.m_stdin.write(frame.data(), frame.size());
         }
 
         if (process.close()) {
@@ -165,7 +167,11 @@ void Recorder::start(const std::string& path) {
 
 void Recorder::stop() {
     m_renderer.end();
-    m_recording = false;
+    {
+        std::lock_guard<std::mutex> guard(m_lock);
+        m_recording = false;
+    }
+    m_frame_cv.notify_all();
 }
 
 void MyRenderTexture::begin() {
@@ -191,7 +197,6 @@ void MyRenderTexture::begin() {
 
     m_texture->setAliasTexParameters();
 
-    m_texture->autorelease();
 
     glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, m_old_rbo);
     glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_old_fbo);
@@ -218,12 +223,23 @@ void MyRenderTexture::capture(std::mutex& lock, std::vector<u8>& data, volatile 
 }
 
 void MyRenderTexture::end() {
-    m_texture->release();
+    if (m_fbo) {
+        glDeleteFramebuffersEXT(1, &m_fbo);
+        m_fbo = 0;
+    }
+    if (m_texture) {
+        m_texture->release();
+        m_texture = nullptr;
+    }
 }
 
 void Recorder::capture_frame() {
-    while (m_frame_has_data) {}
+    {
+        std::unique_lock<std::mutex> guard(m_lock);
+        m_frame_cv.wait(guard, [this] { return !m_frame_has_data; });
+    }
     m_renderer.capture(m_lock, m_current_frame, m_frame_has_data);
+    m_frame_cv.notify_all();
 }
 
 void Recorder::handle_recording(gd::PlayLayer* play_layer, float dt) {

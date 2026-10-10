@@ -1,6 +1,7 @@
 #pragma once
 #include <thread>
 #include <mutex>
+#include <condition_variable>
 #include <queue>
 #include <vector>
 #include "../subprocess.hpp"
@@ -19,8 +20,8 @@ class MyRenderTexture {
 public:
     unsigned m_width, m_height;
     int m_old_fbo, m_old_rbo;
-    unsigned m_fbo;
-    CCTexture2D* m_texture;
+    unsigned m_fbo = 0;
+    CCTexture2D* m_texture = nullptr;
     void begin();
     void end();
     void capture(std::mutex& lock, std::vector<u8>& data, volatile bool& lul);
@@ -32,6 +33,7 @@ public:
     std::vector<u8> m_current_frame;
     volatile bool m_frame_has_data;
     std::mutex m_lock;
+    std::condition_variable m_frame_cv;
     MyRenderTexture m_renderer;
     unsigned m_width, m_height;
     unsigned m_fps;

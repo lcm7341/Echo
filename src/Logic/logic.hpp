@@ -634,41 +634,6 @@ public:
 	}
 
 	void orbChecking(cocos2d::CCPoint playerPosition) {
-		cocos2d::CCArray* children = gd::GameManager::sharedState()->getPlayLayer()->m_pObjects;
-		printf("Number of Children: %ld\n", children->count());
-		CCObject* it = NULL;
-		cast_function caster = make_cast<gd::GameObject, CCObject>();
-		CCARRAY_FOREACH(children, it)
-		{
-			try {
-				auto child = reinterpret_cast<gd::GameObject*>(caster(it));
-				if (child && child->m_nObjectType) {
-					switch (child->m_nObjectType) {
-					case gd::GameObjectType::kGameObjectTypeGravityRing:
-					case gd::GameObjectType::kGameObjectTypeYellowJumpRing:
-					case gd::GameObjectType::kGameObjectTypePinkJumpRing:
-					case gd::GameObjectType::kGameObjectTypeDropRing:
-					case gd::GameObjectType::kGameObjectTypeRedJumpRing:
-					case gd::GameObjectType::kGameObjectTypeCustomRing:
-					case gd::GameObjectType::kGameObjectTypeDashRing:
-					case gd::GameObjectType::kGameObjectTypeGravityDashRing:
-						printf("Player Position: (%f, %f)\n", playerPosition.x, playerPosition.y);
-						printf("Child Position: (%f, %f)\n", child->getPosition().x, child->getPosition().y);
-
-						if (isClose(playerPosition, child->getPosition(), 0.5f)) {
-							printf("Triggered object");
-							// TRIGGER ORB HERE
-						}
-						break;
-					default:
-						break;
-					}
-				}
-			}
-			catch (std::exception& e) {
-				printf("Exception occurred: %s\n", e.what());
-			}
-		}
 	}
 
 	void toggle_recording() {
@@ -715,7 +680,8 @@ public:
 	}
 
 	void remove_last_offset() {
-		offsets.pop_back();
+		if (!offsets.empty())
+			offsets.pop_back();
 	}
 
 	double get_latest_offset() {
@@ -740,7 +706,7 @@ public:
 	std::string highest_cps();
 
 	unsigned cached_inputs_hash = 0;
-	int cached_max_cps = 0;
+	float cached_max_cps = 0;
 	std::string cached_highest_cps = "0";
 	std::string highest_cps_cached() {
 		// Calculate a simple sum "hash" of the input frame numbers
@@ -775,8 +741,6 @@ public:
 	bool click_inverse_p1 = false;
 	bool click_inverse_p2 = false;
 
-	bool forceFrameAdvance = false;
-	
 	void remove_inputs(unsigned frame, bool player_1);
 
 	void convert_file(const std::string& filename, bool is_path);
@@ -792,19 +756,21 @@ public:
 	void read_file_json(const std::string& filename, bool is_path);
 
 	void save_checkpoint(Checkpoint data) {
-		checkpoints.push_back(data);
+		checkpoints.push_back(std::move(data));
 	}
 
 	void remove_last_checkpoint() {
-		checkpoints.pop_back();
+		if (!checkpoints.empty())
+			checkpoints.pop_back();
 	}
 
 	void offset_frames(int offset);
 
-	Checkpoint get_latest_checkpoint() {
+	const Checkpoint& get_latest_checkpoint() {
 		if (checkpoints.size() > 0) {
 			return checkpoints.back();
 		}
-		return Checkpoint{ 0, 0, 0 };
+		static const Checkpoint empty{};
+		return empty;
 	}
 };

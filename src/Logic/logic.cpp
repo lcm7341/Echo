@@ -52,15 +52,6 @@ void Logic::play_input(Frame& input) {
     // PLAYLAYER->m_player1->setPositionY(input.yPosition);
     // PLAYLAYER->m_player1->setPositionX(input.xPosition);
 
-
-    if (PLAYLAYER->m_pPlayer1->m_yAccel != input.yVelocity) {
-        printf("MISMATCH Y VELOCITY %f:%f\n", PLAYLAYER->m_pPlayer1->m_yAccel, input.yVelocity);
-    }
-
-    if (PLAYLAYER->m_pPlayer1->m_xAccel != input.xVelocity) {
-        printf("MISMATCH X VELOCITY %f:%f\n", PLAYLAYER->m_pPlayer1->m_xAccel, input.xVelocity);
-    }
-
     if (!input.isPlayer2 ^ gamevar && !play_player_1)
         return;
     if (!(!input.isPlayer2 ^ gamevar) && !play_player_2)
@@ -98,41 +89,30 @@ void Logic::play_input(Frame& input) {
     }
 }
 
-static constexpr int   kMaxPerSecond = 16;  // Rule 1
 static constexpr int   kMaxPerFrame = 3;   // Rule 2
 static constexpr float kMaxBurstRate = 48.f;// Rule 3
 static constexpr int   kMinBurstClicks = 5;   // "stint of 5 or more clicks"
 // -----------------------------
 // 1) Count inputs in the last second (per player)
 // -----------------------------
-// NOTE: “regardless of type” ⇒ count every input event for that player.
-// We do NOT filter on pressingDown anymore.
 unsigned Logic::count_presses_in_last_second(bool player2) {
     const int fps = get_fps();
     const int nowFrame = get_frame();
-    const int frame_limit = max(0, nowFrame - fps); // exactly last 1 second window [now-fps, now]
+    const int frame_limit = nowFrame - fps; // exactly last 1 second window (now-fps, now]
 
-    // Gather relevant inputs (recorded vs live) for this player only.
-    std::vector<Frame> inputs_for_player;
-    if (is_recording()) {
-        for (const auto& f : inputs)
-            if (f.isPlayer2 == player2) inputs_for_player.push_back(f);
-    }
-    else {
-        for (const auto& f : live_inputs)
-            if (f.isPlayer2 == player2) inputs_for_player.push_back(f);
-    }
+    const std::vector<Frame>& source = is_recording() ? inputs : live_inputs;
 
-    // Count inputs in the last second window (inclusive of 'now').
+    // Count this player's presses in the last second window (inclusive of 'now').
     unsigned count = 0;
-    for (auto it = inputs_for_player.rbegin(); it != inputs_for_player.rend(); ++it) {
-        if (it->number < frame_limit) break; // past the window
-        if (it->number <= nowFrame) ++count;
+    for (auto it = source.rbegin(); it != source.rend(); ++it) {
+        if (it->isPlayer2 != player2) continue;
+        if (it->number <= frame_limit) break; // past the window
+        if (it->number <= nowFrame && it->pressingDown) ++count;
     }
 
     // Track state for UI/flags.
     current_cps = count;
-    over_max_cps = (count > static_cast<unsigned>(kMaxPerSecond));
+    if (count > max_cps) over_max_cps = true;
 
     return count;
 }
@@ -189,7 +169,7 @@ std::string Logic::highest_cps() {
             int left = 0;
             for (int right = 0; right < static_cast<int>(vec.size()); ++right) {
                 const int startFrame = vec[right].number - fps; // window: (right - 1s, right]
-                while (left <= right && vec[left].number < startFrame) ++left;
+                while (left <= right && vec[left].number <= startFrame) ++left;
                 const int windowCount = right - left + 1;
 
                 // Track per-player best CPS (as "count in 1s window")
@@ -206,8 +186,8 @@ std::string Logic::highest_cps() {
                         std::to_string(vec[right].number) + ")";
                 }
 
-                // Rule 1 violation: >16 inputs within any 1-second window
-                if (windowCount > kMaxPerSecond) {
+                // Rule 1 violation: more than max_cps clicks within any 1-second window
+                if (windowCount > max_cps) {
                     (isP2 ? cps_over_percents_p2 : cps_over_percents)
                         .push_back({ static_cast<float>(vec[right].number),
                                      isP2 ? "Rule 1 (P2)" : "Rule 1 (P1)" });
@@ -232,8 +212,8 @@ std::string Logic::highest_cps() {
                         continue;
                     }
                     const float seconds = static_cast<float>(frames) / fpsf;
-                    const int clicks = j - i + 1;
-                    const float rate = static_cast<float>(clicks) / seconds; // clicks per second
+                    const int intervals = j - i;
+                    const float rate = static_cast<float>(intervals) / seconds; // clicks per second
                     if (rate > kMaxBurstRate) {
                         (isP2 ? cps_over_percents_p2 : cps_over_percents)
                             .push_back({ static_cast<float>(vec[j].number),
@@ -334,7 +314,7 @@ bool Logic::play_macro() {
         unsigned current_frame = get_frame()/* - offset*/;
         bool ret = false;
 
-        while (inputs[replay_pos].number <= current_frame && replay_pos < inputs.size()) {
+        while (replay_pos < inputs.size() && inputs[replay_pos].number <= current_frame) {
             auto& input = inputs[replay_pos];
 
             auto player = input.isPlayer2 ? PLAYLAYER->m_pPlayer2 : PLAYLAYER->m_pPlayer1;
@@ -352,6 +332,7 @@ bool Logic::play_macro() {
 
         return ret;
     }
+    return false;
 }
 
 void Logic::offset_inputs(int lower, int upper) {
@@ -458,7 +439,7 @@ void Logic::write_file(const std::string& filename) {
 
     std::string full_filename = newFileName.first;
     std::string newBase = newFileName.second;
-    strcpy(macro_name, newBase.c_str());
+    snprintf(macro_name, sizeof(macro_name), "%s", newBase.c_str());
 
     std::ofstream file(full_filename, std::ios::binary);
     if (!file.is_open()) {
@@ -623,7 +604,7 @@ void Logic::write_file_json(const std::string& filename) {
 
     std::string full_filename = newFileName.first;
     std::string newBase = newFileName.second;
-    strcpy(macro_name, newBase.c_str());
+    snprintf(macro_name, sizeof(macro_name), "%s", newBase.c_str());
 
     std::ofstream file(full_filename);
     if (!file.is_open()) {
