@@ -6,6 +6,10 @@
 #include <optional>
 #include "keybindable.h"
 #include <memory>
+#include <imgui.h>
+
+bool IsVirtualKeyPressed(int key);
+bool IsVirtualKeyDown(int key);
 
 class Keybind {
 public:

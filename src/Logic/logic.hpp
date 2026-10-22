@@ -528,7 +528,7 @@ public:
 			std::unique_ptr<KeybindableBase>& keybindable = pair.second.second;
 
 			if (keybindable && keybind.GetKey().has_value() &&
-				ImGui::IsKeyPressed(keybind.GetKey().value(), false) &&
+				IsVirtualKeyPressed(keybind.GetKey().value()) &&
 				io.KeyCtrl == keybind.GetCtrl() &&
 				io.KeyShift == keybind.GetShift() &&
 				io.KeyAlt == keybind.GetAlt() && !ImGui::GetIO().WantTextInput) {

@@ -213,6 +213,16 @@ namespace fs = std::filesystem;
 using namespace cocos2d;
 
 static ImFont* g_font = nullptr;
+
+static IGFD::FileDialogConfig dialog_config(const std::string& path) {
+	IGFD::FileDialogConfig config;
+	config.path = path;
+	return config;
+}
+
+static float window_content_width() {
+	return ImGui::GetWindowContentRegionMax().x - ImGui::GetWindowContentRegionMin().x;
+}
 static Opcode anticheatBypass(Cheat::AntiCheatBypass);
 static Opcode practiceMusic(Cheat::PracticeMusic);
 static Opcode noEscape(Cheat::NoESC);
@@ -266,7 +276,7 @@ void GUI::draw() {
 
 	if (Logic::get().start != std::chrono::steady_clock::time_point() && !g_advance_button_held) {
 		auto advancing_key = Logic::get().keybinds.GetKeybind("advancing").key;
-		if (!advancing_key.has_value() || !ImGui::IsKeyDown(advancing_key.value())) {
+		if (!advancing_key.has_value() || !IsVirtualKeyDown(advancing_key.value())) {
 			Logic::get().start = std::chrono::steady_clock::time_point();
 			Logic::get().holding_frame_advance = false;
 		}
@@ -311,7 +321,7 @@ void GUI::draw() {
 
 		io.ConfigFlags |= ImGuiConfigFlags_NavNoCaptureKeyboard;
 
-		if (io.KeysDown[ImGui::GetKeyIndex(ImGuiKey_Escape)])
+		if (ImGui::IsKeyDown(ImGuiKey_Escape))
 			ImGui::SetKeyboardFocusHere();
 
 		if (!keybind_prompt.empty())
@@ -325,7 +335,7 @@ void GUI::draw() {
 
 				ImGui::Text("%s", Logic::get().error.c_str());
 
-				if (ImGui::Button("Okay", ImVec2(ImGui::GetWindowContentRegionWidth(), 0))) {
+				if (ImGui::Button("Okay", ImVec2(window_content_width(), 0))) {
 					Logic::get().error = "";
 				}
 
@@ -412,7 +422,7 @@ void GUI::draw() {
 }
 
 float get_width(float percent) {
-	return (ImGui::GetWindowContentRegionWidth() - ImGui::GetStyle().ItemSpacing.x) * (percent / 100.f);
+	return (window_content_width() - ImGui::GetStyle().ItemSpacing.x) * (percent / 100.f);
 }
 
 void GUI::import_theme(std::string path) {
@@ -519,9 +529,18 @@ void GUI::import_theme(std::string path) {
 	}
 	style.Colors[ImGuiCol_ModalWindowDimBg] = popup_bg_color;
 
+	const std::map<std::string, std::string> old_color_names = {
+		{ "TabSelected", "TabActive" },
+		{ "TabDimmed", "TabUnfocused" },
+		{ "TabDimmedSelected", "TabUnfocusedActive" },
+		{ "NavCursor", "NavHighlight" },
+	};
+
 	for (int i = 0; i < ImGuiCol_COUNT; i++)
 	{
 		std::string colorName = ImGui::GetStyleColorName(i);
+		auto old_name = old_color_names.find(colorName);
+		if (!json.contains(colorName) && old_name != old_color_names.end()) colorName = old_name->second;
 		if (json.contains(colorName))
 		{
 			auto colorArray = json[colorName];
@@ -639,7 +658,7 @@ void MyColorPicker(ImVec4& color, const char* name)
 void GUI::ui_editor() {
 	ImGuiStyle& style = ImGui::GetStyle();
 
-	float tabWidth = ImGui::GetWindowContentRegionWidth() / 6.0f;
+	float tabWidth = window_content_width() / 6.0f;
 	if (docked)
 		ImGui::SetNextItemWidth(tabWidth);
 
@@ -665,7 +684,7 @@ void GUI::ui_editor() {
 		ImGui::SameLine();
 
 		if (ImGui::Button("Load Theme")) {
-			ImGuiFileDialog::Instance()->OpenDialog("ThemeImport", "Choose File", ".ui", ".echo/themes/");
+			ImGuiFileDialog::Instance()->OpenDialog("ThemeImport", "Choose File", ".ui", dialog_config(".echo/themes/"));
 		}
 
 		ImGui::Checkbox("Docked Menu", &docked); ImGui::SameLine();
@@ -695,7 +714,7 @@ void GUI::ui_editor() {
 		//ImGui::DragFloat("Global Scale", &io.FontGlobalScale, 0.005f, MIN_SCALE, MAX_SCALE, "%.2f", ImGuiSliderFlags_AlwaysClamp); // Scale everything
 		//ImGui::PopItemWidth();
 
-		float tabWidth = ImGui::GetWindowContentRegionWidth() / 3.0f;
+		float tabWidth = window_content_width() / 3.0f;
 		if (ImGui::BeginTabBar("##tabs", ImGuiTabBarFlags_None))
 		{
 
@@ -734,7 +753,7 @@ void GUI::ui_editor() {
 				ImGui::DragFloat2("WindowTitleAlign", (float*)&style.WindowTitleAlign, 0.01f, 0.0f, 1.0f, "%.2f");
 				int window_menu_button_position = style.WindowMenuButtonPosition + 1;
 				if (ImGui::Combo("WindowBtnPos", (int*)&window_menu_button_position, "None\0Left\0Right\0"))
-					style.WindowMenuButtonPosition = window_menu_button_position - 1;
+					style.WindowMenuButtonPosition = (ImGuiDir)(window_menu_button_position - 1);
 				ImGui::Combo("ColorButtonPosition", (int*)&style.ColorButtonPosition, "Left\0Right\0");
 				ImGui::DragFloat2("ButtonTextAlign", (float*)&style.ButtonTextAlign, 0.01f, 0.0f, 1.0f, "%.2f");
 				ImGui::SameLine(); HelpMarker("Alignment applies when a button is larger than its text content.");
@@ -947,7 +966,7 @@ void GUI::editor() {
 
 	static bool plaintext_editing = false;
 
-	float tabWidth = ImGui::GetWindowContentRegionWidth() / 6.0f;
+	float tabWidth = window_content_width() / 6.0f;
 	if (docked)
 		ImGui::SetNextItemWidth(tabWidth);
 
@@ -970,7 +989,7 @@ void GUI::editor() {
 		float firstChildHeight = 300;
 
 		std::string inputs_area_text = "Inputs";
-		float halved_region_width = ImGui::GetWindowContentRegionWidth() * 0.5;
+		float halved_region_width = window_content_width() * 0.5;
 		float quarter_region_width = halved_region_width / 2.f;
 		float inputs_area_text_width = quarter_region_width - (ImGui::CalcTextSize(inputs_area_text.c_str()).x / 2.f);
 
@@ -980,7 +999,7 @@ void GUI::editor() {
 
 		std::string edit_area_text = "Edit Area";
 		float edit_area_text_width = (halved_region_width + quarter_region_width) - (ImGui::CalcTextSize(edit_area_text.c_str()).x / 2.f);
-		float edit_area_x = (ImGui::GetWindowContentRegionWidth() + edit_area_text_width) * 0.5;
+		float edit_area_x = (window_content_width() + edit_area_text_width) * 0.5;
 
 		ImGui::SetCursorPosX(edit_area_text_width + ImGui::GetStyle().ItemSpacing.x);
 
@@ -1170,7 +1189,7 @@ void GUI::editor() {
 
 		style.FramePadding = oldFramePadding;
 
-		if (ImGui::Button("Add Input", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.5, 0))) {
+		if (ImGui::Button("Add Input", ImVec2(window_content_width() * 0.5, 0))) {
 			if (selectedInput == -1) {
 				inputs.push_back(Frame());
 				selectedInput = inputs.size() - 1;
@@ -1198,7 +1217,7 @@ void GUI::editor() {
 		ImGui::Separator();
 
 		ImGui::PushItemFlag(ImGuiItemFlags_NoTabStop, true);
-		///ImGui::SetNextItemWidth((ImGui::GetWindowContentRegionWidth() - ImGui::GetStyle().ItemSpacing.x) * 0.3f);
+		///ImGui::SetNextItemWidth((window_content_width() - ImGui::GetStyle().ItemSpacing.x) * 0.3f);
 		ImGui::PushItemWidth(150);
 		ImGui::InputInt("###offset_frames", &offset_frames, 0, 0);
 		ImGui::PopItemWidth();
@@ -1279,7 +1298,7 @@ void GUI::renderer() {
 	static int current_index = 1;
 
 
-	float tabWidth = ImGui::GetWindowContentRegionWidth() / 6.0f;
+	float tabWidth = window_content_width() / 6.0f;
 	if (docked)
 		ImGui::SetNextItemWidth(tabWidth);
 
@@ -1310,7 +1329,7 @@ void GUI::renderer() {
 			}
 			ImGui::EndCombo();
 		}
-		float windowWidth = ImGui::GetWindowContentRegionWidth() * 0.6f;
+		float windowWidth = window_content_width() * 0.6f;
 
 		ImGui::SetNextItemWidth(windowWidth / 4.f);
 		ImGui::InputInt("Width", (int*)&logic.recorder.m_width, 0);
@@ -1334,7 +1353,7 @@ void GUI::renderer() {
 		bool open_settings_modal = true;
 		bool open_extra_settings_modal = true;
 
-		if (ImGui::Button("Settings", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.5f, 0))) {
+		if (ImGui::Button("Settings", ImVec2(window_content_width() * 0.5f, 0))) {
 			ImGui::OpenPopup("Render Settings");
 		}
 
@@ -1449,11 +1468,11 @@ void GUI::sequential_replay() {
 	static std::optional<size_t> selected_replay_index = std::nullopt;
 	const float child_height = 175.0f;
 
-	if (ImGui::IsKeyDown(KEY_Escape)) { //pls find a more intuitive way to do this
+	if (ImGui::IsKeyDown(ImGuiKey_Escape)) { //pls find a more intuitive way to do this
 		selected_replay_index = std::nullopt;
 	}
 
-	float tabWidth = ImGui::GetWindowContentRegionWidth() / 6.0f;
+	float tabWidth = window_content_width() / 6.0f;
 	if (docked)
 		ImGui::SetNextItemWidth(tabWidth);
 
@@ -1608,7 +1627,7 @@ std::map<std::string, std::shared_ptr<Convertible>> options = {
 void GUI::tools() {
 	auto& logic = Logic::get();
 
-	float tabWidth = ImGui::GetWindowContentRegionWidth() / 6.0f;
+	float tabWidth = window_content_width() / 6.0f;
 	if (docked)
 		ImGui::SetNextItemWidth(tabWidth);
 	if (ImGui::BeginTabItem("Tools") || !docked) {
@@ -1649,7 +1668,7 @@ void GUI::tools() {
 		auto& style = ImGui::GetStyle();
 
 		if (ImGui::Button("Import", ImVec2(ImGui::GetContentRegionAvail().x * 0.5, 0.f)))
-			ImGuiFileDialog::Instance()->OpenDialog("ConversionImport", "Choose File", options[current_option]->get_type_filter().c_str(), options[current_option]->get_directory().c_str());
+			ImGuiFileDialog::Instance()->OpenDialog("ConversionImport", "Choose File", options[current_option]->get_type_filter().c_str(), dialog_config(options[current_option]->get_directory().c_str()));
 		
 
 		ImGui::SameLine();
@@ -1717,7 +1736,7 @@ void GUI::tools() {
 		ImGui::Separator();
 
 		if (ImGui::Button("Merge With Replay")) {
-			ImGuiFileDialog::Instance()->OpenDialog("MergeReplay", "Choose File", ".echo,.json", ".echo/replays/");
+			ImGuiFileDialog::Instance()->OpenDialog("MergeReplay", "Choose File", ".echo,.json", dialog_config(".echo/replays/"));
 		}
 
 		if (ImGuiFileDialog::Instance()->Display("MergeReplay", ImGuiWindowFlags_NoCollapse, ImVec2(500, 200)))
@@ -2158,7 +2177,7 @@ void ShowFolderDropdown(const fs::path& directoryPath, std::string selectedFolde
 void GUI::clickbot() {
 	auto& logic = Logic::get();
 
-	float tabWidth = ImGui::GetWindowContentRegionWidth() / 6.0f;
+	float tabWidth = window_content_width() / 6.0f;
 
 	if (docked)
 		ImGui::SetNextItemWidth(tabWidth);
@@ -2478,7 +2497,7 @@ void GUI::show_keybind_prompt(const std::string& buttonName) {
 		ImGui::Text("Please press a button for keybinding '%s'", buttonName.c_str());
 
 		for (int key = 0; key < 512; key++) {
-			if (ImGui::IsKeyPressed(key, false)) {
+			if (IsVirtualKeyPressed(key)) {
 				newKey = key;
 				newCtrl = ImGui::GetIO().KeyCtrl;
 				newShift = ImGui::GetIO().KeyShift;
@@ -2494,7 +2513,7 @@ void GUI::show_keybind_prompt(const std::string& buttonName) {
 			if (newAlt) keyInfo += " with Alt";
 			ImGui::Text(keyInfo.c_str());
 
-			if (ImGui::Button("Save", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.5, 0))) {
+			if (ImGui::Button("Save", ImVec2(window_content_width() * 0.5, 0))) {
 				Logic::get().keybinds.GetKeybind(keybindButtonName).SetKey(*newKey, newCtrl, newShift, newAlt);
 				ImGui::CloseCurrentPopup();
 				keybind_prompt_cache = "";
@@ -2503,13 +2522,13 @@ void GUI::show_keybind_prompt(const std::string& buttonName) {
 		}
 		else {
 			ImGui::BeginDisabled();
-			ImGui::Button("Save", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.5, 0));
+			ImGui::Button("Save", ImVec2(window_content_width() * 0.5, 0));
 			ImGui::EndDisabled();
 		}
 		ImGui::SameLine();
 		if (existingKeybind.GetKey().has_value()) {
 
-			if (ImGui::Button("Remove", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.48, 0))) {
+			if (ImGui::Button("Remove", ImVec2(window_content_width() * 0.48, 0))) {
 				Logic::get().keybinds.GetKeybind(keybindButtonName).UnsetKey();
 				ImGui::CloseCurrentPopup();
 				keybind_prompt_cache = "";
@@ -2518,12 +2537,12 @@ void GUI::show_keybind_prompt(const std::string& buttonName) {
 		}
 		else {
 			ImGui::BeginDisabled();
-			ImGui::Button("Remove", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.48, 0));
+			ImGui::Button("Remove", ImVec2(window_content_width() * 0.48, 0));
 			ImGui::EndDisabled();
 		}
 		ImGui::Separator();
 
-		if (ImGui::Button("Exit", ImVec2(ImGui::GetWindowContentRegionWidth(), 0))) {
+		if (ImGui::Button("Exit", ImVec2(window_content_width(), 0))) {
 			ImGui::CloseCurrentPopup();
 			keybind_prompt_cache = "";
 			keybind_prompt = "";
@@ -2537,7 +2556,7 @@ void GUI::main() {
 	auto& logic = Logic::get();
 	const ImVec2 buttonSize = { get_width(48), 0 };
 
-	float tabWidth = ImGui::GetWindowContentRegionWidth() / 6.0f;
+	float tabWidth = window_content_width() / 6.0f;
 	if (docked)
 		ImGui::SetNextItemWidth(tabWidth);
 	if (ImGui::BeginTabItem("Main") || !docked) {
@@ -2566,7 +2585,7 @@ void GUI::main() {
 			style.Colors[ImGuiCol_ButtonActive] = style.Colors[ImGuiCol_FrameBgHovered];
 		}
 
-		if (ImGui::Button(logic.is_recording() ? "Stop Recording" : "Start Recording", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.5f, 0))) {
+		if (ImGui::Button(logic.is_recording() ? "Stop Recording" : "Start Recording", ImVec2(window_content_width() * 0.5f, 0))) {
 			bool change = true;
 			if (logic.is_playing() && (logic.play_player_1 && logic.record_player_1) && (logic.play_player_2 && logic.record_player_2)) {
 				logic.toggle_playing();
@@ -2639,7 +2658,7 @@ void GUI::main() {
 
 		if (logic.is_recording() || logic.is_playing())
 			ImGui::BeginDisabled();
-		ImGui::PushItemWidth(ImGui::GetWindowContentRegionWidth() * 0.5);
+		ImGui::PushItemWidth(window_content_width() * 0.5);
 		if (ImGui::BeginCombo("###dropdown_recording_player", recording_player_options[selected_recording]))
 		{
 			for (int i = 0; i < IM_ARRAYSIZE(recording_player_options); i++)
@@ -2725,7 +2744,7 @@ void GUI::main() {
 		
 		std::string frame_text = "Frame: " + std::to_string(logic.get_frame());
 		float fps_text_width = ImGui::CalcTextSize(frame_text.c_str()).x;
-		float cursor_pos_x = (ImGui::GetWindowContentRegionWidth() - fps_text_width) * 0.5;
+		float cursor_pos_x = (window_content_width() - fps_text_width) * 0.5;
 
 		ImGui::SetCursorPosX(cursor_pos_x);
 		ImGui::Text("Frame: %i", logic.get_frame()); ImGui::SameLine();
@@ -2733,7 +2752,7 @@ void GUI::main() {
 
 		std::string macro_size_text = "Macro Size: " + std::to_string(logic.inputs.size());
 		float macro_size_text_width = ImGui::CalcTextSize(macro_size_text.c_str()).x;
-		cursor_pos_x = ImGui::GetWindowContentRegionWidth() - macro_size_text_width; // .45 so it doesnt seem unaligned later
+		cursor_pos_x = window_content_width() - macro_size_text_width; // .45 so it doesnt seem unaligned later
 
 		ImGui::SetCursorPosX(cursor_pos_x);
 
@@ -3034,7 +3053,7 @@ void GUI::main() {
 		if (ImGui::BeginPopupModal("Confirm Reset", &open_modal, ImGuiWindowFlags_AlwaysAutoResize)) {
 			ImGui::Text("Are you sure you want to reset your macro?");
 
-			const ImVec2 buttonSize((ImGui::GetWindowContentRegionWidth() - ImGui::GetStyle().ItemSpacing.x) * 0.5f, 0);
+			const ImVec2 buttonSize((window_content_width() - ImGui::GetStyle().ItemSpacing.x) * 0.5f, 0);
 
 			if (ImGui::Button("Yes", buttonSize)) {
 				logic.get_inputs().clear();
@@ -3060,8 +3079,8 @@ void GUI::main() {
 
 		ImGui::SameLine();
 
-		ImGui::SetNextItemWidth((ImGui::GetWindowContentRegionWidth() - ImGui::GetStyle().ItemSpacing.x) * (50.f / 100.f));
-		if (ImGui::Button("Save File", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.24f, 0))) {
+		ImGui::SetNextItemWidth((window_content_width() - ImGui::GetStyle().ItemSpacing.x) * (50.f / 100.f));
+		if (ImGui::Button("Save File", ImVec2(window_content_width() * 0.24f, 0))) {
 			if (logic.use_json_for_files) {
 				logic.write_file_json(logic.macro_name);
 			}
@@ -3086,7 +3105,7 @@ void GUI::main() {
 				reload_inputs = true;
 			}
 			else {
-				ImGuiFileDialog::Instance()->OpenDialog("ImportNormal", "Choose File", ".echo,.json", ".echo/replays/");
+				ImGuiFileDialog::Instance()->OpenDialog("ImportNormal", "Choose File", ".echo,.json", dialog_config(".echo/replays/"));
 			}
 			input_fps = logic.fps;
 			CCDirector::sharedDirector()->setAnimationInterval(1.f / GUI::get().input_fps);
@@ -3126,7 +3145,7 @@ void GUI::main() {
 
 		ImGui::Separator();
 
-		if (ImGui::Button("Close Menu", ImVec2(ImGui::GetWindowContentRegionWidth() * 0.5, 0))) {
+		if (ImGui::Button("Close Menu", ImVec2(window_content_width() * 0.5, 0))) {
 			show_window = false;
 		}
 		CHECK_KEYBIND("menuBind");

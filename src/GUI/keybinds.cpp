@@ -1,6 +1,24 @@
 #include "keybinds.h"
 #include <iostream>
 #include <imgui.h>
+#include <Windows.h>
+
+ImGuiKey ImGui_ImplWin32_KeyEventToImGuiKey(WPARAM wParam, LPARAM lParam);
+
+static ImGuiKey ImGuiKeyFromVirtualKey(int key) {
+    LPARAM scan_code = MapVirtualKey(key, MAPVK_VK_TO_VSC);
+    return ImGui_ImplWin32_KeyEventToImGuiKey(key, scan_code << 16);
+}
+
+bool IsVirtualKeyPressed(int key) {
+    ImGuiKey imgui_key = ImGuiKeyFromVirtualKey(key);
+    return imgui_key != ImGuiKey_None && ImGui::IsKeyPressed(imgui_key, false);
+}
+
+bool IsVirtualKeyDown(int key) {
+    ImGuiKey imgui_key = ImGuiKeyFromVirtualKey(key);
+    return imgui_key != ImGuiKey_None && ImGui::IsKeyDown(imgui_key);
+}
 
 Keybind::Keybind() : key(std::nullopt), ctrl(false), shift(false), alt(false) {}
 

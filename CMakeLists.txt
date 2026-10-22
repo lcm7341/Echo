@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.14)
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 project(Echo)
@@ -34,7 +34,7 @@ CPMAddPackage("gh:nlohmann/json@3.10.5")
 CPMAddPackage("gh:HJfod/cocos-headers#bd2f1c0696255ed3455171f6042e04d99ad919e2")
 CPMAddPackage("gh:TsudaKageyu/minhook#423d1e45af2ed2719a5c31e990e935ef301ed9c3")
 CPMAddPackage("gh:maxnut/gd.h#244f3e193fcb708d6440bf2420b94fc384f48f08")
-CPMAddPackage("gh:simdjson/simdjson@3.2.2")
+CPMAddPackage("gh:simdjson/simdjson@3.10.1")
 
 target_include_directories(Echo PRIVATE
   libraries/imgui-hook
